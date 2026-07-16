@@ -1,0 +1,62 @@
+<Window x:Class="Awayra.App.Views.BreakOverlayWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        WindowStyle="None"
+        ResizeMode="NoResize"
+        ShowInTaskbar="False"
+        Topmost="True"
+        AllowsTransparency="True"
+        Background="Transparent"
+        Focusable="True"
+        KeyDown="Window_OnKeyDown"
+        FlowDirection="{Binding FlowDirection}">
+  <Grid>
+    <Border Background="#CC0E1116" Opacity="{Binding OverlayOpacity}">
+      <Border.Style>
+        <Style TargetType="Border">
+          <Style.Triggers>
+            <DataTrigger Binding="{Binding ReducedMotion}" Value="False">
+              <DataTrigger.EnterActions>
+                <BeginStoryboard>
+                  <Storyboard>
+                    <DoubleAnimation Storyboard.TargetProperty="Opacity" From="0" To="1" Duration="0:0:0.35" />
+                  </Storyboard>
+                </BeginStoryboard>
+              </DataTrigger.EnterActions>
+            </DataTrigger>
+          </Style.Triggers>
+        </Style>
+      </Border.Style>
+    </Border>
+
+    <Border HorizontalAlignment="Center"
+            VerticalAlignment="Center"
+            MinWidth="420"
+            MaxWidth="560"
+            Padding="36"
+            CornerRadius="24"
+            Background="#E61B1E24"
+            BorderBrush="#663C4654"
+            BorderThickness="1">
+      <StackPanel HorizontalAlignment="Center">
+        <TextBlock Text="{Binding Title}" FontSize="30" FontWeight="SemiBold" HorizontalAlignment="Center" Margin="0,0,0,16" />
+        <Grid Width="180" Height="180" Margin="0,0,0,20" HorizontalAlignment="Center">
+          <Ellipse Stroke="{StaticResource Awayra.AccentBrush}" StrokeThickness="3" Opacity="0.35" />
+          <Ellipse x:Name="PulseRing" Stroke="{StaticResource Awayra.AccentBrush}" StrokeThickness="2" Opacity="0.6" RenderTransformOrigin="0.5,0.5">
+            <Ellipse.RenderTransform>
+              <ScaleTransform ScaleX="1" ScaleY="1" />
+            </Ellipse.RenderTransform>
+          </Ellipse>
+          <TextBlock Text="{Binding RemainingText}" FontSize="48" FontWeight="Light" HorizontalAlignment="Center" VerticalAlignment="Center" />
+        </Grid>
+        <TextBlock Text="{Binding InstructionPrimary}" TextWrapping="Wrap" TextAlignment="Center" FontSize="16" Margin="0,0,0,8" />
+        <TextBlock Text="{Binding InstructionSecondary}" TextWrapping="Wrap" TextAlignment="Center" FontSize="14" Foreground="{StaticResource Awayra.TextMutedBrush}" Margin="0,0,0,20" />
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+          <Button Content="Skip" Command="{Binding SkipCommand}" Style="{StaticResource Awayra.SecondaryButton}" Margin="0,0,8,0" Visibility="{Binding ShowSkip, Converter={StaticResource BoolToVisibility}}" />
+          <Button Content="Snooze" Command="{Binding SnoozeCommand}" Style="{StaticResource Awayra.SecondaryButton}" Margin="0,0,8,0" Visibility="{Binding ShowSnooze, Converter={StaticResource BoolToVisibility}}" />
+          <Button Content="Complete" Command="{Binding CompleteCommand}" Style="{StaticResource Awayra.PrimaryButton}" />
+        </StackPanel>
+      </StackPanel>
+    </Border>
+  </Grid>
+</Window>

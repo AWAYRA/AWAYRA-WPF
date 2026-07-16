@@ -1,0 +1,19 @@
+---
+description: Awayra WPF project rules
+alwaysApply: true
+---
+
+# Awayra Project Rules
+
+- Build a Windows-only WPF application using .NET 10 LTS
+- Use MVVM with CommunityToolkit.Mvvm
+- Keep business logic in `Awayra.Core` without WPF references
+- Use `System.Windows.Forms.NotifyIcon` for the tray
+- Persist data locally with `System.Text.Json` under `%LocalAppData%\Awayra\`
+- No preview SDKs, no Electron/Tauri/Rust/Node/web stacks
+- Run focused tests during development; full suite at milestones
+- Debug via `scripts/dev.ps1`; publish via `scripts/publish.ps1` only after tests pass
+- No installer unless explicitly requested
+- No Git push
+- Never modify tests to hide defects
+- Never touch `D:\curser\AWAYRA\AWAYRA`

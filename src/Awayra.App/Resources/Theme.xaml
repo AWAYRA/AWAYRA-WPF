@@ -1,0 +1,57 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <Color x:Key="Awayra.Background">#FF121316</Color>
+  <Color x:Key="Awayra.Surface">#FF1B1E24</Color>
+  <Color x:Key="Awayra.Border">#FF2B3038</Color>
+  <Color x:Key="Awayra.Text">#FFF3F5F7</Color>
+  <Color x:Key="Awayra.TextMuted">#FFB8C0CC</Color>
+  <Color x:Key="Awayra.Accent">#FF4CC2FF</Color>
+
+  <SolidColorBrush x:Key="Awayra.BackgroundBrush" Color="{StaticResource Awayra.Background}" />
+  <SolidColorBrush x:Key="Awayra.SurfaceBrush" Color="{StaticResource Awayra.Surface}" />
+  <SolidColorBrush x:Key="Awayra.BorderBrush" Color="{StaticResource Awayra.Border}" />
+  <SolidColorBrush x:Key="Awayra.TextBrush" Color="{StaticResource Awayra.Text}" />
+  <SolidColorBrush x:Key="Awayra.TextMutedBrush" Color="{StaticResource Awayra.TextMuted}" />
+  <SolidColorBrush x:Key="Awayra.AccentBrush" Color="{StaticResource Awayra.Accent}" />
+
+  <FontFamily x:Key="Awayra.Font">Segoe UI Variable, Segoe UI, Tahoma</FontFamily>
+
+  <Style TargetType="Window">
+    <Setter Property="Background" Value="{StaticResource Awayra.BackgroundBrush}" />
+    <Setter Property="Foreground" Value="{StaticResource Awayra.TextBrush}" />
+    <Setter Property="FontFamily" Value="{StaticResource Awayra.Font}" />
+  </Style>
+
+  <Style x:Key="Awayra.Card" TargetType="Border">
+    <Setter Property="Background" Value="{StaticResource Awayra.SurfaceBrush}" />
+    <Setter Property="BorderBrush" Value="{StaticResource Awayra.BorderBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="14" />
+    <Setter Property="Padding" Value="16" />
+  </Style>
+
+  <Style x:Key="Awayra.PrimaryButton" TargetType="Button">
+    <Setter Property="Background" Value="{StaticResource Awayra.AccentBrush}" />
+    <Setter Property="Foreground" Value="#FF0B1118" />
+    <Setter Property="Padding" Value="14,8" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="Cursor" Value="Hand" />
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="Button">
+          <Border Background="{TemplateBinding Background}" CornerRadius="10" Padding="{TemplateBinding Padding}">
+            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+          </Border>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+
+  <Style x:Key="Awayra.SecondaryButton" TargetType="Button" BasedOn="{StaticResource Awayra.PrimaryButton}">
+    <Setter Property="Background" Value="{StaticResource Awayra.SurfaceBrush}" />
+    <Setter Property="Foreground" Value="{StaticResource Awayra.TextBrush}" />
+    <Setter Property="BorderBrush" Value="{StaticResource Awayra.BorderBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
+  </Style>
+</ResourceDictionary>

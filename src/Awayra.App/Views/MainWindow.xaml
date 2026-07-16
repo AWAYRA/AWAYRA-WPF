@@ -1,0 +1,64 @@
+<Window x:Class="Awayra.App.Views.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d"
+        Title="Awayra"
+        Width="460"
+        Height="620"
+        MinWidth="420"
+        MinHeight="560"
+        WindowStartupLocation="CenterScreen"
+        FlowDirection="{Binding FlowDirection}">
+  <Grid Margin="20">
+    <Grid.RowDefinitions>
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="*" />
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="Auto" />
+    </Grid.RowDefinitions>
+
+    <StackPanel Grid.Row="0" Margin="0,0,0,16">
+      <TextBlock Text="{Binding Title}" FontSize="28" FontWeight="SemiBold" />
+      <TextBlock Text="{Binding StatusText}" Foreground="{StaticResource Awayra.TextMutedBrush}" Margin="0,4,0,0" />
+    </StackPanel>
+
+    <UniformGrid Grid.Row="1" Columns="2" Margin="0,0,0,16">
+      <Border Style="{StaticResource Awayra.Card}" Margin="0,0,8,0">
+        <StackPanel>
+          <TextBlock Text="Eye Reset" FontWeight="SemiBold" />
+          <TextBlock Text="{Binding EyeCountdown}" FontSize="32" Margin="0,8,0,0" />
+          <TextBlock Text="{Binding EyeStateText}" Foreground="{StaticResource Awayra.TextMutedBrush}" />
+        </StackPanel>
+      </Border>
+      <Border Style="{StaticResource Awayra.Card}" Margin="8,0,0,0">
+        <StackPanel>
+          <TextBlock Text="Move Break" FontWeight="SemiBold" />
+          <TextBlock Text="{Binding MoveCountdown}" FontSize="32" Margin="0,8,0,0" />
+          <TextBlock Text="{Binding MoveStateText}" Foreground="{StaticResource Awayra.TextMutedBrush}" />
+        </StackPanel>
+      </Border>
+    </UniformGrid>
+
+    <Border Grid.Row="2" Style="{StaticResource Awayra.Card}">
+      <UniformGrid Columns="2" Rows="2">
+        <TextBlock Text="{Binding TodayEyeCompleted, StringFormat=Eye resets: {0}}" Margin="0,0,8,8" />
+        <TextBlock Text="{Binding TodayMoveCompleted, StringFormat=Move breaks: {0}}" Margin="8,0,0,8" />
+        <TextBlock Text="{Binding TodaySkipped, StringFormat=Skipped: {0}}" Margin="0,0,8,0" />
+        <TextBlock Text="{Binding TodaySnoozed, StringFormat=Snoozed: {0}}" Margin="8,0,0,0" />
+      </UniformGrid>
+    </Border>
+
+    <UniformGrid Grid.Row="3" Columns="2" Margin="0,16,0,8">
+      <Button Content="{Binding PauseResumeText}" Command="{Binding TogglePauseCommand}" Style="{StaticResource Awayra.SecondaryButton}" Margin="0,0,8,0" />
+      <Button Content="Settings" Command="{Binding OpenSettingsCommand}" Style="{StaticResource Awayra.SecondaryButton}" Margin="8,0,0,0" />
+    </UniformGrid>
+
+    <UniformGrid Grid.Row="4" Columns="2">
+      <Button Content="Eye Reset Now" Command="{Binding EyeNowCommand}" Style="{StaticResource Awayra.PrimaryButton}" Margin="0,0,8,0" />
+      <Button Content="Move Break Now" Command="{Binding MoveNowCommand}" Style="{StaticResource Awayra.PrimaryButton}" Margin="8,0,0,0" />
+    </UniformGrid>
+  </Grid>
+</Window>
