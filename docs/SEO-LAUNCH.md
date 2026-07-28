@@ -1,6 +1,32 @@
 # Awayra Search Discoverability Setup
 
-The repository content and GitHub Pages files are prepared. Complete these repository settings after making the repository public.
+The repository content, metadata values, security policy, and GitHub Pages files are prepared.
+
+## One-command repository launch
+
+A repository owner can apply the public launch settings with the official GitHub CLI:
+
+```powershell
+gh auth login --hostname github.com --web
+powershell -ExecutionPolicy Bypass -File .\scripts\configure-public-repository.ps1
+```
+
+The script verifies admin access and then:
+
+- changes the repository visibility to public
+- sets the repository description and website
+- applies the discoverability topics listed below
+- enables vulnerability alerts, automated security fixes, and private vulnerability reporting when supported
+- configures GitHub Pages from `main` and `/docs`
+- protects `main` from force pushes and deletion
+- requires the Windows `build` check before merging
+- enables squash and rebase merging and deletes merged branches
+
+Use `-WhatIf` to review the operations without changing repository settings:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\configure-public-repository.ps1 -WhatIf
+```
 
 ## Repository About section
 
@@ -43,12 +69,12 @@ work-break-timer
 
 ## GitHub Pages
 
-1. Open repository **Settings**.
-2. Select **Pages** under **Code and automation**.
-3. Set **Source** to **Deploy from a branch**.
-4. Select branch **main**.
-5. Select folder **/docs**.
-6. Save.
+The public launch script configures Pages to deploy directly from:
+
+```text
+branch: main
+folder: /docs
+```
 
 Expected website URL:
 
