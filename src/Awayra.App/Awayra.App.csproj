@@ -1,0 +1,70 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UseWPF>true</UseWPF>
+    <UseWindowsForms>true</UseWindowsForms>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationIcon>Assets\awayra.ico</ApplicationIcon>
+    <AssemblyName>Awayra</AssemblyName>
+    <ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>
+    <RootNamespace>Awayra.App</RootNamespace>
+    <Version>1.0.2</Version>
+    <AssemblyVersion>1.0.0.0</AssemblyVersion>
+    <FileVersion>1.0.2.0</FileVersion>
+    <Product>Awayra</Product>
+    <Authors>Farzin Alavi</Authors>
+    <Company>Farzin Alavi</Company>
+    <Description>A calm break reminder for healthier computer use</Description>
+    <Copyright>Copyright © 2026 Farzin Alavi</Copyright>
+    <BuildTimestampUtc>$([System.DateTime]::UtcNow.ToString("o"))</BuildTimestampUtc>
+  </PropertyGroup>
+
+  <Target Name="PopulateGitMetadata" BeforeTargets="GetAssemblyVersion">
+    <Exec Command="git rev-parse --short HEAD" ConsoleToMSBuild="true" IgnoreExitCode="true" StandardOutputImportance="low" WorkingDirectory="$(MSBuildProjectDirectory)\..\..">
+      <Output TaskParameter="ConsoleOutput" PropertyName="GitCommitSha" />
+    </Exec>
+    <Exec Command="git status --porcelain" ConsoleToMSBuild="true" IgnoreExitCode="true" StandardOutputImportance="low" WorkingDirectory="$(MSBuildProjectDirectory)\..\..">
+      <Output TaskParameter="ConsoleOutput" PropertyName="GitStatusOutput" />
+    </Exec>
+    <PropertyGroup>
+      <GitCommitSha Condition="'$(GitCommitSha)' == ''">unknown</GitCommitSha>
+      <WorkingTreeStatus Condition="'$(GitStatusOutput)' == ''">clean</WorkingTreeStatus>
+      <WorkingTreeStatus Condition="'$(GitStatusOutput)' != ''">dirty</WorkingTreeStatus>
+      <InformationalVersion>$(Version)+$(GitCommitSha)</InformationalVersion>
+    </PropertyGroup>
+  </Target>
+
+  <ItemGroup>
+    <AssemblyMetadata Include="GitCommit" Value="$(GitCommitSha)" />
+    <AssemblyMetadata Include="WorkingTreeStatus" Value="$(WorkingTreeStatus)" />
+    <AssemblyMetadata Include="BuildTimestampUtc" Value="$(BuildTimestampUtc)" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Resource Include="Assets\awayra.ico" />
+    <ContentWithTargetPath Include="Assets\awayra.ico">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <TargetPath>Assets\awayra.ico</TargetPath>
+    </ContentWithTargetPath>
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Awayra.Core\Awayra.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Update="Resources\Strings.resx">
+      <Generator>ResXFileCodeGenerator</Generator>
+      <LastGenOutput>Strings.Designer.cs</LastGenOutput>
+    </EmbeddedResource>
+  </ItemGroup>
+
+</Project>

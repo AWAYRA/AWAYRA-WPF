@@ -1,0 +1,63 @@
+name: Bug report
+description: Report a reproducible problem in Awayra
+title: "[Bug]: "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Do not include passwords, certificates, private data, or vulnerability details. Security issues must follow SECURITY.md.
+  - type: input
+    id: version
+    attributes:
+      label: Awayra version
+      description: Open About in Awayra or provide the installer version.
+      placeholder: "1.0.2"
+    validations:
+      required: true
+  - type: dropdown
+    id: windows
+    attributes:
+      label: Windows version
+      options:
+        - Windows 11
+        - Windows 10
+        - Other or unsupported
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: Describe what happened and what you expected instead.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Reproduction steps
+      placeholder: |
+        1. Open...
+        2. Change...
+        3. Observe...
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant logs
+      description: Paste only the relevant section from %LocalAppData%\Awayra\Logs\awayra.log. Remove personal information first.
+      render: text
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional context
+      description: Add screenshots or other useful details.
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checklist
+      options:
+        - label: I searched existing issues for the same problem.
+          required: true
+        - label: This report does not contain sensitive security details.
+          required: true

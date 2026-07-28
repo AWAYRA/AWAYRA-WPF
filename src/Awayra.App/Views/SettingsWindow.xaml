@@ -1,0 +1,284 @@
+<Window x:Class="Awayra.App.Views.SettingsWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        AutomationProperties.AutomationId="SettingsWindow"
+        Title="Settings"
+        Width="980"
+        Height="720"
+        MinWidth="760"
+        MinHeight="580"
+        WindowStartupLocation="CenterOwner"
+        Background="#0E1319"
+        Foreground="#F7F9FC"
+        FontFamily="Segoe UI Variable, Segoe UI, Tahoma">
+  <Window.Resources>
+    <ResourceDictionary>
+      <ResourceDictionary.MergedDictionaries>
+        <ResourceDictionary Source="../Resources/SettingsStyles.xaml" />
+      </ResourceDictionary.MergedDictionaries>
+    </ResourceDictionary>
+  </Window.Resources>
+
+  <Grid Margin="20,16,20,14">
+    <Grid.RowDefinitions>
+      <RowDefinition Height="*" />
+      <RowDefinition Height="Auto" />
+    </Grid.RowDefinitions>
+
+    <ScrollViewer Grid.Row="0"
+                  VerticalScrollBarVisibility="Auto"
+                  HorizontalScrollBarVisibility="Disabled"
+                  Padding="0,0,4,4">
+      <StackPanel>
+        <TextBlock Text="Settings" Style="{StaticResource Settings.PageTitle}" />
+        <TextBlock Text="Configure reminder intervals, behavior, appearance, and Windows integration."
+                   Style="{StaticResource Settings.PageDescription}"
+                   Margin="0,0,0,14" />
+
+        <Grid Style="{StaticResource Settings.TwoColumnGrid}">
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*" MinWidth="340" />
+            <ColumnDefinition Width="16" />
+            <ColumnDefinition Width="*" MinWidth="340" />
+          </Grid.ColumnDefinitions>
+
+          <StackPanel Grid.Column="0" Style="{StaticResource Settings.ColumnStack}">
+            <!-- 1. Eye Reset -->
+            <Border Style="{StaticResource Settings.SectionCard}">
+              <StackPanel>
+                <TextBlock Text="Eye Reset" Style="{StaticResource Settings.SectionTitle}" />
+                <CheckBox Content="Enabled" IsChecked="{Binding EyeResetEnabled}" Style="{StaticResource Settings.CheckBoxRow}" />
+                <Grid Style="{StaticResource Settings.FieldRow}">
+                  <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="156" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                  </Grid.ColumnDefinitions>
+                  <TextBlock Grid.Column="0" Text="Eye interval" Style="{StaticResource Settings.FieldLabel}" />
+                  <TextBox Grid.Column="1"
+                           Text="{Binding EyeResetIntervalMinutes, UpdateSourceTrigger=PropertyChanged}"
+                           Style="{StaticResource Settings.InputTextBox}" />
+                  <TextBlock Grid.Column="2" Text="minutes" Style="{StaticResource Settings.FieldUnit}" />
+                </Grid>
+                <Grid Style="{StaticResource Settings.FieldRow}">
+                  <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="156" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                  </Grid.ColumnDefinitions>
+                  <TextBlock Grid.Column="0" Text="Eye duration" Style="{StaticResource Settings.FieldLabel}" />
+                  <TextBox Grid.Column="1"
+                           Text="{Binding EyeResetDurationSeconds, UpdateSourceTrigger=PropertyChanged}"
+                           Style="{StaticResource Settings.InputTextBox}" />
+                  <TextBlock Grid.Column="2" Text="seconds" Style="{StaticResource Settings.FieldUnit}" />
+                </Grid>
+              </StackPanel>
+            </Border>
+
+            <!-- 2. Move Break -->
+            <Border Style="{StaticResource Settings.SectionCard}">
+              <StackPanel>
+                <TextBlock Text="Move Break" Style="{StaticResource Settings.SectionTitle}" />
+                <CheckBox Content="Enabled" IsChecked="{Binding MoveBreakEnabled}" Style="{StaticResource Settings.CheckBoxRow}" />
+                <Grid Style="{StaticResource Settings.FieldRow}">
+                  <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="156" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                  </Grid.ColumnDefinitions>
+                  <TextBlock Grid.Column="0" Text="Move interval" Style="{StaticResource Settings.FieldLabel}" />
+                  <TextBox Grid.Column="1"
+                           Text="{Binding MoveBreakIntervalMinutes, UpdateSourceTrigger=PropertyChanged}"
+                           Style="{StaticResource Settings.InputTextBox}" />
+                  <TextBlock Grid.Column="2" Text="minutes" Style="{StaticResource Settings.FieldUnit}" />
+                </Grid>
+                <Grid Style="{StaticResource Settings.FieldRow}">
+                  <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="156" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                  </Grid.ColumnDefinitions>
+                  <TextBlock Grid.Column="0" Text="Move duration" Style="{StaticResource Settings.FieldLabel}" />
+                  <TextBox Grid.Column="1"
+                           Text="{Binding MoveBreakDurationSeconds, UpdateSourceTrigger=PropertyChanged}"
+                           Style="{StaticResource Settings.InputTextBox}" />
+                  <TextBlock Grid.Column="2" Text="seconds" Style="{StaticResource Settings.FieldUnit}" />
+                </Grid>
+              </StackPanel>
+            </Border>
+
+            <!-- 3. Reminder behavior -->
+            <Border Style="{StaticResource Settings.SectionCard}" Margin="0">
+              <StackPanel>
+                <TextBlock Text="Reminder behavior" Style="{StaticResource Settings.SectionTitle}" />
+                <CheckBox Content="Allow skip" IsChecked="{Binding AllowSkip}" Style="{StaticResource Settings.CheckBoxRow}" />
+                <CheckBox AutomationProperties.AutomationId="AllowSnoozeCheckbox"
+                          Content="Allow snooze"
+                          IsChecked="{Binding AllowSnooze}"
+                          Style="{StaticResource Settings.CheckBoxRow}" />
+                <Grid Style="{StaticResource Settings.FieldRow}">
+                  <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="156" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                  </Grid.ColumnDefinitions>
+                  <TextBlock Grid.Column="0" Text="Snooze duration" Style="{StaticResource Settings.FieldLabel}" />
+                  <TextBox AutomationProperties.AutomationId="SnoozeDurationInput"
+                           Grid.Column="1"
+                           Text="{Binding SnoozeDurationMinutes, UpdateSourceTrigger=PropertyChanged}"
+                           Style="{StaticResource Settings.InputTextBox}" />
+                  <TextBlock Grid.Column="2" Text="minutes" Style="{StaticResource Settings.FieldUnit}" />
+                </Grid>
+              </StackPanel>
+            </Border>
+          </StackPanel>
+
+          <StackPanel Grid.Column="2" Style="{StaticResource Settings.ColumnStack}">
+            <!-- 4. Idle and work hours -->
+            <Border Style="{StaticResource Settings.SectionCard}">
+              <StackPanel>
+                <TextBlock Text="Idle and work hours" Style="{StaticResource Settings.SectionTitle}" />
+                <CheckBox AutomationProperties.AutomationId="PauseWhileIdleCheckbox"
+                          Content="Reset reminders after idle"
+                          IsChecked="{Binding PauseWhileIdle}"
+                          Style="{StaticResource Settings.CheckBoxRow}" />
+                <Grid Style="{StaticResource Settings.FieldRow}">
+                  <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="156" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                  </Grid.ColumnDefinitions>
+                  <TextBlock Grid.Column="0" Text="Idle threshold" Style="{StaticResource Settings.FieldLabel}" />
+                  <TextBox Grid.Column="1"
+                           Text="{Binding IdleThresholdMinutes, UpdateSourceTrigger=PropertyChanged}"
+                           Style="{StaticResource Settings.InputTextBox}" />
+                  <TextBlock Grid.Column="2" Text="minutes" Style="{StaticResource Settings.FieldUnit}" />
+                </Grid>
+                <CheckBox Content="Enable work hours"
+                          IsChecked="{Binding WorkHoursEnabled}"
+                          Style="{StaticResource Settings.CheckBoxRow}"
+                          Margin="0,0,0,6" />
+                <Grid Style="{StaticResource Settings.FieldRow}">
+                  <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="156" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                  </Grid.ColumnDefinitions>
+                  <TextBlock Grid.Column="0" Text="Work start" Style="{StaticResource Settings.FieldLabel}" />
+                  <TextBox Grid.Column="1"
+                           Text="{Binding WorkStart, UpdateSourceTrigger=PropertyChanged}"
+                           Style="{StaticResource Settings.InputTextBox}" />
+                </Grid>
+                <Grid Style="{StaticResource Settings.FieldRow}">
+                  <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="156" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                  </Grid.ColumnDefinitions>
+                  <TextBlock Grid.Column="0" Text="Work end" Style="{StaticResource Settings.FieldLabel}" />
+                  <TextBox Grid.Column="1"
+                           Text="{Binding WorkEnd, UpdateSourceTrigger=PropertyChanged}"
+                           Style="{StaticResource Settings.InputTextBox}" />
+                </Grid>
+              </StackPanel>
+            </Border>
+
+            <!-- 5. Appearance -->
+            <Border Style="{StaticResource Settings.SectionCard}">
+              <StackPanel>
+                <TextBlock Text="Appearance" Style="{StaticResource Settings.SectionTitle}" />
+                <TextBlock Text="Glass clarity — 0 to 150"
+                           Style="{StaticResource Settings.FieldLabel}"
+                           Margin="0,0,0,8" />
+                <Grid Margin="0,0,0,4">
+                  <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                  </Grid.ColumnDefinitions>
+                  <Slider x:Name="GlassClaritySlider"
+                          Grid.Column="0"
+                          AutomationProperties.AutomationId="GlassClarityInput"
+                          Value="{Binding GlassClarity}"
+                          Style="{StaticResource Settings.GlassSlider}" />
+                  <TextBlock Grid.Column="1"
+                             Text="{Binding GlassClarity}"
+                             Style="{StaticResource Settings.GlassValue}" />
+                </Grid>
+                <Grid Margin="0,0,0,8">
+                  <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="*" />
+                  </Grid.ColumnDefinitions>
+                  <TextBlock Grid.Column="0" Text="Solid" Style="{StaticResource Settings.GlassScaleLabel}" />
+                  <TextBlock Grid.Column="1" Text="Frosted" Style="{StaticResource Settings.GlassScaleLabel}" />
+                  <TextBlock Grid.Column="2" Text="Clear" Style="{StaticResource Settings.GlassScaleLabel}" />
+                  <TextBlock Grid.Column="3" Text="Extra clear" Style="{StaticResource Settings.GlassScaleLabel}" />
+                </Grid>
+                <CheckBox Content="Reduced motion"
+                          IsChecked="{Binding ReducedMotion}"
+                          Style="{StaticResource Settings.CheckBoxRow}"
+                          Margin="0" />
+              </StackPanel>
+            </Border>
+
+            <!-- 6. Windows behavior -->
+            <Border Style="{StaticResource Settings.SectionCard}" Margin="0">
+              <StackPanel>
+                <TextBlock Text="Windows behavior" Style="{StaticResource Settings.SectionTitle}" />
+                <CheckBox Content="Run at Windows startup"
+                          IsChecked="{Binding RunAtStartup}"
+                          Style="{StaticResource Settings.CheckBoxRow}" />
+                <CheckBox Content="Start minimized"
+                          IsChecked="{Binding StartMinimized}"
+                          Style="{StaticResource Settings.CheckBoxRow}" />
+                <CheckBox Content="Close dashboard to tray"
+                          IsChecked="{Binding CloseToTray}"
+                          Style="{StaticResource Settings.CheckBoxRow}"
+                          Margin="0" />
+              </StackPanel>
+            </Border>
+          </StackPanel>
+        </Grid>
+      </StackPanel>
+    </ScrollViewer>
+
+    <StackPanel Grid.Row="1">
+      <Border Margin="0,0,0,10">
+        <Border.Style>
+          <Style TargetType="Border" BasedOn="{StaticResource Settings.ValidationPanel}">
+            <Setter Property="Visibility" Value="Visible" />
+            <Style.Triggers>
+              <DataTrigger Binding="{Binding ValidationErrors.Count}" Value="0">
+                <Setter Property="Visibility" Value="Collapsed" />
+                <Setter Property="Margin" Value="0" />
+              </DataTrigger>
+            </Style.Triggers>
+          </Style>
+        </Border.Style>
+        <ItemsControl ItemsSource="{Binding ValidationErrors}">
+          <ItemsControl.ItemTemplate>
+            <DataTemplate>
+              <TextBlock Text="{Binding}" Style="{StaticResource Settings.ValidationText}" />
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+      </Border>
+
+      <Border Style="{StaticResource Settings.ActionBar}">
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+          <Button AutomationProperties.AutomationId="SettingsCloseButton"
+                  Content="Close"
+                  Command="{Binding CancelCommand}"
+                  Style="{StaticResource Settings.SecondaryButton}"
+                  Margin="0,0,10,0" />
+          <Button AutomationProperties.AutomationId="SettingsSaveButton"
+                  Content="Save"
+                  Command="{Binding SaveCommand}"
+                  Style="{StaticResource Settings.PrimaryButton}" />
+        </StackPanel>
+      </Border>
+    </StackPanel>
+  </Grid>
+</Window>

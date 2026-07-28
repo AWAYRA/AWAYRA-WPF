@@ -1,0 +1,155 @@
+<Window x:Class="Awayra.App.Views.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d"
+        AutomationProperties.AutomationId="MainWindow"
+        Title="Awayra"
+        Icon="pack://application:,,,/Awayra;component/Assets/awayra.ico"
+        Width="460"
+        Height="660"
+        MinWidth="420"
+        MinHeight="600"
+        WindowStartupLocation="CenterScreen"
+        Background="#0E1319"
+        Foreground="#F7F9FC"
+        FontFamily="Segoe UI Variable, Segoe UI, Tahoma">
+  <Window.Resources>
+    <ResourceDictionary>
+      <ResourceDictionary.MergedDictionaries>
+        <ResourceDictionary Source="../Resources/DashboardStyles.xaml" />
+      </ResourceDictionary.MergedDictionaries>
+    </ResourceDictionary>
+  </Window.Resources>
+
+  <Grid Margin="24,22,24,20">
+    <Grid.RowDefinitions>
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="*" />
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="Auto" />
+    </Grid.RowDefinitions>
+
+    <!-- 1. Title and status -->
+    <StackPanel Grid.Row="0" Margin="0,0,0,20">
+      <TextBlock Text="{Binding Title}" Style="{StaticResource Dashboard.TitleText}" />
+      <TextBlock AutomationProperties.AutomationId="StatusText"
+                 Text="{Binding StatusText}"
+                 Style="{StaticResource Dashboard.StatusText}" />
+    </StackPanel>
+
+    <!-- 2. Countdown cards -->
+    <UniformGrid Grid.Row="1" Columns="2" Margin="0,0,0,16">
+      <Border Style="{StaticResource Dashboard.CountdownCard}" Margin="0,0,6,0">
+        <Grid>
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="Auto" />
+            <ColumnDefinition Width="*" />
+          </Grid.ColumnDefinitions>
+          <Border Grid.Column="0"
+                  Style="{StaticResource Dashboard.CardAccentBar}"
+                  Background="{StaticResource Dashboard.EyeAccentBrush}" />
+          <StackPanel Grid.Column="1">
+            <TextBlock Text="{Binding EyeResetLabel}" Style="{StaticResource Dashboard.CardLabel}" />
+            <TextBlock AutomationProperties.AutomationId="EyeCountdown"
+                       Text="{Binding EyeCountdown}"
+                       Style="{StaticResource Dashboard.CountdownValue}" />
+            <TextBlock Text="{Binding EyeStateText}" Style="{StaticResource Dashboard.MutedText}" />
+          </StackPanel>
+        </Grid>
+      </Border>
+      <Border Style="{StaticResource Dashboard.CountdownCard}" Margin="6,0,0,0">
+        <Grid>
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="Auto" />
+            <ColumnDefinition Width="*" />
+          </Grid.ColumnDefinitions>
+          <Border Grid.Column="0"
+                  Style="{StaticResource Dashboard.CardAccentBar}"
+                  Background="{StaticResource Dashboard.MoveAccentBrush}" />
+          <StackPanel Grid.Column="1">
+            <TextBlock Text="{Binding MoveBreakLabel}" Style="{StaticResource Dashboard.CardLabel}" />
+            <TextBlock AutomationProperties.AutomationId="MoveCountdown"
+                       Text="{Binding MoveCountdown}"
+                       Style="{StaticResource Dashboard.CountdownValue}" />
+            <TextBlock Text="{Binding MoveStateText}" Style="{StaticResource Dashboard.MutedText}" />
+          </StackPanel>
+        </Grid>
+      </Border>
+    </UniformGrid>
+
+    <!-- 3. Today statistics -->
+    <Border Grid.Row="2" Style="{StaticResource Dashboard.StatsSection}" Margin="0,0,0,4">
+      <UniformGrid Columns="2" Rows="2">
+        <Border Style="{StaticResource Dashboard.StatTile}" Margin="0,0,5,5">
+          <TextBlock AutomationProperties.AutomationId="TodayEyeCompleted"
+                     Text="{Binding TodayEyeText}"
+                     Style="{StaticResource Dashboard.StatText}" />
+        </Border>
+        <Border Style="{StaticResource Dashboard.StatTile}" Margin="5,0,0,5">
+          <TextBlock AutomationProperties.AutomationId="TodayMoveCompleted"
+                     Text="{Binding TodayMoveText}"
+                     Style="{StaticResource Dashboard.StatText}" />
+        </Border>
+        <Border Style="{StaticResource Dashboard.StatTile}" Margin="0,0,5,0">
+          <TextBlock AutomationProperties.AutomationId="TodaySkipped"
+                     Text="{Binding TodaySkippedText}"
+                     Style="{StaticResource Dashboard.StatText}" />
+        </Border>
+        <Border Style="{StaticResource Dashboard.StatTile}" Margin="5,0,0,0">
+          <TextBlock AutomationProperties.AutomationId="TodaySnoozed"
+                     Text="{Binding TodaySnoozedText}"
+                     Style="{StaticResource Dashboard.StatText}" />
+        </Border>
+      </UniformGrid>
+    </Border>
+
+    <!-- Flexible spacer -->
+    <Grid Grid.Row="3" />
+
+    <!-- 4. Main actions -->
+    <UniformGrid Grid.Row="4" Columns="2" Margin="0,16,0,10">
+      <Button AutomationProperties.AutomationId="EyeResetNowButton"
+              Content="{Binding EyeResetNowLabel}"
+              Command="{Binding EyeNowCommand}"
+              Style="{StaticResource Dashboard.PrimaryButton}"
+              Margin="0,0,6,0" />
+      <Button AutomationProperties.AutomationId="MoveBreakNowButton"
+              Content="{Binding MoveBreakNowLabel}"
+              Command="{Binding MoveNowCommand}"
+              Style="{StaticResource Dashboard.PrimaryButton}"
+              Margin="6,0,0,0" />
+    </UniformGrid>
+
+    <!-- 5. Settings access -->
+    <UniformGrid Grid.Row="5" Columns="2" Margin="0,0,0,10">
+      <Button AutomationProperties.AutomationId="PauseResumeButton"
+              Content="{Binding PauseResumeText}"
+              Command="{Binding TogglePauseCommand}"
+              Style="{StaticResource Dashboard.SecondaryButton}"
+              Margin="0,0,6,0" />
+      <Button AutomationProperties.AutomationId="SettingsButton"
+              Content="{Binding SettingsLabel}"
+              Command="{Binding OpenSettingsCommand}"
+              Style="{StaticResource Dashboard.SecondaryButton}"
+              Margin="6,0,0,0" />
+    </UniformGrid>
+
+    <!-- 6. About & Support -->
+    <Button Grid.Row="6"
+            AutomationProperties.AutomationId="DashboardAboutSupportButton"
+            Click="DashboardAboutSupport_Click"
+            Style="{StaticResource Dashboard.AboutSupportCardButton}">
+      <StackPanel HorizontalAlignment="Left">
+        <TextBlock Text="About &amp; Support Awayra"
+                   Style="{StaticResource Dashboard.AboutSupportPrimaryText}" />
+        <TextBlock Text="Built with love for people who spend long hours at a computer."
+                   Style="{StaticResource Dashboard.AboutSupportSecondaryText}" />
+      </StackPanel>
+    </Button>
+  </Grid>
+</Window>
