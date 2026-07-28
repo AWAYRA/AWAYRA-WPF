@@ -149,13 +149,8 @@ public partial class App : System.Windows.Application
             Dispatcher.Invoke(() => _overlays.UpdateGlassClarity(clarity));
         };
 
-        var iconPath = Path.Combine(AppContext.BaseDirectory, "Assets", "awayra.ico");
-        var trayIcon = File.Exists(iconPath)
-            ? new System.Drawing.Icon(iconPath)
-            : System.Drawing.SystemIcons.Application;
-
         _tray = new TrayService(
-            trayIcon,
+            AppIconHelper.ApplicationIcon,
             localization,
             ShowDashboard,
             () => _host.Scheduler.TriggerNow(BreakType.Eye),

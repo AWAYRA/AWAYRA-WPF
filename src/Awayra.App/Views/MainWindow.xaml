@@ -6,7 +6,7 @@
         mc:Ignorable="d"
         AutomationProperties.AutomationId="MainWindow"
         Title="Awayra"
-        Icon="pack://application:,,,/Awayra;component/assets/awayra.ico"
+        Icon="pack://application:,,,/Awayra;component/Assets/awayra.ico"
         Width="460"
         Height="660"
         MinWidth="420"

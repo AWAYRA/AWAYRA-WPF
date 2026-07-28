@@ -109,6 +109,8 @@ powershell -ExecutionPolicy Bypass -File .\scripts\verify-change.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\build-installer.ps1
 ```
 
+Output: `artifacts\installer\Awayra-Setup-{VERSION}-x64.exe` (self-contained `win-x64`, no separate .NET install required)
+
 ## Architecture
 
 | Project | Responsibility |

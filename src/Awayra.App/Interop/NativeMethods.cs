@@ -39,7 +39,16 @@ internal static class NativeMethods
     [DllImport("user32.dll")]
     internal static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
 
+    [DllImport("user32.dll", EntryPoint = "SendMessageW")]
+    internal static extern IntPtr SendMessage(IntPtr hWnd, int msg, IntPtr wParam, IntPtr lParam);
+
+    [DllImport("gdi32.dll")]
+    internal static extern bool DeleteObject(IntPtr hObject);
+
     internal const int SwRestore = 9;
+    internal const int WmSetIcon = 0x0080;
+    internal static readonly IntPtr IconSmall = IntPtr.Zero;
+    internal static readonly IntPtr IconBig = new(1);
 }
 
 public sealed class MonitorLocator

@@ -12,6 +12,8 @@ public partial class MainWindow : Window
     {
         InitializeComponent();
         DataContext = viewModel;
+        Icon = AppIconHelper.ApplicationImageSource;
+        AppIconHelper.ApplyToWindow(this);
     }
 
     private void DashboardAboutSupport_Click(object sender, RoutedEventArgs e)
