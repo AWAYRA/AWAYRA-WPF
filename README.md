@@ -1,35 +1,40 @@
 <div align="center">
 
-# Awayra
+# Awayra — Free Windows Break Reminder
 
-**A calm, privacy-first break reminder for healthier computer use on Windows.**
+**An open-source 20-20-20 eye break timer, movement reminder, and screen break app for Windows 10 and 11.**
 
 ![Windows](https://img.shields.io/badge/Windows-10%20%7C%2011-0078D4?logo=windows11&logoColor=white)
 ![.NET](https://img.shields.io/badge/.NET-10-512BD4?logo=dotnet&logoColor=white)
 ![License](https://img.shields.io/badge/License-GPL--3.0--only-blue)
 ![Privacy](https://img.shields.io/badge/Privacy-Local--only-2ea44f)
 
-[Download for Windows](https://github.com/AAA-It-uae/AWAYRA-WPF/releases/latest) · [Report an issue](https://github.com/AAA-It-uae/AWAYRA-WPF/issues) · [Contribute](CONTRIBUTING.md)
+[Download Awayra for Windows](https://github.com/AAA-It-uae/AWAYRA-WPF/releases/latest) · [Report a bug](https://github.com/AAA-It-uae/AWAYRA-WPF/issues) · [Contribute](CONTRIBUTING.md)
 
 </div>
 
 ## What is Awayra?
 
-Awayra is a lightweight native Windows application that reminds you to briefly rest your eyes and move your body during long computer sessions.
+Awayra is a lightweight, native **Windows break reminder** for people who spend long hours working, studying, gaming, designing, or programming at a computer.
 
-It stays quietly in the system tray, tracks two independent break schedules, and displays a focused fullscreen reminder when a break is due.
+It combines two independent schedules:
 
-## Why regular breaks matter
+- an **eye strain reminder** based on the 20-20-20 rule
+- a **movement and posture break reminder** for standing, walking, stretching, and changing position
 
-Long, uninterrupted screen sessions can contribute to **digital eye strain**. Common symptoms include dry or irritated eyes, blurred vision, headaches, and difficulty refocusing after prolonged near work. Screen concentration can also reduce normal blinking.
+Awayra stays quietly in the Windows system tray and displays a focused fullscreen reminder when a break is due. It works offline, stores everything locally, and does not require an account, subscription, cloud service, or internet connection.
 
-Remaining in one position for too long can fatigue the muscles supporting the neck, shoulders, back, wrists, and hips. A highly sedentary routine is also associated with broader long-term cardiovascular and metabolic health risks.
+## Why use a screen break reminder?
 
-Awayra does not replace exercise, good ergonomics, or medical care. It solves one practical problem: remembering to interrupt long periods of screen focus and static sitting.
+Long, uninterrupted screen sessions can contribute to digital eye strain. Common symptoms include dry or irritated eyes, blurred vision, headaches, and difficulty refocusing after prolonged near work. Screen concentration can also reduce normal blinking.
 
-## A practical break routine
+Remaining in one position for too long can fatigue the muscles supporting the neck, shoulders, back, wrists, and hips. Awayra helps interrupt long periods of screen focus and static sitting before they become the default pattern of your workday.
 
-| Break | Frequency | Duration | What to do |
+Awayra is a wellness reminder, not a medical device. It does not replace exercise, good ergonomics, professional eye care, or medical treatment.
+
+## Recommended break schedule
+
+| Reminder | Frequency | Duration | Suggested action |
 |---|---:|---:|---|
 | **Eye Reset** | Every 20 minutes | 20 seconds | Look at something about 20 feet / 6 metres away and blink naturally. |
 | **Move Break** | Every 30–60 minutes | At least 60 seconds | Stand up, walk briefly, change posture, and relax your shoulders. |
@@ -43,31 +48,45 @@ Both schedules are fully configurable.
 
 ## Features
 
-- Independent Eye Reset and Move Break timers
+- Independent eye break and movement break timers
+- 20-20-20 eye reminder support
 - Clear fullscreen break overlays
 - Pause, resume, skip, snooze, and start-now controls
-- Idle detection that avoids unnecessary reminders while you are away
+- Idle detection that avoids reminders while you are away
 - Optional work-hour restrictions
 - Windows startup and start-minimized options
 - Daily completion, skip, and snooze statistics
 - Dark and light themes with reduced-motion support
 - Local settings and data storage
-- No account, server, cloud sync, telemetry, or internet dependency
+- No account, advertising, telemetry, server, or cloud sync
+- Native C# and WPF application for Windows 10 and Windows 11
+
+## Who is Awayra for?
+
+Awayra is designed for:
+
+- software developers and programmers
+- office workers and remote teams
+- designers, video editors, and content creators
+- students and researchers
+- gamers and streamers
+- anyone searching for a free Windows stretch reminder, posture reminder, work break timer, or eye-care timer
 
 ## Download and install
 
-Download the latest compiled installer from [GitHub Releases](https://github.com/AAA-It-uae/AWAYRA-WPF/releases/latest).
+Download the latest compiled installer from [Awayra GitHub Releases](https://github.com/AAA-It-uae/AWAYRA-WPF/releases/latest).
 
 - **Supported systems:** Windows 10 and Windows 11 x64
 - **Installer type:** Per-user Windows installer
 - **Default location:** `%LocalAppData%\Programs\Awayra`
 - **Runtime:** Self-contained; .NET does not need to be installed separately
+- **Distribution:** Direct download from GitHub Releases
 
 After installation, open Awayra once and leave it running in the system tray. Use the dashboard or tray menu to adjust the schedule, start a break immediately, pause reminders, or quit the application.
 
-Official releases may display a Windows SmartScreen warning until the project has established signing reputation. Verify checksums published with release assets before installation.
+Official releases may display a Windows SmartScreen warning until the project establishes signing reputation. Verify the SHA-256 checksum published with release assets before installation.
 
-## Privacy
+## Privacy-first by design
 
 Awayra works entirely on your computer. It does not require an account and does not send usage data anywhere.
 
@@ -79,6 +98,36 @@ Local files are stored under `%LocalAppData%\Awayra\`:
 | `state.json` | Current reminder schedule |
 | `stats.json` | Daily break statistics |
 | `Logs\awayra.log` | Local diagnostic log |
+
+## Frequently asked questions
+
+### Does Awayra support the 20-20-20 rule?
+
+Yes. The default Eye Reset reminder runs every 20 minutes for 20 seconds. During the break, look at something approximately 20 feet or 6 metres away.
+
+### Is Awayra free?
+
+Yes. Awayra is free and open-source software released under the GPL-3.0-only license.
+
+### Does Awayra work offline?
+
+Yes. The application does not need an internet connection after download and installation.
+
+### Does Awayra collect screen activity or personal data?
+
+No. Awayra does not upload telemetry, browsing history, screenshots, application usage, or personal information. Idle detection is processed locally by Windows.
+
+### Can I change the break intervals?
+
+Yes. Eye breaks, movement breaks, durations, snooze timing, working hours, startup behavior, and other reminder settings are configurable.
+
+### Is Awayra available for macOS or Linux?
+
+No. The current release is a native Windows application built with WPF. The supported platforms are Windows 10 and Windows 11 x64.
+
+### Is Awayra published in the Microsoft Store?
+
+No. Official installers are distributed directly through this repository's GitHub Releases page.
 
 ## Development
 
@@ -145,7 +194,7 @@ Copyright © 2026 Farzin Alavi.
 
 ## Health note
 
-Awayra is a wellness reminder, not a medical device. Persistent eye pain, double vision, severe headaches, numbness, or ongoing neck, back, or wrist pain should be assessed by a qualified healthcare professional.
+Persistent eye pain, double vision, severe headaches, numbness, or ongoing neck, back, or wrist pain should be assessed by a qualified healthcare professional.
 
 ## References
 
