@@ -1,105 +1,132 @@
+<div align="center">
+
 # Awayra
 
-Awayra is a lightweight native Windows application that helps you take healthy breaks during long computer sessions. It runs primarily in the system tray and provides independent Eye Reset and Move Break reminders.
+**A calm, privacy-first break reminder for healthier computer use on Windows.**
 
-## Features
+![Windows](https://img.shields.io/badge/Windows-10%20%7C%2011-0078D4?logo=windows11&logoColor=white)
+![.NET](https://img.shields.io/badge/.NET-10-512BD4?logo=dotnet&logoColor=white)
+![Privacy](https://img.shields.io/badge/Privacy-Local--only-2ea44f)
 
-- System tray application with dashboard, settings, and fullscreen break overlays
-- Independent Eye Reset and Move Break schedulers
-- Pause, resume, skip, snooze, idle detection, and work-hours restrictions
-- English, Persian (RTL), and Arabic (RTL) localization
-- Local JSON persistence under `%LocalAppData%\Awayra\`
-- No server, account, cloud, telemetry, or internet dependency
+[Download for Windows](https://github.com/AAA-It-uae/AWAYRA-WPF/releases/latest) · [Report an issue](https://github.com/AAA-It-uae/AWAYRA-WPF/issues)
 
-## Architecture
+</div>
 
-- `Awayra.Core` — domain models, scheduler, validation, statistics, localization abstractions
-- `Awayra.App` — WPF UI, tray, overlays, Win32 interop, persistence implementations
-- `Awayra.Core.Tests` — deterministic MSTest suite for business logic
+## What is Awayra?
 
-Stack: C#, .NET 10, WPF, MVVM (CommunityToolkit.Mvvm), System.Windows.Forms.NotifyIcon
+Awayra is a lightweight native Windows application that reminds you to briefly rest your eyes and move your body during long computer sessions.
 
-## Requirements
+It stays quietly in the system tray, tracks two independent break schedules, and displays a focused fullscreen reminder when a break is due.
 
-- Windows 10/11 x64
-- .NET 10 SDK for development
+## Why regular breaks matter
+
+Long, uninterrupted screen sessions can contribute to **digital eye strain**. Common symptoms include dry or irritated eyes, blurred vision, headaches, and difficulty refocusing after prolonged near work. Screen concentration can also reduce normal blinking.
+
+Remaining in one position for too long can fatigue the muscles supporting the neck, shoulders, back, wrists, and hips. A highly sedentary routine is also associated with broader long-term cardiovascular and metabolic health risks.
+
+Awayra does not replace exercise, good ergonomics, or medical care. It solves one practical problem: remembering to interrupt long periods of screen focus and static sitting.
+
+## A practical break routine
+
+| Break | Frequency | Duration | What to do |
+|---|---:|---:|---|
+| **Eye Reset** | Every 20 minutes | 20 seconds | Look at something about 20 feet / 6 metres away and blink naturally. |
+| **Move Break** | Every 30–60 minutes | At least 60 seconds | Stand up, walk briefly, change posture, and relax your shoulders. |
+
+Awayra's default schedule is:
+
+- **Eye Reset:** every 20 minutes for 20 seconds
+- **Move Break:** every 45 minutes for 60 seconds
+
+Both schedules are fully configurable.
+
+## How Awayra helps
+
+- Independent Eye Reset and Move Break timers
+- Clear fullscreen break overlays
+- Pause, resume, skip, snooze, and start-now controls
+- Idle detection that avoids unnecessary reminders while you are away
+- Optional work-hour restrictions
+- Windows startup and start-minimized options
+- Daily completion, skip, and snooze statistics
+- Dark and light themes with reduced-motion support
+- Local settings and data storage
+- No account, server, cloud sync, telemetry, or internet dependency
+
+## Download and install
+
+Download the latest compiled installer from [GitHub Releases](https://github.com/AAA-It-uae/AWAYRA-WPF/releases/latest).
+
+- **Supported systems:** Windows 10 and Windows 11 x64
+- **Installer type:** Per-user Windows installer
+- **Default location:** `%LocalAppData%\Programs\Awayra`
+- **Runtime:** Self-contained; .NET does not need to be installed separately
+
+After installation, open Awayra once and leave it running in the system tray. Use the dashboard or tray menu to adjust the schedule, start a break immediately, pause reminders, or quit the application.
+
+## Privacy
+
+Awayra works entirely on your computer. It does not require an account and does not send usage data anywhere.
+
+Local files are stored under `%LocalAppData%\Awayra\`:
+
+| File | Purpose |
+|---|---|
+| `settings.json` | User preferences |
+| `state.json` | Current reminder schedule |
+| `stats.json` | Daily break statistics |
+| `Logs\awayra.log` | Local diagnostic log |
 
 ## Development
+
+### Requirements
+
+- Windows 10 or 11 x64
+- .NET 10 SDK
+- PowerShell
+
+### Run the application
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\dev.ps1
 ```
 
-## Tests
+### Run tests
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\test.ps1
 ```
 
-Focused example:
+### Verify a change
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\scripts\test.ps1 -Filter "FullyQualifiedName~BreakScheduler"
+powershell -ExecutionPolicy Bypass -File .\scripts\verify-change.ps1
 ```
 
-## Windows installer (compiled release)
-
-The latest **compiled, self-contained Windows build** is published on GitHub Releases. You do **not** need the .NET SDK or any development tools to install or run it.
-
-**Download:** [GitHub Releases](https://github.com/AAA-It-uae/AWAYRA-WPF/releases/latest)
-
-| Asset | Purpose |
-|---|---|
-| `Awayra-Setup-1.0.0-x64.exe` | Per-user Windows installer (recommended) |
-| `Awayra-Setup-1.0.0-x64.sha256.txt` | SHA-256 checksum for the installer |
-| `BUILD-INFO.txt` | Build metadata (commit, SDK, signing status) |
-
-This installer is built from the source code in this repository (`scripts/build-installer.ps1`). It packages a **self-contained** `win-x64` single-file `Awayra.exe` with the .NET runtime embedded, so recipients do not need to install .NET separately.
-
-- **Default install location:** `%LocalAppData%\Programs\Awayra`
-- **Architecture:** Windows 10/11 x64
-- **User data** (`%LocalAppData%\Awayra\`) is preserved across upgrade and uninstall
-
-Build the same installer locally:
+### Build the installer
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\build-installer.ps1
 ```
 
-## Release publish (developer)
+## Architecture
 
-```powershell
-powershell -ExecutionPolicy Bypass -File .\scripts\publish.ps1
-```
+| Project | Responsibility |
+|---|---|
+| `Awayra.Core` | Scheduling, settings, validation, statistics, and domain logic |
+| `Awayra.App` | WPF interface, tray integration, overlays, persistence, and Windows interop |
+| `Awayra.Core.Tests` | Core business-logic tests |
+| `Awayra.App.Tests` | Application-level tests |
+| `Awayra.UiTests` | Windows UI and interaction tests |
 
-Output executable:
+**Technology:** C#, .NET 10, WPF, MVVM with CommunityToolkit.Mvvm, and Windows NotifyIcon.
 
-`artifacts\publish\win-x64\Awayra.exe`
+## Health note
 
-Self-contained single-file `win-x64` build. Use `scripts/build-installer.ps1` to wrap it in a Windows installer.
+Awayra is a wellness reminder, not a medical device. Persistent eye pain, double vision, severe headaches, numbness, or ongoing neck, back, or wrist pain should be assessed by a qualified healthcare professional.
 
-## Local data
+## References
 
-- Settings: `%LocalAppData%\Awayra\settings.json`
-- Scheduler state: `%LocalAppData%\Awayra\state.json`
-- Statistics: `%LocalAppData%\Awayra\stats.json`
-- Logs: `%LocalAppData%\Awayra\Logs\awayra.log`
-
-## Tray behavior
-
-- Closing the dashboard hides Awayra to the tray when **Close dashboard to tray** is enabled
-- Left-click or double-click the tray icon to open the dashboard
-- Use **Quit** in the tray menu to fully exit, flush data, and remove the tray icon
-
-## Support Awayra
-
-Awayra is free and open source.
-
-If it helps you, you can optionally support its continued development.
-
-[Support Awayra](https://www.buymeacoffee.com/YOUR_USERNAME)
-
-## Known limitations
-
-- Overlay backdrop effects depend on Windows DWM support and fall back to translucent panels when unavailable
-- Tray tooltip text is truncated to 63 characters per Windows NotifyIcon limits
+- [Digital Eye Strain — American Academy of Ophthalmology EyeWiki](https://eyewiki.aao.org/Computer_Vision_Syndrome_%28Digital_Eye_Strain%29)
+- [Computer Workstation Micro-Breaks — OSHA](https://www.osha.gov/etools/computer-workstations/work-process)
+- [Physical Activity and Sedentary Behaviour — World Health Organization](https://www.who.int/news-room/fact-sheets/detail/physical-activity)
