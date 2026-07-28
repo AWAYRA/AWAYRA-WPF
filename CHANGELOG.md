@@ -18,6 +18,7 @@ The project follows semantic versioning where practical.
 
 - Official repository and issue links now point to `AAA-It-uae/AWAYRA-WPF`
 - Generated installers and local build metadata are excluded from the source tree
+- Public source history starts from a clean open-source baseline
 
 ## [1.0.2] - 2026-07-28
 
