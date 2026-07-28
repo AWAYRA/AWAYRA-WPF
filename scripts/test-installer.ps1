@@ -16,7 +16,7 @@ function Get-AppVersionFromExe([string]$ExePath) {
 }
 
 function Stop-RepoOwnedProcesses([string]$RepoRoot) {
-    Stop-AllAwayraProcesses
+    Stop-AwayraProcessesUnderRoot -RootPath $RepoRoot
 
     Get-Process -Name testhost, vstest.console, dotnet -ErrorAction SilentlyContinue | ForEach-Object {
         try {
@@ -153,7 +153,7 @@ try {
         throw "Installed-app UI tests failed (exit $uiExit). Log: $uiTestLog"
     }
 
-    Stop-AllAwayraProcesses
+    Stop-AwayraProcessesUnderRoot -RootPath $installDir
 
     $upgradeExit = Invoke-SilentInstall -InstallerPath $installerPath -InstallDir $installDir -LogPath $upgradeLog
     if ($upgradeExit -ne 0) {
@@ -208,6 +208,6 @@ try {
 }
 finally {
     Remove-Item Env:AWAYRA_UI_TEST_EXE -ErrorAction SilentlyContinue
-    Stop-AllAwayraProcesses
+    Stop-AwayraProcessesUnderRoot -RootPath $installDir
     Pop-Location
 }

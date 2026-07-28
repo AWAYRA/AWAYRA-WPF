@@ -155,7 +155,7 @@ $iconPath = Join-Path $root "src\Awayra.App\Assets\awayra.ico"
 
 Push-Location $root
 try {
-    Stop-AllAwayraProcesses
+    Stop-AwayraProcessesUnderRoot -RootPath $root
 
     if (Test-Path $publishDir) {
         Remove-Item $publishDir -Recurse -Force

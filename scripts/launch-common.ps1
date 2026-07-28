@@ -9,6 +9,22 @@ function Stop-AllAwayraProcesses {
     Start-Sleep -Milliseconds 500
 }
 
+function Stop-AwayraProcessesUnderRoot {
+    param([Parameter(Mandatory = $true)][string]$RootPath)
+
+    $normalizedRoot = [System.IO.Path]::GetFullPath($RootPath).TrimEnd('\') + '\'
+    Get-Process -Name "Awayra" -ErrorAction SilentlyContinue | ForEach-Object {
+        try {
+            $exePath = $_.MainModule.FileName
+            if ($exePath -and $exePath.StartsWith($normalizedRoot, [System.StringComparison]::OrdinalIgnoreCase)) {
+                Stop-Process -Id $_.Id -Force -ErrorAction Stop
+            }
+        }
+        catch { }
+    }
+    Start-Sleep -Milliseconds 500
+}
+
 function Get-ExeSha256([string]$Path) {
     if (-not (Test-Path $Path)) { return $null }
     return (Get-FileHash $Path -Algorithm SHA256).Hash

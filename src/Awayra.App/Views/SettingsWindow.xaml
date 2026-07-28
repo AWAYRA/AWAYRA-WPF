@@ -28,7 +28,7 @@
     <ScrollViewer Grid.Row="0"
                   VerticalScrollBarVisibility="Auto"
                   HorizontalScrollBarVisibility="Disabled"
-                  Padding="0,0,4,6">
+                  Padding="0,0,4,4">
       <StackPanel>
         <TextBlock Text="Settings" Style="{StaticResource Settings.PageTitle}" />
         <TextBlock Text="Configure reminder intervals, behavior, appearance, and Windows integration."

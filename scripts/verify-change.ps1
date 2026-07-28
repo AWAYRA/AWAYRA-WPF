@@ -31,8 +31,15 @@ try {
     dotnet build Awayra.sln -c Debug
     if ($LASTEXITCODE -ne 0) { Fail "Debug build failed." }
 
-    dotnet test Awayra.sln -c Debug --no-build
-    if ($LASTEXITCODE -ne 0) { Fail "Debug tests failed." }
+    $testProjects = @(
+        "tests\Awayra.Core.Tests\Awayra.Core.Tests.csproj",
+        "tests\Awayra.App.Tests\Awayra.App.Tests.csproj",
+        "tests\Awayra.UiTests\Awayra.UiTests.csproj"
+    )
+    foreach ($project in $testProjects) {
+        dotnet test $project -c Debug --no-build
+        if ($LASTEXITCODE -ne 0) { Fail "Debug tests failed: $project" }
+    }
 
     $exe = Join-Path $repoRoot "src\Awayra.App\bin\Debug\net10.0-windows\Awayra.exe"
     if (-not (Test-Path $exe)) { Fail "Debug executable not found: $exe" }
@@ -53,7 +60,7 @@ try {
         Fail $_.Exception.Message
     }
 
-    Stop-AllAwayraProcesses
+    Stop-RepoAwayraProcesses -RepoRoot $repoRoot
     Write-Host "REGRESSION VERIFICATION: PASSED"
     exit 0
 }
