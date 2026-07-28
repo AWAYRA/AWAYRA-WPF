@@ -1,0 +1,68 @@
+ M .cursor/rules/awayra.mdc
+ M AGENTS.md
+ M Awayra.sln
+ M scripts/dev.ps1
+ M scripts/publish.ps1
+ M src/Awayra.App/App.xaml.cs
+ M src/Awayra.App/AppPaths.cs
+ M src/Awayra.App/Awayra.App.csproj
+ M src/Awayra.App/Interop/NativeMethods.cs
+ D src/Awayra.App/Resources/Strings.ar.resx
+ D src/Awayra.App/Resources/Strings.fa.resx
+ M src/Awayra.App/Resources/Strings.resx
+ M src/Awayra.App/Resources/Theme.xaml
+ M src/Awayra.App/Services/ApplicationHost.cs
+ M src/Awayra.App/Services/LocalizationService.cs
+ M src/Awayra.App/Services/TrayAndOverlay.cs
+ M src/Awayra.App/Services/WindowsIdleMonitor.cs
+ M src/Awayra.App/ViewModels/MainViewModel.cs
+ M src/Awayra.App/ViewModels/OverlayViewModel.cs
+ M src/Awayra.App/ViewModels/SettingsViewModel.cs
+ M src/Awayra.App/Views/BreakOverlayWindow.xaml
+ M src/Awayra.App/Views/BreakOverlayWindow.xaml.cs
+ M src/Awayra.App/Views/MainWindow.xaml
+ M src/Awayra.App/Views/SettingsWindow.xaml
+ M src/Awayra.App/Views/SettingsWindow.xaml.cs
+ M src/Awayra.Core/Localization/Localization.cs
+ M src/Awayra.Core/Models/AppSettings.cs
+ M src/Awayra.Core/Models/Enums.cs
+ M src/Awayra.Core/Models/SchedulerState.cs
+ M src/Awayra.Core/Persistence/JsonPersistence.cs
+ M src/Awayra.Core/Services/BreakScheduler.cs
+ M src/Awayra.Core/Services/SettingsValidator.cs
+ M tests/Awayra.Core.Tests/BreakSchedulerTests.cs
+ M tests/Awayra.Core.Tests/LocalizationTests.cs
+ M tests/Awayra.Core.Tests/SettingsTests.cs
+?? docs/CHANGE_GUARD.md
+?? docs/CLEAN_REBUILD_BASELINE.md
+?? docs/CURRENT_WORKTREE_FILES.txt
+?? docs/CURRENT_WORKTREE_SAFETY.patch
+?? docs/FULL_FUNCTIONAL_AUDIT.md
+?? docs/FULL_FUNCTIONAL_TEST_BASELINE.md
+?? docs/MACHINE_CLEANUP_REPORT.md
+?? docs/REGRESSION_BASELINE.md
+?? docs/SOURCE_AUDIT.md
+?? docs/UI_AUDIT.md
+?? installer/
+?? scripts/build-installer.ps1
+?? scripts/clean-awayra-machine.ps1
+?? scripts/launch-common.ps1
+?? scripts/run-fresh-release.ps1
+?? scripts/verify-change.ps1
+?? src/Awayra.App/Services/IMonitorSnapshotService.cs
+?? src/Awayra.App/Services/MonitorSnapshotService.cs
+?? src/Awayra.App/Services/SimulatedIdleMonitor.cs
+?? src/Awayra.App/UiTestCommandPipe.cs
+?? src/Awayra.App/UiTestDiagnosticsPipe.cs
+?? src/Awayra.App/UiTestDiagnosticsWriter.cs
+?? src/Awayra.App/UiTestMode.cs
+?? src/Awayra.Core/Coordination/
+?? src/Awayra.Core/Services/OverlayGlassSettings.cs
+?? src/Awayra.Core/Services/SchedulerDiagnostics.cs
+?? tests/Awayra.App.Tests/
+?? tests/Awayra.Core.Tests/ApplicationStartupPolicyTests.cs
+?? tests/Awayra.Core.Tests/DashboardRestorePlannerTests.cs
+?? tests/Awayra.Core.Tests/OverlayCoordinationTests.cs
+?? tests/Awayra.Core.Tests/SnoozeSemanticsTests.cs
+?? tests/Awayra.Core.Tests/TrayActionCatalogTests.cs
+?? tests/Awayra.UiTests/

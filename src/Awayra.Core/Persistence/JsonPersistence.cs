@@ -99,6 +99,7 @@ public sealed class SettingsRecovery
         {
             using var doc = JsonDocument.Parse(json);
             ApplyPartialProperties(doc.RootElement, settings);
+            ApplyMigrations(doc.RootElement, settings);
         }
         catch (Exception ex)
         {
@@ -106,6 +107,58 @@ public sealed class SettingsRecovery
         }
 
         return MergeWithDefaults(settings);
+    }
+
+    private static void ApplyMigrations(JsonElement root, AppSettings settings)
+    {
+        var hasGlassClarity = false;
+        double? legacyOpacity = null;
+
+        foreach (var property in root.EnumerateObject())
+        {
+            switch (property.Name.ToLowerInvariant())
+            {
+                case "glassclarity":
+                    if (property.Value.ValueKind == JsonValueKind.Number &&
+                        property.Value.TryGetInt32(out var clarity))
+                    {
+                        settings.GlassClarity = clarity;
+                        hasGlassClarity = true;
+                    }
+
+                    break;
+                case "glasstransparency":
+                    if (property.Value.ValueKind == JsonValueKind.Number &&
+                        property.Value.TryGetInt32(out var glass))
+                    {
+                        settings.GlassClarity = OverlayGlassSettings.MigrateFromGlassTransparency(glass);
+                        hasGlassClarity = true;
+                    }
+
+                    break;
+                case "backgroundvisibility":
+                    if (property.Value.ValueKind == JsonValueKind.Number &&
+                        property.Value.TryGetInt32(out var visibility))
+                    {
+                        settings.GlassClarity = OverlayGlassSettings.MigrateFromBackgroundVisibility(visibility);
+                        hasGlassClarity = true;
+                    }
+
+                    break;
+                case "overlayopacity":
+                    if (property.Value.ValueKind == JsonValueKind.Number)
+                    {
+                        legacyOpacity = property.Value.GetDouble();
+                    }
+
+                    break;
+            }
+        }
+
+        if (!hasGlassClarity && legacyOpacity.HasValue)
+        {
+            settings.GlassClarity = OverlayGlassSettings.MigrateFromLegacyOpacity(legacyOpacity.Value);
+        }
     }
 
     private static void ApplyPartialProperties(JsonElement root, AppSettings settings)
@@ -131,29 +184,36 @@ public sealed class SettingsRecovery
                 case "overlayopacity":
                     if (property.Value.ValueKind == JsonValueKind.Number)
                     {
-                        settings.OverlayOpacity = property.Value.GetDouble();
+                        settings.GlassClarity = OverlayGlassSettings.MigrateFromLegacyOpacity(property.Value.GetDouble());
+                    }
+
+                    break;
+                case "backgroundvisibility":
+                    if (property.Value.ValueKind == JsonValueKind.Number &&
+                        property.Value.TryGetInt32(out var visibility))
+                    {
+                        settings.GlassClarity = OverlayGlassSettings.MigrateFromBackgroundVisibility(visibility);
+                    }
+
+                    break;
+                case "glassclarity":
+                    if (property.Value.ValueKind == JsonValueKind.Number &&
+                        property.Value.TryGetInt32(out var clarity))
+                    {
+                        settings.GlassClarity = clarity;
+                    }
+
+                    break;
+                case "glasstransparency":
+                    if (property.Value.ValueKind == JsonValueKind.Number &&
+                        property.Value.TryGetInt32(out var glass))
+                    {
+                        settings.GlassClarity = OverlayGlassSettings.MigrateFromGlassTransparency(glass);
                     }
 
                     break;
             }
         }
-    }
-
-    private static AppSettings TryPartialRecovery(string json, IAppLogger? logger)
-    {
-        var defaults = AppSettings.CreateDefault();
-        try
-        {
-            using var doc = JsonDocument.Parse(json);
-            ApplyPartialProperties(doc.RootElement, defaults);
-            logger?.Info("Partial settings recovery applied.");
-        }
-        catch
-        {
-            logger?.Warning("Full settings recovery failed; using defaults.");
-        }
-
-        return defaults;
     }
 
     private static AppSettings MergeWithDefaults(AppSettings loaded)
@@ -175,11 +235,16 @@ public sealed class SettingsRecovery
             {
                 loaded.MoveBreakIntervalMinutes = defaults.MoveBreakIntervalMinutes;
             }
+        }
 
-            if (loaded.OverlayOpacity < SettingsValidator.MinOpacity || loaded.OverlayOpacity > SettingsValidator.MaxOpacity)
-            {
-                loaded.OverlayOpacity = defaults.OverlayOpacity;
-            }
+        if (loaded.GlassClarity < OverlayGlassSettings.MinGlassClarity ||
+            loaded.GlassClarity > OverlayGlassSettings.MaxGlassClarity)
+        {
+            loaded.GlassClarity = OverlayGlassSettings.DefaultGlassClarity;
+        }
+        else
+        {
+            loaded.GlassClarity = OverlayGlassSettings.NormalizeGlassClarity(loaded.GlassClarity);
         }
 
         return loaded;

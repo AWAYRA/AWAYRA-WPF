@@ -1,9 +1,7 @@
 using System.Collections.ObjectModel;
-using System.Windows;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Awayra.App.Services;
-using Awayra.Core.Localization;
 using Awayra.Core.Models;
 using Awayra.Core.Services;
 
@@ -12,7 +10,7 @@ namespace Awayra.App.ViewModels;
 public partial class SettingsViewModel : ObservableObject
 {
     private readonly ApplicationHost _host;
-    private readonly Action _close;
+    private readonly Action<bool> _close;
 
     [ObservableProperty] private bool _eyeResetEnabled;
     [ObservableProperty] private int _eyeResetIntervalMinutes;
@@ -31,21 +29,19 @@ public partial class SettingsViewModel : ObservableObject
     [ObservableProperty] private bool _runAtStartup;
     [ObservableProperty] private bool _startMinimized;
     [ObservableProperty] private bool _closeToTray;
-    [ObservableProperty] private double _overlayOpacity;
+    [ObservableProperty] private int _glassClarity;
     [ObservableProperty] private bool _reducedMotion;
-    [ObservableProperty] private AppLanguage _selectedLanguage;
-    [ObservableProperty] private System.Windows.FlowDirection _flowDirection;
 
     public ObservableCollection<string> ValidationErrors { get; } = [];
 
-    public SettingsViewModel(ApplicationHost host, Action close)
+    public SettingsViewModel(ApplicationHost host, Action<bool> close)
     {
         _host = host;
         _close = close;
         LoadFromSettings(host.Settings);
-        _host.Localization.CultureChanged += (_, _) => FlowDirection = host.Localization.CurrentFlowDirection;
-        FlowDirection = host.Localization.CurrentFlowDirection;
     }
+
+    partial void OnGlassClarityChanged(int value) => _host.PreviewGlassClarity(value);
 
     [RelayCommand]
     private async Task SaveAsync()
@@ -63,44 +59,12 @@ public partial class SettingsViewModel : ObservableObject
             return;
         }
 
-        await _host.UpdateSettingsAsync(settings).ConfigureAwait(true);
-        _close();
+        await _host.SaveConfigurationAsync(settings).ConfigureAwait(true);
+        _close(true);
     }
 
     [RelayCommand]
-    private void Cancel() => _close();
-
-    partial void OnEyeResetEnabledChanged(bool value) => _ = TryAutoSaveAsync();
-    partial void OnEyeResetIntervalMinutesChanged(int value) => _ = TryAutoSaveAsync();
-    partial void OnEyeResetDurationSecondsChanged(int value) => _ = TryAutoSaveAsync();
-    partial void OnMoveBreakEnabledChanged(bool value) => _ = TryAutoSaveAsync();
-    partial void OnMoveBreakIntervalMinutesChanged(int value) => _ = TryAutoSaveAsync();
-    partial void OnMoveBreakDurationSecondsChanged(int value) => _ = TryAutoSaveAsync();
-    partial void OnAllowSkipChanged(bool value) => _ = TryAutoSaveAsync();
-    partial void OnAllowSnoozeChanged(bool value) => _ = TryAutoSaveAsync();
-    partial void OnSnoozeDurationMinutesChanged(int value) => _ = TryAutoSaveAsync();
-    partial void OnPauseWhileIdleChanged(bool value) => _ = TryAutoSaveAsync();
-    partial void OnIdleThresholdMinutesChanged(int value) => _ = TryAutoSaveAsync();
-    partial void OnWorkHoursEnabledChanged(bool value) => _ = TryAutoSaveAsync();
-    partial void OnWorkStartChanged(string value) => _ = TryAutoSaveAsync();
-    partial void OnWorkEndChanged(string value) => _ = TryAutoSaveAsync();
-    partial void OnRunAtStartupChanged(bool value) => _ = TryAutoSaveAsync();
-    partial void OnStartMinimizedChanged(bool value) => _ = TryAutoSaveAsync();
-    partial void OnCloseToTrayChanged(bool value) => _ = TryAutoSaveAsync();
-    partial void OnOverlayOpacityChanged(double value) => _ = TryAutoSaveAsync();
-    partial void OnReducedMotionChanged(bool value) => _ = TryAutoSaveAsync();
-    partial void OnSelectedLanguageChanged(AppLanguage value) => _ = TryAutoSaveAsync();
-
-    private async Task TryAutoSaveAsync()
-    {
-        var settings = BuildSettings();
-        if (!SettingsValidator.IsValid(settings))
-        {
-            return;
-        }
-
-        await _host.UpdateSettingsAsync(settings).ConfigureAwait(true);
-    }
+    private void Cancel() => _close(false);
 
     private void LoadFromSettings(AppSettings settings)
     {
@@ -121,9 +85,8 @@ public partial class SettingsViewModel : ObservableObject
         RunAtStartup = settings.RunAtStartup;
         StartMinimized = settings.StartMinimized;
         CloseToTray = settings.CloseToTray;
-        OverlayOpacity = settings.OverlayOpacity;
+        GlassClarity = settings.GlassClarity;
         ReducedMotion = settings.ReducedMotion;
-        SelectedLanguage = settings.Language;
     }
 
     private AppSettings BuildSettings()
@@ -151,9 +114,8 @@ public partial class SettingsViewModel : ObservableObject
             RunAtStartup = RunAtStartup,
             StartMinimized = StartMinimized,
             CloseToTray = CloseToTray,
-            OverlayOpacity = OverlayOpacity,
+            GlassClarity = GlassClarity,
             ReducedMotion = ReducedMotion,
-            Language = SelectedLanguage,
             Theme = AppTheme.Dark
         };
     }

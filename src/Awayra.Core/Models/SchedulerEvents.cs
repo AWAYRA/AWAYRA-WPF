@@ -3,6 +3,7 @@ namespace Awayra.Core.Models;
 public sealed class SchedulerSnapshot
 {
     public SchedulerStatus Status { get; init; }
+    public bool IsPausedManual { get; init; }
     public TimeSpan EyeRemaining { get; init; }
     public TimeSpan MoveRemaining { get; init; }
     public bool EyeEnabled { get; init; }

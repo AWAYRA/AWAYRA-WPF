@@ -1,5 +1,3 @@
-using Awayra.Core.Models;
-
 namespace Awayra.Core.Localization;
 
 public static class StringKeys
@@ -8,6 +6,8 @@ public static class StringKeys
     public const string StatusRunning = nameof(StatusRunning);
     public const string StatusPaused = nameof(StatusPaused);
     public const string StatusPausedIdle = nameof(StatusPausedIdle);
+    public const string StatusIdle = nameof(StatusIdle);
+    public const string StatusConfigurationPaused = nameof(StatusConfigurationPaused);
     public const string StatusOutsideWorkHours = nameof(StatusOutsideWorkHours);
     public const string StatusBreakActive = nameof(StatusBreakActive);
     public const string StatusSnoozed = nameof(StatusSnoozed);
@@ -61,17 +61,11 @@ public static class StringKeys
     public const string SettingsRunAtStartup = nameof(SettingsRunAtStartup);
     public const string SettingsStartMinimized = nameof(SettingsStartMinimized);
     public const string SettingsCloseToTray = nameof(SettingsCloseToTray);
-    public const string SettingsOverlayOpacity = nameof(SettingsOverlayOpacity);
+    public const string SettingsGlassClarity = nameof(SettingsGlassClarity);
     public const string SettingsReducedMotion = nameof(SettingsReducedMotion);
-    public const string SettingsLanguage = nameof(SettingsLanguage);
     public const string SettingsTheme = nameof(SettingsTheme);
     public const string SettingsSave = nameof(SettingsSave);
     public const string SettingsClose = nameof(SettingsClose);
-
-    public const string LanguageAuto = nameof(LanguageAuto);
-    public const string LanguageEnglish = nameof(LanguageEnglish);
-    public const string LanguagePersian = nameof(LanguagePersian);
-    public const string LanguageArabic = nameof(LanguageArabic);
 
     public const string ValidationEyeResetIntervalInvalid = nameof(ValidationEyeResetIntervalInvalid);
     public const string ValidationEyeResetDurationInvalid = nameof(ValidationEyeResetDurationInvalid);
@@ -79,7 +73,7 @@ public static class StringKeys
     public const string ValidationMoveBreakDurationInvalid = nameof(ValidationMoveBreakDurationInvalid);
     public const string ValidationSnoozeDurationInvalid = nameof(ValidationSnoozeDurationInvalid);
     public const string ValidationIdleThresholdInvalid = nameof(ValidationIdleThresholdInvalid);
-    public const string ValidationOverlayOpacityInvalid = nameof(ValidationOverlayOpacityInvalid);
+    public const string ValidationGlassClarityInvalid = nameof(ValidationGlassClarityInvalid);
     public const string ValidationWorkHoursRangeInvalid = nameof(ValidationWorkHoursRangeInvalid);
 
     public const string TrayTooltipStatus = nameof(TrayTooltipStatus);
@@ -89,7 +83,7 @@ public static class StringKeys
 
     public static IReadOnlyList<string> All { get; } =
     [
-        AppTitle, StatusRunning, StatusPaused, StatusPausedIdle, StatusOutsideWorkHours,
+        AppTitle, StatusRunning, StatusPaused, StatusPausedIdle, StatusIdle, StatusConfigurationPaused, StatusOutsideWorkHours,
         StatusBreakActive, StatusSnoozed, StatusDisabled, EyeReset, MoveBreak, Enabled, Disabled,
         Pause, Resume, EyeResetNow, MoveBreakNow, Settings, Quit, OpenAwayra,
         TodayEyeCompleted, TodayMoveCompleted, TodaySkipped, TodaySnoozed,
@@ -99,38 +93,11 @@ public static class StringKeys
         SettingsIntervalMinutes, SettingsDurationSeconds, SettingsAllowSkip, SettingsAllowSnooze,
         SettingsSnoozeDuration, SettingsPauseWhileIdle, SettingsIdleThreshold, SettingsWorkHoursEnabled,
         SettingsWorkStart, SettingsWorkEnd, SettingsRunAtStartup, SettingsStartMinimized, SettingsCloseToTray,
-        SettingsOverlayOpacity, SettingsReducedMotion, SettingsLanguage, SettingsTheme, SettingsSave, SettingsClose,
-        LanguageAuto, LanguageEnglish, LanguagePersian, LanguageArabic,
+        SettingsGlassClarity, SettingsReducedMotion, SettingsTheme, SettingsSave, SettingsClose,
         ValidationEyeResetIntervalInvalid, ValidationEyeResetDurationInvalid,
         ValidationMoveBreakIntervalInvalid, ValidationMoveBreakDurationInvalid,
         ValidationSnoozeDurationInvalid, ValidationIdleThresholdInvalid,
-        ValidationOverlayOpacityInvalid, ValidationWorkHoursRangeInvalid,
+        ValidationGlassClarityInvalid, ValidationWorkHoursRangeInvalid,
         TrayTooltipStatus, TrayTooltipNextBreak, TrayPauseReminders, TrayResumeReminders
     ];
-}
-
-public static class CultureDirection
-{
-    public static bool IsRightToLeft(string cultureName) =>
-        cultureName.StartsWith("fa", StringComparison.OrdinalIgnoreCase) ||
-        cultureName.StartsWith("ar", StringComparison.OrdinalIgnoreCase);
-}
-
-public static class LanguageResolver
-{
-    public static string ResolveCulture(AppLanguage language)
-    {
-        return language switch
-        {
-            AppLanguage.English => "en",
-            AppLanguage.Persian => "fa",
-            AppLanguage.Arabic => "ar",
-            _ => System.Globalization.CultureInfo.CurrentUICulture.TwoLetterISOLanguageName switch
-            {
-                "fa" => "fa",
-                "ar" => "ar",
-                _ => "en"
-            }
-        };
-    }
 }

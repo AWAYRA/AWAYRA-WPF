@@ -67,6 +67,14 @@ Self-contained single-file `win-x64` build. No installer is produced.
 - Left-click or double-click the tray icon to open the dashboard
 - Use **Quit** in the tray menu to fully exit, flush data, and remove the tray icon
 
+## Support Awayra
+
+Awayra is free and open source.
+
+If it helps you, you can optionally support its continued development.
+
+[Support Awayra](https://www.buymeacoffee.com/YOUR_USERNAME)
+
 ## Known limitations
 
 - Overlay backdrop effects depend on Windows DWM support and fall back to translucent panels when unavailable

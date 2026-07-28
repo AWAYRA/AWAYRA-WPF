@@ -11,7 +11,20 @@ public sealed class BreakScheduler
     private AppSettings _settings;
     private SchedulerState _state;
     private bool _isIdle;
+    private bool _isConfigurationPaused;
+    private TimeSpan? _configFrozenEyeRemaining;
+    private TimeSpan? _configFrozenMoveRemaining;
+    private TimeSpan? _configFrozenEyeSnoozeRemaining;
+    private TimeSpan? _configFrozenMoveSnoozeRemaining;
+    private TimeSpan? _manualFrozenEyeRemaining;
+    private TimeSpan? _manualFrozenMoveRemaining;
+    private bool _outsideWorkHours;
+    private TimeSpan? _workHoursFrozenEyeRemaining;
+    private TimeSpan? _workHoursFrozenMoveRemaining;
+    private TimeSpan? _idleFrozenEyeRemaining;
+    private TimeSpan? _idleFrozenMoveRemaining;
     private int _moveActivityIndex;
+    private bool _snoozeInProgress;
 
     public BreakScheduler(IClock clock, AppSettings settings, SchedulerState? persistedState = null)
     {
@@ -64,6 +77,7 @@ public sealed class BreakScheduler
         return new SchedulerSnapshot
         {
             Status = status,
+            IsPausedManual = _state.IsPausedManual,
             EyeRemaining = eyeRemaining,
             MoveRemaining = moveRemaining,
             EyeEnabled = _settings.EyeResetEnabled,
@@ -80,24 +94,13 @@ public sealed class BreakScheduler
         var now = _clock.Now;
         HandleClockJump(now);
         _state.LastClockCheck = now;
+        UpdateWorkHoursFreeze(now);
 
         if (_state.ActiveBreak is not null)
         {
             if (_state.BreakEndsAt is not null && now >= _state.BreakEndsAt.Value)
             {
                 CompleteActiveBreak();
-            }
-
-            PublishSnapshot();
-            return;
-        }
-
-        if (_state.SnoozeUntil is not null)
-        {
-            if (now >= _state.SnoozeUntil.Value)
-            {
-                _state.SnoozeUntil = null;
-                TryStartDueBreak(now);
             }
 
             PublishSnapshot();
@@ -122,15 +125,28 @@ public sealed class BreakScheduler
         }
 
         var now = _clock.Now;
-        var old = _settings;
+        var wasEyeEnabled = _settings.EyeResetEnabled;
+        var wasMoveEnabled = _settings.MoveBreakEnabled;
+        var oldEyeInterval = _settings.EyeResetIntervalMinutes;
+        var oldMoveInterval = _settings.MoveBreakIntervalMinutes;
         _settings = settings;
 
-        if (old.EyeResetIntervalMinutes != settings.EyeResetIntervalMinutes || !settings.EyeResetEnabled)
+        if (!wasEyeEnabled && settings.EyeResetEnabled)
+        {
+            _state.EyeNextDue = now.AddMinutes(settings.EyeResetIntervalMinutes);
+            ClearEyeFreezeState();
+        }
+        else if (oldEyeInterval != settings.EyeResetIntervalMinutes || !settings.EyeResetEnabled)
         {
             RescheduleOnIntervalChange(BreakType.Eye, now, settings.EyeResetIntervalMinutes, settings.EyeResetEnabled);
         }
 
-        if (old.MoveBreakIntervalMinutes != settings.MoveBreakIntervalMinutes || !settings.MoveBreakEnabled)
+        if (!wasMoveEnabled && settings.MoveBreakEnabled)
+        {
+            _state.MoveNextDue = now.AddMinutes(settings.MoveBreakIntervalMinutes);
+            ClearMoveFreezeState();
+        }
+        else if (oldMoveInterval != settings.MoveBreakIntervalMinutes || !settings.MoveBreakEnabled)
         {
             RescheduleOnIntervalChange(BreakType.Move, now, settings.MoveBreakIntervalMinutes, settings.MoveBreakEnabled);
         }
@@ -138,16 +154,237 @@ public sealed class BreakScheduler
         PublishSnapshot();
     }
 
+    public SchedulerDiagnostics GetDiagnostics(double idleSeconds = 0)
+    {
+        var now = _clock.Now;
+        return new SchedulerDiagnostics
+        {
+            Status = ComputeStatus(now),
+            EyeRemainingSeconds = (int)GetRemaining(BreakType.Eye, now).TotalSeconds,
+            MoveRemainingSeconds = (int)GetRemaining(BreakType.Move, now).TotalSeconds,
+            EyeNextDue = _state.EyeNextDue,
+            MoveNextDue = _state.MoveNextDue,
+            EyeSnoozeUntil = _state.EyeSnoozeUntil,
+            MoveSnoozeUntil = _state.MoveSnoozeUntil,
+            IsPausedManual = _state.IsPausedManual,
+            IsIdlePaused = _settings.PauseWhileIdle && _isIdle,
+            IsConfigurationPaused = _isConfigurationPaused,
+            IsOutsideWorkHours = _settings.WorkHoursEnabled && _outsideWorkHours,
+            ActiveBreak = _state.ActiveBreak,
+            QueuedBreak = _state.QueuedBreak,
+            GlassClarity = _settings.GlassClarity,
+            BackgroundTintOpacity = OverlayGlassSettings.BackgroundTintOpacityFromClarity(_settings.GlassClarity),
+            BlurRadius = OverlayGlassSettings.BlurRadiusFromClarity(_settings.GlassClarity),
+            IdleSeconds = idleSeconds
+        };
+    }
+
+    private void ClearEyeFreezeState()
+    {
+        _manualFrozenEyeRemaining = null;
+        _workHoursFrozenEyeRemaining = null;
+        _configFrozenEyeRemaining = null;
+    }
+
+    private void ClearMoveFreezeState()
+    {
+        _manualFrozenMoveRemaining = null;
+        _workHoursFrozenMoveRemaining = null;
+        _configFrozenMoveRemaining = null;
+    }
+
+    public void EnterConfigurationPause()
+    {
+        var now = _clock.Now;
+        _configFrozenEyeRemaining = GetRawRemaining(BreakType.Eye, now);
+        _configFrozenMoveRemaining = GetRawRemaining(BreakType.Move, now);
+        if (_state.EyeSnoozeUntil is not null && now < _state.EyeSnoozeUntil.Value)
+        {
+            _configFrozenEyeSnoozeRemaining = _configFrozenEyeRemaining;
+        }
+
+        if (_state.MoveSnoozeUntil is not null && now < _state.MoveSnoozeUntil.Value)
+        {
+            _configFrozenMoveSnoozeRemaining = _configFrozenMoveRemaining;
+        }
+
+        _isConfigurationPaused = true;
+        PublishSnapshot();
+    }
+
+    public void ApplyConfigurationSave(AppSettings settings, DateTimeOffset saveTime)
+    {
+        if (!SettingsValidator.IsValid(settings))
+        {
+            throw new InvalidOperationException("Invalid settings cannot be applied to scheduler.");
+        }
+
+        var originalSettings = _settings;
+        var eyeScheduleChanged = SettingsScheduleChanges.EyeScheduleChanged(originalSettings, settings);
+        var moveScheduleChanged = SettingsScheduleChanges.MoveScheduleChanged(originalSettings, settings);
+
+        var frozenEye = _configFrozenEyeRemaining;
+        var frozenMove = _configFrozenMoveRemaining;
+        var frozenEyeSnooze = _configFrozenEyeSnoozeRemaining;
+        var frozenMoveSnooze = _configFrozenMoveSnoozeRemaining;
+
+        _settings = settings;
+        _isConfigurationPaused = false;
+        _configFrozenEyeRemaining = null;
+        _configFrozenMoveRemaining = null;
+        _configFrozenEyeSnoozeRemaining = null;
+        _configFrozenMoveSnoozeRemaining = null;
+
+        if (eyeScheduleChanged)
+        {
+            if (settings.EyeResetEnabled)
+            {
+                _state.EyeNextDue = saveTime.AddMinutes(settings.EyeResetIntervalMinutes);
+            }
+
+            _state.EyeSnoozeUntil = null;
+        }
+        else if (frozenEye is not null && settings.EyeResetEnabled)
+        {
+            _state.EyeNextDue = saveTime + frozenEye.Value;
+            if (frozenEyeSnooze is not null)
+            {
+                _state.EyeSnoozeUntil = _state.EyeNextDue;
+            }
+        }
+
+        if (moveScheduleChanged)
+        {
+            if (settings.MoveBreakEnabled)
+            {
+                _state.MoveNextDue = saveTime.AddMinutes(settings.MoveBreakIntervalMinutes);
+            }
+
+            _state.MoveSnoozeUntil = null;
+        }
+        else if (frozenMove is not null && settings.MoveBreakEnabled)
+        {
+            _state.MoveNextDue = saveTime + frozenMove.Value;
+            if (frozenMoveSnooze is not null)
+            {
+                _state.MoveSnoozeUntil = _state.MoveNextDue;
+            }
+        }
+
+        if (eyeScheduleChanged || moveScheduleChanged)
+        {
+            _state.QueuedBreak = null;
+        }
+
+        PublishSnapshot();
+    }
+
+    public void CancelConfigurationPause()
+    {
+        var now = _clock.Now;
+        if (_configFrozenEyeRemaining is not null && _settings.EyeResetEnabled)
+        {
+            _state.EyeNextDue = now + _configFrozenEyeRemaining.Value;
+            if (_configFrozenEyeSnoozeRemaining is not null)
+            {
+                _state.EyeSnoozeUntil = _state.EyeNextDue;
+            }
+        }
+
+        if (_configFrozenMoveRemaining is not null && _settings.MoveBreakEnabled)
+        {
+            _state.MoveNextDue = now + _configFrozenMoveRemaining.Value;
+            if (_configFrozenMoveSnoozeRemaining is not null)
+            {
+                _state.MoveSnoozeUntil = _state.MoveNextDue;
+            }
+        }
+
+        _isConfigurationPaused = false;
+        _configFrozenEyeRemaining = null;
+        _configFrozenMoveRemaining = null;
+        _configFrozenEyeSnoozeRemaining = null;
+        _configFrozenMoveSnoozeRemaining = null;
+        PublishSnapshot();
+    }
+
     public void Pause()
     {
+        var now = _clock.Now;
+        _manualFrozenEyeRemaining = GetRawRemaining(BreakType.Eye, now);
+        _manualFrozenMoveRemaining = GetRawRemaining(BreakType.Move, now);
         _state.IsPausedManual = true;
         PublishSnapshot();
     }
 
     public void Resume()
     {
+        var now = _clock.Now;
+        if (_manualFrozenEyeRemaining is not null && _settings.EyeResetEnabled)
+        {
+            _state.EyeNextDue = now + _manualFrozenEyeRemaining.Value;
+        }
+
+        if (_manualFrozenMoveRemaining is not null && _settings.MoveBreakEnabled)
+        {
+            _state.MoveNextDue = now + _manualFrozenMoveRemaining.Value;
+        }
+
+        _manualFrozenEyeRemaining = null;
+        _manualFrozenMoveRemaining = null;
         _state.IsPausedManual = false;
         PublishSnapshot();
+    }
+
+    private void UpdateWorkHoursFreeze(DateTimeOffset now)
+    {
+        if (!_settings.WorkHoursEnabled)
+        {
+            if (_outsideWorkHours)
+            {
+                ResumeFromWorkHoursFreeze(now);
+            }
+
+            _outsideWorkHours = false;
+            return;
+        }
+
+        var inside = WorkHoursEvaluator.IsWithinWorkHours(now, true, _settings.WorkStart, _settings.WorkEnd);
+        if (!inside && !_outsideWorkHours)
+        {
+            _workHoursFrozenEyeRemaining = GetRawRemaining(BreakType.Eye, now);
+            _workHoursFrozenMoveRemaining = GetRawRemaining(BreakType.Move, now);
+            _outsideWorkHours = true;
+        }
+        else if (inside && _outsideWorkHours)
+        {
+            ResumeFromWorkHoursFreeze(now);
+            _outsideWorkHours = false;
+        }
+        else if (!inside)
+        {
+            _outsideWorkHours = true;
+        }
+        else
+        {
+            _outsideWorkHours = false;
+        }
+    }
+
+    private void ResumeFromWorkHoursFreeze(DateTimeOffset now)
+    {
+        if (_workHoursFrozenEyeRemaining is not null && _settings.EyeResetEnabled)
+        {
+            _state.EyeNextDue = now + _workHoursFrozenEyeRemaining.Value;
+        }
+
+        if (_workHoursFrozenMoveRemaining is not null && _settings.MoveBreakEnabled)
+        {
+            _state.MoveNextDue = now + _workHoursFrozenMoveRemaining.Value;
+        }
+
+        _workHoursFrozenEyeRemaining = null;
+        _workHoursFrozenMoveRemaining = null;
     }
 
     public void SetIdle(bool isIdle)
@@ -157,19 +394,50 @@ public sealed class BreakScheduler
             return;
         }
 
-        _isIdle = isIdle;
-
-        if (!isIdle && _state.ActiveBreak is null && _state.SnoozeUntil is null)
+        if (isIdle && !_isIdle && _settings.PauseWhileIdle)
         {
             var now = _clock.Now;
-            RescheduleAfterIdleReturn(now);
+            _idleFrozenEyeRemaining = GetRawRemaining(BreakType.Eye, now);
+            _idleFrozenMoveRemaining = GetRawRemaining(BreakType.Move, now);
         }
 
+        if (!isIdle && _isIdle && _settings.PauseWhileIdle)
+        {
+            ResetIntervalsAfterIdleReturn(_clock.Now);
+        }
+
+        _isIdle = isIdle;
         PublishSnapshot();
+    }
+
+    private void ResetIntervalsAfterIdleReturn(DateTimeOffset now)
+    {
+        _idleFrozenEyeRemaining = null;
+        _idleFrozenMoveRemaining = null;
+
+        if (_settings.EyeResetEnabled)
+        {
+            _state.EyeNextDue = now.AddMinutes(_settings.EyeResetIntervalMinutes);
+        }
+
+        _state.EyeSnoozeUntil = null;
+
+        if (_settings.MoveBreakEnabled)
+        {
+            _state.MoveNextDue = now.AddMinutes(_settings.MoveBreakIntervalMinutes);
+        }
+
+        _state.MoveSnoozeUntil = null;
+        _state.QueuedBreak = null;
     }
 
     public void TriggerNow(BreakType breakType)
     {
+        if (_isConfigurationPaused)
+        {
+            return;
+        }
+
         if (!IsBreakEnabled(breakType))
         {
             return;
@@ -218,16 +486,37 @@ public sealed class BreakScheduler
 
     public void SnoozeActiveBreak()
     {
-        if (_state.ActiveBreak is null || !_settings.AllowSnooze)
+        if (_state.ActiveBreak is null || !_settings.AllowSnooze || _snoozeInProgress)
         {
             return;
         }
 
-        var breakType = _state.ActiveBreak.Value;
-        EndBreak(breakType, completed: false, skipped: false, snoozed: true);
-        _state.SnoozeUntil = _clock.Now.AddMinutes(_settings.SnoozeDurationMinutes);
-        TryStartQueuedOrDue();
-        PublishSnapshot();
+        _snoozeInProgress = true;
+        try
+        {
+            var now = _clock.Now;
+            var breakType = _state.ActiveBreak.Value;
+            var snoozeEnd = now.AddMinutes(_settings.SnoozeDurationMinutes);
+
+            if (breakType == BreakType.Eye)
+            {
+                _state.EyeNextDue = snoozeEnd;
+                _state.EyeSnoozeUntil = snoozeEnd;
+            }
+            else
+            {
+                _state.MoveNextDue = snoozeEnd;
+                _state.MoveSnoozeUntil = snoozeEnd;
+            }
+
+            _state.SnoozeUntil = null;
+            EndBreak(breakType, completed: false, skipped: false, snoozed: true);
+            PublishSnapshot();
+        }
+        finally
+        {
+            _snoozeInProgress = false;
+        }
     }
 
     public void RestoreState(SchedulerState state)
@@ -254,7 +543,29 @@ public sealed class BreakScheduler
         {
             _state.LastClockCheck = now;
         }
+
+        MigrateLegacySnoozeState();
     }
+
+    private void MigrateLegacySnoozeState()
+    {
+        if (_state.SnoozeUntil is null)
+        {
+            return;
+        }
+
+        if (_state.EyeSnoozeUntil is null)
+        {
+            _state.EyeSnoozeUntil = _state.SnoozeUntil;
+            _state.EyeNextDue = _state.SnoozeUntil.Value;
+        }
+
+        _state.SnoozeUntil = null;
+    }
+
+    private bool IsAnyBreakSnoozed(DateTimeOffset now) =>
+        (_state.EyeSnoozeUntil is not null && now < _state.EyeSnoozeUntil.Value) ||
+        (_state.MoveSnoozeUntil is not null && now < _state.MoveSnoozeUntil.Value);
 
     private void HandleClockJump(DateTimeOffset now)
     {
@@ -280,6 +591,11 @@ public sealed class BreakScheduler
             return false;
         }
 
+        if (_isConfigurationPaused)
+        {
+            return false;
+        }
+
         if (_settings.PauseWhileIdle && _isIdle)
         {
             return false;
@@ -300,7 +616,7 @@ public sealed class BreakScheduler
             return SchedulerStatus.BreakActive;
         }
 
-        if (_state.SnoozeUntil is not null && now < _state.SnoozeUntil.Value)
+        if (IsAnyBreakSnoozed(now))
         {
             return SchedulerStatus.Snoozed;
         }
@@ -315,9 +631,14 @@ public sealed class BreakScheduler
             return SchedulerStatus.PausedManual;
         }
 
+        if (_isConfigurationPaused)
+        {
+            return SchedulerStatus.ConfigurationPaused;
+        }
+
         if (_settings.PauseWhileIdle && _isIdle)
         {
-            return SchedulerStatus.PausedIdle;
+            return SchedulerStatus.Idle;
         }
 
         if (!WorkHoursEvaluator.IsWithinWorkHours(now, _settings.WorkHoursEnabled, _settings.WorkStart, _settings.WorkEnd))
@@ -335,6 +656,47 @@ public sealed class BreakScheduler
             return TimeSpan.Zero;
         }
 
+        if (_state.IsPausedManual)
+        {
+            var manualFrozen = breakType == BreakType.Eye ? _manualFrozenEyeRemaining : _manualFrozenMoveRemaining;
+            if (manualFrozen is not null)
+            {
+                return manualFrozen.Value;
+            }
+        }
+
+        if (_isConfigurationPaused)
+        {
+            var configFrozen = breakType == BreakType.Eye ? _configFrozenEyeRemaining : _configFrozenMoveRemaining;
+            if (configFrozen is not null)
+            {
+                return configFrozen.Value;
+            }
+        }
+
+        if (_settings.WorkHoursEnabled && _outsideWorkHours)
+        {
+            var workFrozen = breakType == BreakType.Eye ? _workHoursFrozenEyeRemaining : _workHoursFrozenMoveRemaining;
+            if (workFrozen is not null)
+            {
+                return workFrozen.Value;
+            }
+        }
+
+        if (_settings.PauseWhileIdle && _isIdle)
+        {
+            var idleFrozen = breakType == BreakType.Eye ? _idleFrozenEyeRemaining : _idleFrozenMoveRemaining;
+            if (idleFrozen is not null)
+            {
+                return idleFrozen.Value;
+            }
+        }
+
+        return GetRawRemaining(breakType, now);
+    }
+
+    private TimeSpan GetRawRemaining(BreakType breakType, DateTimeOffset now)
+    {
         var due = breakType == BreakType.Eye ? _state.EyeNextDue : _state.MoveNextDue;
         var remaining = due - now;
         return remaining < TimeSpan.Zero ? TimeSpan.Zero : remaining;
@@ -345,6 +707,11 @@ public sealed class BreakScheduler
 
     private void TryStartDueBreak(DateTimeOffset now)
     {
+        if (IsAnyBreakSnoozed(now))
+        {
+            return;
+        }
+
         var dueBreaks = new List<(BreakType Type, DateTimeOffset Due)>();
         if (_settings.EyeResetEnabled && now >= _state.EyeNextDue)
         {
@@ -372,7 +739,7 @@ public sealed class BreakScheduler
 
     private void TryStartQueuedOrDue()
     {
-        if (_state.ActiveBreak is not null || _state.SnoozeUntil is not null)
+        if (_state.ActiveBreak is not null || IsAnyBreakSnoozed(_clock.Now))
         {
             return;
         }
@@ -409,6 +776,15 @@ public sealed class BreakScheduler
         _state.BreakEndsAt = now.AddSeconds(durationSeconds);
         _state.QueuedBreak = null;
 
+        if (breakType == BreakType.Eye)
+        {
+            _state.EyeSnoozeUntil = null;
+        }
+        else
+        {
+            _state.MoveSnoozeUntil = null;
+        }
+
         if (breakType == BreakType.Move)
         {
             _moveActivityIndex = (_moveActivityIndex + 1) % MoveActivityCount;
@@ -438,7 +814,7 @@ public sealed class BreakScheduler
         }
         else if (snoozed)
         {
-            // SnoozeUntil set by caller; keep current due times.
+            // Per-break snooze due times were set by the caller.
         }
 
         BreakEnded?.Invoke(this, new BreakEndedEventArgs
@@ -490,21 +866,6 @@ public sealed class BreakScheduler
         else
         {
             _state.MoveNextDue = next;
-        }
-    }
-
-    private void RescheduleAfterIdleReturn(DateTimeOffset now)
-    {
-        if (_settings.EyeResetEnabled && now >= _state.EyeNextDue && _settings.MoveBreakEnabled && now >= _state.MoveNextDue)
-        {
-            if (_state.EyeNextDue <= _state.MoveNextDue)
-            {
-                _state.MoveNextDue = now.AddMinutes(_settings.MoveBreakIntervalMinutes);
-            }
-            else
-            {
-                _state.EyeNextDue = now.AddMinutes(_settings.EyeResetIntervalMinutes);
-            }
         }
     }
 

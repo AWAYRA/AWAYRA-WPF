@@ -4,7 +4,7 @@ using Awayra.App.Interop;
 using Awayra.App.Services;
 using Awayra.App.ViewModels;
 using Awayra.App.Views;
-using Awayra.Core.Abstractions;
+using Awayra.Core.Coordination;
 using Awayra.Core.Localization;
 using Awayra.Core.Models;
 using Awayra.Core.Persistence;
@@ -20,17 +20,24 @@ public partial class App : System.Windows.Application
     private OverlayCoordinator? _overlays;
     private MainWindow? _mainWindow;
     private SettingsWindow? _settingsWindow;
+    private MainViewModel? _mainViewModel;
     private NamedPipeSingleInstance? _singleInstance;
     private FileLogger? _logger;
     private bool _isQuitting;
+    private UiTestCommandPipe? _uiTestPipe;
+    private UiTestDiagnosticsPipe? _uiTestDiagnosticsPipe;
+    private SimulatedIdleMonitor? _idleMonitor;
 
     protected override async void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
+        UiTestMode.Configure(e.Args);
+        BuildIdentity.Initialize();
         System.Windows.Forms.Application.SetHighDpiMode(System.Windows.Forms.HighDpiMode.PerMonitorV2);
         AppPaths.EnsureDataRoot();
         _logger = new FileLogger(AppPaths.LogFilePath);
         _logger.Info("Awayra starting.");
+        BuildIdentity.Log(_logger);
 
         _singleInstance = new NamedPipeSingleInstance();
         if (!_singleInstance.TryAcquire())
@@ -46,6 +53,11 @@ public partial class App : System.Windows.Application
         DispatcherUnhandledException += (_, args) =>
         {
             _logger?.Error("Dispatcher unhandled exception", args.Exception);
+            if (args.Exception is System.Windows.Markup.XamlParseException && _mainWindow is null)
+            {
+                _logger?.Error("Dashboard XAML failed to load; tray remains available. Use Open Awayra after fixing resources.");
+            }
+
             args.Handled = true;
         };
         AppDomain.CurrentDomain.UnhandledException += (_, args) =>
@@ -67,22 +79,30 @@ public partial class App : System.Windows.Application
             AppPaths.StatisticsPath, _logger, StatisticsData.CreateDefault));
 
         var localization = new LocalizationService();
+        _idleMonitor = new SimulatedIdleMonitor(new WindowsIdleMonitor());
         _host = new ApplicationHost(
             _logger,
             new SystemClock(),
             settingsStore,
             stateStore,
             statisticsStore,
-            new WindowsIdleMonitor(),
+            _idleMonitor,
             new RegistryAutostartService(),
             localization);
 
         await _host.InitializeAsync().ConfigureAwait(true);
-        _host.ApplyAutostartSetting();
+        if (!UiTestMode.IsEnabled)
+        {
+            _host.ApplyAutostartSetting();
+        }
+        else
+        {
+            _logger.Info("UiTest mode: autostart registration skipped.");
+        }
 
         _overlays = new OverlayCoordinator(
-            () => new BreakOverlayWindow(_host, new OverlayViewModel()),
-            () => new BreakOverlayWindow(_host, new OverlayViewModel()),
+            () => new BreakOverlayWindow(_host, new OverlayViewModel(), new MonitorSnapshotService(_logger)),
+            () => new BreakOverlayWindow(_host, new OverlayViewModel(), new MonitorSnapshotService(_logger)),
             _logger);
 
         _host.Scheduler.BreakStarted += (_, args) =>
@@ -113,7 +133,21 @@ public partial class App : System.Windows.Application
             });
         };
 
-        _host.StateChanged += (_, _) => Dispatcher.Invoke(UpdateTray);
+        _host.StateChanged += (_, _) =>
+        {
+            Dispatcher.Invoke(() =>
+            {
+                var snapshot = _host.Scheduler.GetSnapshot();
+                _overlays.UpdateActiveBreak(snapshot.ActiveBreakRemaining, _host.Localization, _host.Scheduler.MoveActivityIndex);
+                _overlays.UpdateGlassClarity(_host.Settings.GlassClarity);
+                UpdateTray();
+            });
+        };
+
+        _host.GlassClarityPreviewChanged += (_, clarity) =>
+        {
+            Dispatcher.Invoke(() => _overlays.UpdateGlassClarity(clarity));
+        };
 
         var iconPath = Path.Combine(AppContext.BaseDirectory, "Assets", "awayra.ico");
         var trayIcon = File.Exists(iconPath)
@@ -132,16 +166,247 @@ public partial class App : System.Windows.Application
             BuildTrayTooltip);
 
         var mainViewModel = new MainViewModel(_host, ShowSettings);
-        _mainWindow = new MainWindow(mainViewModel);
-        _mainWindow.Closing += MainWindow_OnClosing;
-
-        if (!_host.Settings.StartMinimized)
+        _mainViewModel = mainViewModel;
+        if (!TryCreateMainWindow())
+        {
+            _logger.Error("Dashboard window creation failed at startup; tray remains available.");
+        }
+        else if (ApplicationStartupPolicy.ShouldShowDashboardOnStartup(_host.Settings))
         {
             ShowDashboard();
         }
 
         UpdateTray();
         _logger.Info("Awayra started.");
+
+        if (UiTestMode.IsEnabled)
+        {
+            UiTestBridge.Register(new UiTestBridge
+            {
+                ShowDashboard = ShowDashboard,
+                ShowSettings = ShowSettings,
+                Quit = QuitFromTray,
+                TriggerEyeNow = () => _host.Scheduler.TriggerNow(BreakType.Eye),
+                TriggerMoveNow = () => _host.Scheduler.TriggerNow(BreakType.Move),
+                GetSettings = () => _host.Settings,
+                GetEyeCountdown = () => _mainViewModel?.EyeCountdown ?? string.Empty,
+                GetMoveCountdown = () => _mainViewModel?.MoveCountdown ?? string.Empty
+            });
+
+            _uiTestPipe = new UiTestCommandPipe(DispatchUiTestCommand, _logger);
+            _uiTestPipe.Start();
+
+            _uiTestDiagnosticsPipe = new UiTestDiagnosticsPipe(() =>
+            {
+                var diagnostics = _host.Scheduler.GetDiagnostics();
+                diagnostics.SnapshotCaptured = _overlays?.LastSnapshotCaptured ?? false;
+                var today = _host.Statistics.GetToday();
+                diagnostics.EyeCompleted = today.EyeCompleted;
+                diagnostics.MoveCompleted = today.MoveCompleted;
+                diagnostics.Skipped = today.Skipped;
+                diagnostics.Snoozed = today.Snoozed;
+                return diagnostics;
+            }, _logger);
+            _uiTestDiagnosticsPipe.Start();
+        }
+    }
+
+    private void DispatchUiTestCommand(string command)
+    {
+        Dispatcher.Invoke(() =>
+        {
+            switch (command.ToUpperInvariant())
+            {
+                case "TRAY_OPEN":
+                case "OPEN_DASHBOARD":
+                    ShowDashboard();
+                    break;
+                case "TRAY_SETTINGS":
+                case "OPEN_SETTINGS":
+                    ShowSettings();
+                    break;
+                case "TRAY_QUIT":
+                case "QUIT":
+                    QuitFromTray();
+                    break;
+                case "EYE_NOW":
+                    _host?.Scheduler.TriggerNow(BreakType.Eye);
+                    break;
+                case "MOVE_NOW":
+                    _host?.Scheduler.TriggerNow(BreakType.Move);
+                    break;
+                case "SET_IDLE_TRUE":
+                case "IDLE_ON":
+                    _idleMonitor?.SetSimulatedIdle(true);
+                    break;
+                case "SET_IDLE_FALSE":
+                case "IDLE_OFF":
+                    _idleMonitor?.SetSimulatedIdle(false);
+                    break;
+                case "CLEAR_IDLE_SIMULATION":
+                case "IDLE_CLEAR":
+                    _idleMonitor?.SetSimulatedIdle(null);
+                    break;
+            }
+        });
+    }
+
+    private bool TryCreateMainWindow()
+    {
+        if (_host is null || _mainViewModel is null)
+        {
+            return false;
+        }
+
+        if (_mainWindow is not null)
+        {
+            return true;
+        }
+
+        try
+        {
+            var window = new MainWindow(_mainViewModel);
+            window.Closing += MainWindow_OnClosing;
+            _mainWindow = window;
+            MainWindow = window;
+            _logger?.Info("Dashboard window created.");
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger?.Error("Failed to create dashboard window", ex);
+            _mainWindow = null;
+            return false;
+        }
+    }
+
+    private void ShowDashboard()
+    {
+        if (_host is null)
+        {
+            return;
+        }
+
+        void ShowDashboardCore()
+        {
+            if (!TryCreateMainWindow() || _mainWindow is null)
+            {
+                return;
+            }
+
+            var window = _mainWindow;
+            MainWindow = window;
+
+            var presentation = DashboardRestorePlanner.Classify(
+                exists: true,
+                isVisible: window.IsVisible,
+                isMinimized: window.WindowState == WindowState.Minimized);
+            var plan = DashboardRestorePlanner.Plan(presentation);
+
+            if (plan.EnsureOnScreen)
+            {
+                MonitorLocator.EnsureWindowOnScreen(window);
+            }
+
+            if (plan.ShowInTaskbar)
+            {
+                window.ShowInTaskbar = true;
+            }
+
+            window.Visibility = Visibility.Visible;
+
+            if (plan.RestoreFromMinimized && window.WindowState == WindowState.Minimized)
+            {
+                window.WindowState = WindowState.Normal;
+            }
+
+            if (plan.Show && !window.IsVisible)
+            {
+                window.Show();
+            }
+
+            if (plan.Activate)
+            {
+                MonitorLocator.ActivateWindow(window);
+            }
+        }
+
+        if (Dispatcher.CheckAccess())
+        {
+            ShowDashboardCore();
+        }
+        else
+        {
+            Dispatcher.Invoke(ShowDashboardCore);
+        }
+    }
+
+    private void ShowSettings()
+    {
+        if (_host is null)
+        {
+            return;
+        }
+
+        if (!TryCreateMainWindow() || _mainWindow is null)
+        {
+            return;
+        }
+
+        void ShowSettingsCore()
+        {
+            if (_settingsWindow is not null && _settingsWindow.IsVisible)
+            {
+                MonitorLocator.EnsureWindowOnScreen(_settingsWindow);
+                MonitorLocator.ActivateWindow(_settingsWindow);
+                return;
+            }
+
+            _host.BeginConfigurationSession();
+            _settingsWindow = new SettingsWindow(new SettingsViewModel(_host, CloseSettings))
+            {
+                Owner = _mainWindow
+            };
+            _settingsWindow.Closed += (_, _) =>
+            {
+                _host?.EndConfigurationSession(saved: false);
+                if (_host is not null)
+                {
+                    _overlays?.UpdateGlassClarity(_host.Settings.GlassClarity);
+                }
+
+                _settingsWindow = null;
+                UpdateTray();
+            };
+            MonitorLocator.EnsureWindowOnScreen(_settingsWindow);
+            _settingsWindow.Show();
+            MonitorLocator.ActivateWindow(_settingsWindow);
+        }
+
+        if (Dispatcher.CheckAccess())
+        {
+            ShowSettingsCore();
+        }
+        else
+        {
+            Dispatcher.Invoke(ShowSettingsCore);
+        }
+    }
+
+    private void CloseSettings(bool saved)
+    {
+        if (_host is null)
+        {
+            return;
+        }
+
+        if (!saved)
+        {
+            _host.EndConfigurationSession(saved: false);
+            _overlays?.UpdateGlassClarity(_host.Settings.GlassClarity);
+        }
+
+        _settingsWindow?.Close();
     }
 
     private SettingsFileStore CreateSettingsStore()
@@ -154,48 +419,6 @@ public partial class App : System.Windows.Application
         return new SettingsFileStore(store);
     }
 
-    private void ShowDashboard()
-    {
-        if (_mainWindow is null)
-        {
-            return;
-        }
-
-        Dispatcher.Invoke(() =>
-        {
-            if (_mainWindow.IsVisible)
-            {
-                MonitorLocator.ActivateWindow(_mainWindow);
-            }
-            else
-            {
-                _mainWindow.Show();
-                MonitorLocator.ActivateWindow(_mainWindow);
-            }
-        });
-    }
-
-    private void ShowSettings()
-    {
-        if (_host is null || _mainWindow is null)
-        {
-            return;
-        }
-
-        if (_settingsWindow is not null && _settingsWindow.IsVisible)
-        {
-            _settingsWindow.Activate();
-            return;
-        }
-
-        _settingsWindow = new SettingsWindow(new SettingsViewModel(_host, () => _settingsWindow?.Close()))
-        {
-            Owner = _mainWindow
-        };
-        _settingsWindow.Closed += (_, _) => _settingsWindow = null;
-        _settingsWindow.Show();
-    }
-
     private void TogglePause()
     {
         if (_host is null)
@@ -203,7 +426,7 @@ public partial class App : System.Windows.Application
             return;
         }
 
-        if (_host.Scheduler.GetSnapshot().Status == SchedulerStatus.PausedManual)
+        if (_host.Scheduler.GetSnapshot().IsPausedManual)
         {
             _host.Scheduler.Resume();
         }
@@ -212,6 +435,7 @@ public partial class App : System.Windows.Application
             _host.Scheduler.Pause();
         }
 
+        _mainViewModel?.Refresh();
         UpdateTray();
     }
 
@@ -222,7 +446,7 @@ public partial class App : System.Windows.Application
             return;
         }
 
-        if (_host.Settings.CloseToTray)
+        if (ApplicationStartupPolicy.ShouldHideDashboardToTrayOnClose(_host.Settings, _isQuitting))
         {
             e.Cancel = true;
             _mainWindow?.Hide();
@@ -249,6 +473,8 @@ public partial class App : System.Windows.Application
         }
 
         await (_logger?.FlushAsync() ?? Task.CompletedTask).ConfigureAwait(true);
+        _uiTestPipe?.Dispose();
+        _uiTestDiagnosticsPipe?.Dispose();
         _singleInstance?.Release();
         Shutdown(0);
     }
@@ -286,7 +512,7 @@ public partial class App : System.Windows.Application
         }
 
         _tray.UpdateTooltip();
-        _tray.SetPauseMenuLabel(_host.Scheduler.GetSnapshot().Status == SchedulerStatus.PausedManual);
+        _tray.SetPauseMenuLabel(_host.Scheduler.GetSnapshot().IsPausedManual);
     }
 
     private void OnSessionSwitch(object sender, SessionSwitchEventArgs e)

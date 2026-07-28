@@ -15,6 +15,8 @@ public sealed class SchedulerState
     public BreakType? QueuedBreak { get; set; }
     public DateTimeOffset? BreakEndsAt { get; set; }
     public DateTimeOffset? SnoozeUntil { get; set; }
+    public DateTimeOffset? EyeSnoozeUntil { get; set; }
+    public DateTimeOffset? MoveSnoozeUntil { get; set; }
 
     public DateTimeOffset LastClockCheck { get; set; }
 

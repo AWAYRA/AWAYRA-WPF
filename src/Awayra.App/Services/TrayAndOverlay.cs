@@ -1,8 +1,10 @@
 using System.Drawing;
 using System.Windows;
+using Awayra.App.ViewModels;
 using Awayra.Core.Abstractions;
 using Awayra.Core.Localization;
 using Awayra.App.Views;
+using Awayra.Core.Coordination;
 using Awayra.Core.Models;
 using Awayra.Core.Services;
 
@@ -16,6 +18,8 @@ public sealed class OverlayCoordinator
 
     private BreakOverlayWindow? _eyeOverlay;
     private BreakOverlayWindow? _moveOverlay;
+    private OverlaySessionState _session = OverlaySessionState.Empty;
+    public bool LastSnapshotCaptured { get; private set; }
 
     public OverlayCoordinator(
         Func<BreakOverlayWindow> eyeOverlayFactory,
@@ -32,18 +36,23 @@ public sealed class OverlayCoordinator
         try
         {
             CloseAll();
+            _session = OverlaySessionPolicy.AfterCloseAll();
             if (args.BreakType == BreakType.Eye)
             {
                 _eyeOverlay = _eyeOverlayFactory();
                 _eyeOverlay.Configure(args, settings, localization, isEye: true);
+                LastSnapshotCaptured = _eyeOverlay.DataContext is OverlayViewModel eyeVm && eyeVm.SnapshotSource is not null;
                 _eyeOverlay.ShowOnActiveMonitor();
             }
             else
             {
                 _moveOverlay = _moveOverlayFactory();
                 _moveOverlay.Configure(args, settings, localization, isEye: false);
+                LastSnapshotCaptured = _moveOverlay.DataContext is OverlayViewModel moveVm && moveVm.SnapshotSource is not null;
                 _moveOverlay.ShowOnActiveMonitor();
             }
+
+            _session = OverlaySessionPolicy.AfterShow(args.BreakType, _session);
         }
         catch (Exception ex)
         {
@@ -64,6 +73,12 @@ public sealed class OverlayCoordinator
         }
     }
 
+    public void UpdateGlassClarity(int glassClarity)
+    {
+        _eyeOverlay?.ApplyGlassClarity(glassClarity);
+        _moveOverlay?.ApplyGlassClarity(glassClarity);
+    }
+
     public void CloseAll()
     {
         if (_eyeOverlay is not null)
@@ -77,7 +92,11 @@ public sealed class OverlayCoordinator
             _moveOverlay.CloseSafely();
             _moveOverlay = null;
         }
+
+        _session = OverlaySessionPolicy.AfterCloseAll();
     }
+
+    public OverlaySessionState SessionState => _session;
 }
 
 public sealed class TrayService : IDisposable
@@ -131,7 +150,6 @@ public sealed class TrayService : IDisposable
 
         _icon.DoubleClick += (_, _) => _openDashboard();
         RebuildMenu();
-        _localization.CultureChanged += (_, _) => RebuildMenu();
     }
 
     public void UpdateTooltip() => _icon.Text = TrimTooltip(_tooltipProvider());

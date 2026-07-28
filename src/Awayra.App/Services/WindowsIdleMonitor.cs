@@ -19,7 +19,8 @@ public sealed class WindowsIdleMonitor : IIdleMonitor
         }
 
         var tick = unchecked((uint)Environment.TickCount);
-        var idleMs = tick - info.DwTime;
+        var lastInput = info.DwTime;
+        var idleMs = tick >= lastInput ? tick - lastInput : uint.MaxValue - lastInput + tick;
         return TimeSpan.FromMilliseconds(idleMs);
     }
 

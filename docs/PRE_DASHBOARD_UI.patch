@@ -1,0 +1,4242 @@
+diff --git a/.cursor/rules/awayra.mdc b/.cursor/rules/awayra.mdc
+index 97c5123..e63aa9f 100644
+--- a/.cursor/rules/awayra.mdc
++++ b/.cursor/rules/awayra.mdc
+@@ -13,7 +13,20 @@ alwaysApply: true
+ - No preview SDKs, no Electron/Tauri/Rust/Node/web stacks
+ - Run focused tests during development; full suite at milestones
+ - Debug via `scripts/dev.ps1`; publish via `scripts/publish.ps1` only after tests pass
++- Run `scripts/verify-change.ps1` before declaring any task complete
+ - No installer unless explicitly requested
+ - No Git push
+ - Never modify tests to hide defects
+ - Never touch `D:\curser\AWAYRA\AWAYRA`
++
++## Required change workflow
++
++1. Inspect scope and list allowed files
++2. Record protected behaviors from `docs/CHANGE_GUARD.md`
++3. Baseline tests before editing
++4. Smallest possible patch only
++5. Inspect `git diff` after editing
++6. Run focused tests, then `scripts/verify-change.ps1`
++7. Never mix UI changes with backend fixes, or behavior changes with styling fixes
++8. Never commit or push unless explicitly requested
++9. Task is **BLOCKED** if regression verification fails
+diff --git a/AGENTS.md b/AGENTS.md
+index d30893b..a5263c7 100644
+--- a/AGENTS.md
++++ b/AGENTS.md
+@@ -11,19 +11,39 @@
+ ```powershell
+ powershell -ExecutionPolicy Bypass -File .\scripts\dev.ps1
+ powershell -ExecutionPolicy Bypass -File .\scripts\test.ps1
++powershell -ExecutionPolicy Bypass -File .\scripts\verify-change.ps1
+ powershell -ExecutionPolicy Bypass -File .\scripts\publish.ps1
+ powershell -ExecutionPolicy Bypass -File .\scripts\smoke.ps1
+ ```
+ 
++## Change guard workflow (required for every task)
++
++1. Inspect the requested scope
++2. List the exact files allowed to change
++3. Record protected behaviors that must remain unchanged (see `docs/CHANGE_GUARD.md`)
++4. Run focused baseline tests before editing
++5. Make the smallest possible patch
++6. Inspect `git diff` after editing
++7. Run focused tests
++8. Run `scripts/verify-change.ps1` before declaring success
++9. Never touch unrelated files
++10. Never perform broad cleanup during a narrow fix
++11. Never change UI while fixing backend behavior
++12. Never change behavior while fixing visual styling
++13. Never build Release or Installer unless explicitly requested
++14. Never commit or push unless explicitly requested
++15. A task is **BLOCKED** if regression verification fails
++
+ ## Rules
+ 
+ - Use Debug builds for iteration; publish Release only after tests pass
+ - Do not create installers unless explicitly requested
+ - Do not push to Git remotes
+ - Do not modify tests to conceal defects
+-- Do not claim completion without build, test, and smoke verification
++- Do not claim completion without build, test, and `verify-change.ps1` verification
+ - Keep `Awayra.Core` free of WPF dependencies
+ - Record external packages in `docs/DEPENDENCIES.md`
++- Read `docs/REGRESSION_BASELINE.md` before regression-sensitive work
+ 
+ ## Do not touch
+ 
+diff --git a/Awayra.sln b/Awayra.sln
+index 4f6081f..7565e60 100644
+--- a/Awayra.sln
++++ b/Awayra.sln
+@@ -9,6 +9,10 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Awayra.App", "src\Awayra.Ap
+ EndProject
+ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Awayra.Core.Tests", "tests\Awayra.Core.Tests\Awayra.Core.Tests.csproj", "{C3D4E5F6-A7B8-9012-CDEF-123456789012}"
+ EndProject
++Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Awayra.App.Tests", "tests\Awayra.App.Tests\Awayra.App.Tests.csproj", "{D4E5F6A7-B8C9-0123-DEF0-234567890123}"
++EndProject
++Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Awayra.UiTests", "tests\Awayra.UiTests\Awayra.UiTests.csproj", "{E5F6A7B8-C9D0-1234-EF01-345678901234}"
++EndProject
+ Global
+ 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+ 		Debug|Any CPU = Debug|Any CPU
+@@ -27,5 +31,13 @@ Global
+ 		{C3D4E5F6-A7B8-9012-CDEF-123456789012}.Debug|Any CPU.Build.0 = Debug|Any CPU
+ 		{C3D4E5F6-A7B8-9012-CDEF-123456789012}.Release|Any CPU.ActiveCfg = Release|Any CPU
+ 		{C3D4E5F6-A7B8-9012-CDEF-123456789012}.Release|Any CPU.Build.0 = Release|Any CPU
++		{D4E5F6A7-B8C9-0123-DEF0-234567890123}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
++		{D4E5F6A7-B8C9-0123-DEF0-234567890123}.Debug|Any CPU.Build.0 = Debug|Any CPU
++		{D4E5F6A7-B8C9-0123-DEF0-234567890123}.Release|Any CPU.ActiveCfg = Release|Any CPU
++		{D4E5F6A7-B8C9-0123-DEF0-234567890123}.Release|Any CPU.Build.0 = Release|Any CPU
++		{E5F6A7B8-C9D0-1234-EF01-345678901234}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
++		{E5F6A7B8-C9D0-1234-EF01-345678901234}.Debug|Any CPU.Build.0 = Debug|Any CPU
++		{E5F6A7B8-C9D0-1234-EF01-345678901234}.Release|Any CPU.ActiveCfg = Release|Any CPU
++		{E5F6A7B8-C9D0-1234-EF01-345678901234}.Release|Any CPU.Build.0 = Release|Any CPU
+ 	EndGlobalSection
+ EndGlobal
+diff --git a/scripts/dev.ps1 b/scripts/dev.ps1
+index c32dba3..742ae80 100644
+--- a/scripts/dev.ps1
++++ b/scripts/dev.ps1
+@@ -1,15 +1,24 @@
+ $ErrorActionPreference = "Stop"
+-$root = Split-Path $PSScriptRoot -Parent
+-Push-Location $root
++. (Join-Path $PSScriptRoot "launch-common.ps1")
++$root = Get-RepoRoot
++Push-Location $root.Path
+ 
+ try {
+-    Get-Process Awayra -ErrorAction SilentlyContinue | Stop-Process -Force
++    Stop-AllAwayraProcesses
+     dotnet build src/Awayra.App/Awayra.App.csproj -c Debug
+     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+ 
+-    $exe = Join-Path $root "src\Awayra.App\bin\Debug\net10.0-windows\Awayra.exe"
+-    Write-Host "Debug executable: $exe"
+-    Start-Process -FilePath $exe
++    $exe = Join-Path $root.Path "src\Awayra.App\bin\Debug\net10.0-windows\Awayra.exe"
++    if (-not (Test-Path $exe)) { throw "Debug executable not found: $exe" }
++
++    Write-LaunchReport $exe
++    $proc = Start-Process -FilePath $exe -PassThru
++    Start-Sleep -Seconds 3
++    if ($proc.HasExited) { throw "Awayra Debug process exited during startup." }
++
++    $running = Assert-RunningProcessMatches $exe
++    Write-Host "Running PID: $($running.ProcessId)"
++    Write-Host "Running path verified: $($running.Path)"
+ }
+ finally {
+     Pop-Location
+diff --git a/scripts/publish.ps1 b/scripts/publish.ps1
+index fecb6d3..cc180d5 100644
+--- a/scripts/publish.ps1
++++ b/scripts/publish.ps1
+@@ -1,9 +1,11 @@
+ $ErrorActionPreference = "Stop"
+-$root = Split-Path $PSScriptRoot -Parent
+-$publishDir = Join-Path $root "artifacts\publish\win-x64"
+-Push-Location $root
++. (Join-Path $PSScriptRoot "launch-common.ps1")
++$root = Get-RepoRoot
++$publishDir = Join-Path $root.Path "artifacts\publish\win-x64"
++Push-Location $root.Path
+ 
+ try {
++    Stop-AllAwayraProcesses
+     dotnet restore
+     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+ 
+@@ -13,26 +15,36 @@ try {
+     dotnet test Awayra.sln -c Release --no-build
+     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+ 
+-    if (Test-Path $publishDir) {
+-        Remove-Item $publishDir -Recurse -Force
+-    }
++    if (Test-Path $publishDir) { Remove-Item $publishDir -Recurse -Force }
+     New-Item -ItemType Directory -Path $publishDir -Force | Out-Null
+ 
+     dotnet publish src/Awayra.App/Awayra.App.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:PublishTrimmed=false -o $publishDir
+     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+ 
+     $exe = Join-Path $publishDir "Awayra.exe"
+-    if (-not (Test-Path $exe)) {
+-        Write-Error "Published executable not found: $exe"
+-        exit 1
+-    }
++    if (-not (Test-Path $exe)) { throw "Published executable not found: $exe" }
+ 
++    $hash = Get-ExeSha256 $exe
+     $info = Get-Item $exe
+-    $hash = Get-FileHash $exe -Algorithm SHA256
++    $gitCommit = (git rev-parse --short HEAD 2>$null)
++    if (-not $gitCommit) { $gitCommit = "unknown" }
++    $dirty = if ((git status --porcelain 2>$null)) { "dirty" } else { "clean" }
++    $coreTests = (dotnet test tests/Awayra.Core.Tests/Awayra.Core.Tests.csproj -c Release --no-build --list-tests 2>$null | Select-String "The following").Count
++    $identity = @(
++        "GitCommit=$gitCommit",
++        "WorkingTreeStatus=$dirty",
++        "BuildTimestampUtc=$((Get-Date).ToUniversalTime().ToString('o'))",
++        "DotNetSdk=$(dotnet --version)",
++        "ExecutablePath=$exe",
++        "ExecutableSha256=$hash",
++        "ExecutableSizeBytes=$($info.Length)",
++        "ExecutableTimestamp=$($info.LastWriteTimeUtc.ToString('o'))"
++    ) -join [Environment]::NewLine
++    Set-Content -Path (Join-Path $publishDir "BUILD-IDENTITY.txt") -Value $identity -Encoding UTF8
++
+     Write-Host "Published: $exe"
+     Write-Host "Size: $($info.Length) bytes"
+-    Write-Host "Modified: $($info.LastWriteTime)"
+-    Write-Host "SHA-256: $($hash.Hash)"
++    Write-Host "SHA-256: $hash"
+ }
+ finally {
+     Pop-Location
+diff --git a/src/Awayra.App/App.xaml.cs b/src/Awayra.App/App.xaml.cs
+index 996c754..84cae3b 100644
+--- a/src/Awayra.App/App.xaml.cs
++++ b/src/Awayra.App/App.xaml.cs
+@@ -4,7 +4,7 @@ using Awayra.App.Interop;
+ using Awayra.App.Services;
+ using Awayra.App.ViewModels;
+ using Awayra.App.Views;
+-using Awayra.Core.Abstractions;
++using Awayra.Core.Coordination;
+ using Awayra.Core.Localization;
+ using Awayra.Core.Models;
+ using Awayra.Core.Persistence;
+@@ -20,17 +20,24 @@ public partial class App : System.Windows.Application
+     private OverlayCoordinator? _overlays;
+     private MainWindow? _mainWindow;
+     private SettingsWindow? _settingsWindow;
++    private MainViewModel? _mainViewModel;
+     private NamedPipeSingleInstance? _singleInstance;
+     private FileLogger? _logger;
+     private bool _isQuitting;
++    private UiTestCommandPipe? _uiTestPipe;
++    private UiTestDiagnosticsPipe? _uiTestDiagnosticsPipe;
++    private SimulatedIdleMonitor? _idleMonitor;
+ 
+     protected override async void OnStartup(StartupEventArgs e)
+     {
+         base.OnStartup(e);
++        UiTestMode.Configure(e.Args);
++        BuildIdentity.Initialize();
+         System.Windows.Forms.Application.SetHighDpiMode(System.Windows.Forms.HighDpiMode.PerMonitorV2);
+         AppPaths.EnsureDataRoot();
+         _logger = new FileLogger(AppPaths.LogFilePath);
+         _logger.Info("Awayra starting.");
++        BuildIdentity.Log(_logger);
+ 
+         _singleInstance = new NamedPipeSingleInstance();
+         if (!_singleInstance.TryAcquire())
+@@ -46,6 +53,11 @@ public partial class App : System.Windows.Application
+         DispatcherUnhandledException += (_, args) =>
+         {
+             _logger?.Error("Dispatcher unhandled exception", args.Exception);
++            if (args.Exception is System.Windows.Markup.XamlParseException && _mainWindow is null)
++            {
++                _logger?.Error("Dashboard XAML failed to load; tray remains available. Use Open Awayra after fixing resources.");
++            }
++
+             args.Handled = true;
+         };
+         AppDomain.CurrentDomain.UnhandledException += (_, args) =>
+@@ -67,22 +79,30 @@ public partial class App : System.Windows.Application
+             AppPaths.StatisticsPath, _logger, StatisticsData.CreateDefault));
+ 
+         var localization = new LocalizationService();
++        _idleMonitor = new SimulatedIdleMonitor(new WindowsIdleMonitor());
+         _host = new ApplicationHost(
+             _logger,
+             new SystemClock(),
+             settingsStore,
+             stateStore,
+             statisticsStore,
+-            new WindowsIdleMonitor(),
++            _idleMonitor,
+             new RegistryAutostartService(),
+             localization);
+ 
+         await _host.InitializeAsync().ConfigureAwait(true);
+-        _host.ApplyAutostartSetting();
++        if (!UiTestMode.IsEnabled)
++        {
++            _host.ApplyAutostartSetting();
++        }
++        else
++        {
++            _logger.Info("UiTest mode: autostart registration skipped.");
++        }
+ 
+         _overlays = new OverlayCoordinator(
+-            () => new BreakOverlayWindow(_host, new OverlayViewModel()),
+-            () => new BreakOverlayWindow(_host, new OverlayViewModel()),
++            () => new BreakOverlayWindow(_host, new OverlayViewModel(), new MonitorSnapshotService(_logger)),
++            () => new BreakOverlayWindow(_host, new OverlayViewModel(), new MonitorSnapshotService(_logger)),
+             _logger);
+ 
+         _host.Scheduler.BreakStarted += (_, args) =>
+@@ -113,7 +133,21 @@ public partial class App : System.Windows.Application
+             });
+         };
+ 
+-        _host.StateChanged += (_, _) => Dispatcher.Invoke(UpdateTray);
++        _host.StateChanged += (_, _) =>
++        {
++            Dispatcher.Invoke(() =>
++            {
++                var snapshot = _host.Scheduler.GetSnapshot();
++                _overlays.UpdateActiveBreak(snapshot.ActiveBreakRemaining, _host.Localization, _host.Scheduler.MoveActivityIndex);
++                _overlays.UpdateGlassClarity(_host.Settings.GlassClarity);
++                UpdateTray();
++            });
++        };
++
++        _host.GlassClarityPreviewChanged += (_, clarity) =>
++        {
++            Dispatcher.Invoke(() => _overlays.UpdateGlassClarity(clarity));
++        };
+ 
+         var iconPath = Path.Combine(AppContext.BaseDirectory, "Assets", "awayra.ico");
+         var trayIcon = File.Exists(iconPath)
+@@ -132,68 +166,257 @@ public partial class App : System.Windows.Application
+             BuildTrayTooltip);
+ 
+         var mainViewModel = new MainViewModel(_host, ShowSettings);
+-        _mainWindow = new MainWindow(mainViewModel);
+-        _mainWindow.Closing += MainWindow_OnClosing;
+-
+-        if (!_host.Settings.StartMinimized)
++        _mainViewModel = mainViewModel;
++        if (!TryCreateMainWindow())
++        {
++            _logger.Error("Dashboard window creation failed at startup; tray remains available.");
++        }
++        else if (ApplicationStartupPolicy.ShouldShowDashboardOnStartup(_host.Settings))
+         {
+             ShowDashboard();
+         }
+ 
+         UpdateTray();
+         _logger.Info("Awayra started.");
++
++        if (UiTestMode.IsEnabled)
++        {
++            UiTestBridge.Register(new UiTestBridge
++            {
++                ShowDashboard = ShowDashboard,
++                ShowSettings = ShowSettings,
++                Quit = QuitFromTray,
++                TriggerEyeNow = () => _host.Scheduler.TriggerNow(BreakType.Eye),
++                TriggerMoveNow = () => _host.Scheduler.TriggerNow(BreakType.Move),
++                GetSettings = () => _host.Settings,
++                GetEyeCountdown = () => _mainViewModel?.EyeCountdown ?? string.Empty,
++                GetMoveCountdown = () => _mainViewModel?.MoveCountdown ?? string.Empty
++            });
++
++            _uiTestPipe = new UiTestCommandPipe(DispatchUiTestCommand, _logger);
++            _uiTestPipe.Start();
++
++            _uiTestDiagnosticsPipe = new UiTestDiagnosticsPipe(() =>
++            {
++                var diagnostics = _host.Scheduler.GetDiagnostics();
++                diagnostics.SnapshotCaptured = _overlays?.LastSnapshotCaptured ?? false;
++                var today = _host.Statistics.GetToday();
++                diagnostics.EyeCompleted = today.EyeCompleted;
++                diagnostics.MoveCompleted = today.MoveCompleted;
++                diagnostics.Skipped = today.Skipped;
++                diagnostics.Snoozed = today.Snoozed;
++                return diagnostics;
++            }, _logger);
++            _uiTestDiagnosticsPipe.Start();
++        }
+     }
+ 
+-    private SettingsFileStore CreateSettingsStore()
++    private void DispatchUiTestCommand(string command)
+     {
+-        var store = new JsonFileStore<AppSettings>(
+-            AppPaths.SettingsPath,
+-            _logger!,
+-            AppSettings.CreateDefault,
+-            json => SettingsRecovery.LoadWithRecovery(json));
+-        return new SettingsFileStore(store);
++        Dispatcher.Invoke(() =>
++        {
++            switch (command.ToUpperInvariant())
++            {
++                case "TRAY_OPEN":
++                case "OPEN_DASHBOARD":
++                    ShowDashboard();
++                    break;
++                case "TRAY_SETTINGS":
++                case "OPEN_SETTINGS":
++                    ShowSettings();
++                    break;
++                case "TRAY_QUIT":
++                case "QUIT":
++                    QuitFromTray();
++                    break;
++                case "EYE_NOW":
++                    _host?.Scheduler.TriggerNow(BreakType.Eye);
++                    break;
++                case "MOVE_NOW":
++                    _host?.Scheduler.TriggerNow(BreakType.Move);
++                    break;
++                case "SET_IDLE_TRUE":
++                case "IDLE_ON":
++                    _idleMonitor?.SetSimulatedIdle(true);
++                    break;
++                case "SET_IDLE_FALSE":
++                case "IDLE_OFF":
++                    _idleMonitor?.SetSimulatedIdle(false);
++                    break;
++                case "CLEAR_IDLE_SIMULATION":
++                case "IDLE_CLEAR":
++                    _idleMonitor?.SetSimulatedIdle(null);
++                    break;
++            }
++        });
++    }
++
++    private bool TryCreateMainWindow()
++    {
++        if (_host is null || _mainViewModel is null)
++        {
++            return false;
++        }
++
++        if (_mainWindow is not null)
++        {
++            return true;
++        }
++
++        try
++        {
++            var window = new MainWindow(_mainViewModel);
++            window.Closing += MainWindow_OnClosing;
++            _mainWindow = window;
++            MainWindow = window;
++            _logger?.Info("Dashboard window created.");
++            return true;
++        }
++        catch (Exception ex)
++        {
++            _logger?.Error("Failed to create dashboard window", ex);
++            _mainWindow = null;
++            return false;
++        }
+     }
+ 
+     private void ShowDashboard()
+     {
+-        if (_mainWindow is null)
++        if (_host is null)
+         {
+             return;
+         }
+ 
+-        Dispatcher.Invoke(() =>
++        void ShowDashboardCore()
+         {
+-            if (_mainWindow.IsVisible)
++            if (!TryCreateMainWindow() || _mainWindow is null)
++            {
++                return;
++            }
++
++            var window = _mainWindow;
++            MainWindow = window;
++
++            var presentation = DashboardRestorePlanner.Classify(
++                exists: true,
++                isVisible: window.IsVisible,
++                isMinimized: window.WindowState == WindowState.Minimized);
++            var plan = DashboardRestorePlanner.Plan(presentation);
++
++            if (plan.EnsureOnScreen)
+             {
+-                MonitorLocator.ActivateWindow(_mainWindow);
++                MonitorLocator.EnsureWindowOnScreen(window);
+             }
+-            else
++
++            if (plan.ShowInTaskbar)
+             {
+-                _mainWindow.Show();
+-                MonitorLocator.ActivateWindow(_mainWindow);
++                window.ShowInTaskbar = true;
+             }
+-        });
++
++            window.Visibility = Visibility.Visible;
++
++            if (plan.RestoreFromMinimized && window.WindowState == WindowState.Minimized)
++            {
++                window.WindowState = WindowState.Normal;
++            }
++
++            if (plan.Show && !window.IsVisible)
++            {
++                window.Show();
++            }
++
++            if (plan.Activate)
++            {
++                MonitorLocator.ActivateWindow(window);
++            }
++        }
++
++        if (Dispatcher.CheckAccess())
++        {
++            ShowDashboardCore();
++        }
++        else
++        {
++            Dispatcher.Invoke(ShowDashboardCore);
++        }
+     }
+ 
+     private void ShowSettings()
+     {
+-        if (_host is null || _mainWindow is null)
++        if (_host is null)
+         {
+             return;
+         }
+ 
+-        if (_settingsWindow is not null && _settingsWindow.IsVisible)
++        if (!TryCreateMainWindow() || _mainWindow is null)
+         {
+-            _settingsWindow.Activate();
+             return;
+         }
+ 
+-        _settingsWindow = new SettingsWindow(new SettingsViewModel(_host, () => _settingsWindow?.Close()))
++        void ShowSettingsCore()
+         {
+-            Owner = _mainWindow
+-        };
+-        _settingsWindow.Closed += (_, _) => _settingsWindow = null;
+-        _settingsWindow.Show();
++            if (_settingsWindow is not null && _settingsWindow.IsVisible)
++            {
++                MonitorLocator.EnsureWindowOnScreen(_settingsWindow);
++                MonitorLocator.ActivateWindow(_settingsWindow);
++                return;
++            }
++
++            _host.BeginConfigurationSession();
++            _settingsWindow = new SettingsWindow(new SettingsViewModel(_host, CloseSettings))
++            {
++                Owner = _mainWindow
++            };
++            _settingsWindow.Closed += (_, _) =>
++            {
++                _host?.EndConfigurationSession(saved: false);
++                if (_host is not null)
++                {
++                    _overlays?.UpdateGlassClarity(_host.Settings.GlassClarity);
++                }
++
++                _settingsWindow = null;
++                UpdateTray();
++            };
++            MonitorLocator.EnsureWindowOnScreen(_settingsWindow);
++            _settingsWindow.Show();
++            MonitorLocator.ActivateWindow(_settingsWindow);
++        }
++
++        if (Dispatcher.CheckAccess())
++        {
++            ShowSettingsCore();
++        }
++        else
++        {
++            Dispatcher.Invoke(ShowSettingsCore);
++        }
++    }
++
++    private void CloseSettings(bool saved)
++    {
++        if (_host is null)
++        {
++            return;
++        }
++
++        if (!saved)
++        {
++            _host.EndConfigurationSession(saved: false);
++            _overlays?.UpdateGlassClarity(_host.Settings.GlassClarity);
++        }
++
++        _settingsWindow?.Close();
++    }
++
++    private SettingsFileStore CreateSettingsStore()
++    {
++        var store = new JsonFileStore<AppSettings>(
++            AppPaths.SettingsPath,
++            _logger!,
++            AppSettings.CreateDefault,
++            json => SettingsRecovery.LoadWithRecovery(json));
++        return new SettingsFileStore(store);
+     }
+ 
+     private void TogglePause()
+@@ -222,7 +445,7 @@ public partial class App : System.Windows.Application
+             return;
+         }
+ 
+-        if (_host.Settings.CloseToTray)
++        if (ApplicationStartupPolicy.ShouldHideDashboardToTrayOnClose(_host.Settings, _isQuitting))
+         {
+             e.Cancel = true;
+             _mainWindow?.Hide();
+@@ -249,6 +472,8 @@ public partial class App : System.Windows.Application
+         }
+ 
+         await (_logger?.FlushAsync() ?? Task.CompletedTask).ConfigureAwait(true);
++        _uiTestPipe?.Dispose();
++        _uiTestDiagnosticsPipe?.Dispose();
+         _singleInstance?.Release();
+         Shutdown(0);
+     }
+diff --git a/src/Awayra.App/AppPaths.cs b/src/Awayra.App/AppPaths.cs
+index 6afafb6..155d21e 100644
+--- a/src/Awayra.App/AppPaths.cs
++++ b/src/Awayra.App/AppPaths.cs
+@@ -2,8 +2,16 @@ namespace Awayra.App;
+ 
+ public static class AppPaths
+ {
++    private static string? _overrideDataRoot;
++
++    public static string? OverrideDataRoot
++    {
++        get => _overrideDataRoot;
++        set => _overrideDataRoot = value;
++    }
++
+     public static string DataRoot =>
+-        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Awayra");
++        _overrideDataRoot ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Awayra");
+ 
+     public static string SettingsPath => Path.Combine(DataRoot, "settings.json");
+     public static string StatePath => Path.Combine(DataRoot, "state.json");
+diff --git a/src/Awayra.App/Awayra.App.csproj b/src/Awayra.App/Awayra.App.csproj
+index 7c0bb4b..68ac09e 100644
+--- a/src/Awayra.App/Awayra.App.csproj
++++ b/src/Awayra.App/Awayra.App.csproj
+@@ -12,8 +12,33 @@
+     <AssemblyName>Awayra</AssemblyName>
+     <ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>
+     <RootNamespace>Awayra.App</RootNamespace>
++    <Version>1.0.0</Version>
++    <AssemblyVersion>1.0.0.0</AssemblyVersion>
++    <FileVersion>1.0.0.0</FileVersion>
++    <BuildTimestampUtc>$([System.DateTime]::UtcNow.ToString("o"))</BuildTimestampUtc>
+   </PropertyGroup>
+ 
++  <Target Name="PopulateGitMetadata" BeforeTargets="GetAssemblyVersion">
++    <Exec Command="git rev-parse --short HEAD" ConsoleToMSBuild="true" IgnoreExitCode="true" StandardOutputImportance="low" WorkingDirectory="$(MSBuildProjectDirectory)\..\..">
++      <Output TaskParameter="ConsoleOutput" PropertyName="GitCommitSha" />
++    </Exec>
++    <Exec Command="git status --porcelain" ConsoleToMSBuild="true" IgnoreExitCode="true" StandardOutputImportance="low" WorkingDirectory="$(MSBuildProjectDirectory)\..\..">
++      <Output TaskParameter="ConsoleOutput" PropertyName="GitStatusOutput" />
++    </Exec>
++    <PropertyGroup>
++      <GitCommitSha Condition="'$(GitCommitSha)' == ''">unknown</GitCommitSha>
++      <WorkingTreeStatus Condition="'$(GitStatusOutput)' == ''">clean</WorkingTreeStatus>
++      <WorkingTreeStatus Condition="'$(GitStatusOutput)' != ''">dirty</WorkingTreeStatus>
++      <InformationalVersion>$(Version)+$(GitCommitSha)</InformationalVersion>
++    </PropertyGroup>
++  </Target>
++
++  <ItemGroup>
++    <AssemblyMetadata Include="GitCommit" Value="$(GitCommitSha)" />
++    <AssemblyMetadata Include="WorkingTreeStatus" Value="$(WorkingTreeStatus)" />
++    <AssemblyMetadata Include="BuildTimestampUtc" Value="$(BuildTimestampUtc)" />
++  </ItemGroup>
++
+   <ItemGroup>
+     <Content Include="Assets\awayra.ico">
+       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+@@ -33,12 +58,6 @@
+       <Generator>ResXFileCodeGenerator</Generator>
+       <LastGenOutput>Strings.Designer.cs</LastGenOutput>
+     </EmbeddedResource>
+-    <EmbeddedResource Update="Resources\Strings.fa.resx">
+-      <DependentUpon>Strings.resx</DependentUpon>
+-    </EmbeddedResource>
+-    <EmbeddedResource Update="Resources\Strings.ar.resx">
+-      <DependentUpon>Strings.resx</DependentUpon>
+-    </EmbeddedResource>
+   </ItemGroup>
+ 
+ </Project>
+diff --git a/src/Awayra.App/Interop/NativeMethods.cs b/src/Awayra.App/Interop/NativeMethods.cs
+index 844abc2..a1e2f40 100644
+--- a/src/Awayra.App/Interop/NativeMethods.cs
++++ b/src/Awayra.App/Interop/NativeMethods.cs
+@@ -2,6 +2,7 @@ using System.Runtime.InteropServices;
+ using System.Windows;
+ using System.Windows.Interop;
+ using System.Windows.Forms;
++using System.Linq;
+ 
+ namespace Awayra.App.Interop;
+ 
+@@ -72,17 +73,57 @@ public sealed class MonitorLocator
+         window.Height = bounds.Height;
+     }
+ 
++    public static void EnsureWindowOnScreen(Window window)
++    {
++        if (window.WindowState == WindowState.Maximized)
++        {
++            return;
++        }
++
++        var width = window.Width > 0 ? window.Width : window.ActualWidth > 0 ? window.ActualWidth : window.MinWidth;
++        var height = window.Height > 0 ? window.Height : window.ActualHeight > 0 ? window.ActualHeight : window.MinHeight;
++        if (width <= 0 || height <= 0)
++        {
++            return;
++        }
++
++        var left = double.IsNaN(window.Left) ? 0 : window.Left;
++        var top = double.IsNaN(window.Top) ? 0 : window.Top;
++        var windowRect = new System.Drawing.Rectangle((int)left, (int)top, (int)width, (int)height);
++
++        var onScreen = Screen.AllScreens.Any(screen => screen.WorkingArea.IntersectsWith(windowRect));
++        if (onScreen)
++        {
++            return;
++        }
++
++        var workingArea = Screen.PrimaryScreen?.WorkingArea ?? Screen.AllScreens[0].WorkingArea;
++        window.WindowStartupLocation = WindowStartupLocation.Manual;
++        window.Left = workingArea.Left + Math.Max(0, (workingArea.Width - width) / 2);
++        window.Top = workingArea.Top + Math.Max(0, (workingArea.Height - height) / 2);
++    }
++
+     public static void ActivateWindow(Window window)
+     {
+-        window.Show();
++        window.Visibility = Visibility.Visible;
++        window.ShowInTaskbar = true;
+         window.WindowState = WindowState.Normal;
++        window.Show();
+         window.Activate();
++
+         var handle = new WindowInteropHelper(window).Handle;
+         if (handle != IntPtr.Zero)
+         {
+             NativeMethods.ShowWindow(handle, NativeMethods.SwRestore);
+             NativeMethods.SetForegroundWindow(handle);
+         }
++
++        if (!window.IsActive)
++        {
++            window.Topmost = true;
++            window.Activate();
++            window.Topmost = false;
++        }
+     }
+ }
+ 
+@@ -90,29 +131,70 @@ public static class DwmHelper
+ {
+     private const int DwmwaSystemBackdropType = 38;
+     private const int DwmwaUseImmersiveDarkMode = 20;
++    private const int DwmwaMicaEffect = 1029;
++    private const int DwmsbtMainWindow = 2;
++    private const int DwmsbtTransientWindow = 3;
++    private const int DwmsbtTabbedWindow = 4;
+ 
+     [DllImport("dwmapi.dll")]
+     private static extern int DwmSetWindowAttribute(IntPtr hwnd, int attr, ref int attrValue, int attrSize);
+ 
+-    public static void TryApplyBackdrop(Window window, bool darkMode)
++    [DllImport("dwmapi.dll")]
++    private static extern int DwmExtendFrameIntoClientArea(IntPtr hwnd, ref MARGINS margins);
++
++    [StructLayout(LayoutKind.Sequential)]
++    private struct MARGINS
++    {
++        public int Left;
++        public int Right;
++        public int Top;
++        public int Bottom;
++    }
++
++    public static void TryApplyOverlayGlass(Window window)
++    {
++        if (window.IsLoaded)
++        {
++            ApplyOverlayGlass(window);
++            return;
++        }
++
++        window.SourceInitialized += (_, _) => ApplyOverlayGlass(window);
++    }
++
++    public static bool ApplyOverlayGlass(Window window)
+     {
+         var handle = new WindowInteropHelper(window).Handle;
+         if (handle == IntPtr.Zero)
+         {
+-            return;
++            return false;
+         }
+ 
+         try
+         {
+-            var dark = darkMode ? 1 : 0;
++            var dark = 1;
+             _ = DwmSetWindowAttribute(handle, DwmwaUseImmersiveDarkMode, ref dark, sizeof(int));
+ 
+-            var backdrop = 3; // Acrylic
+-            _ = DwmSetWindowAttribute(handle, DwmwaSystemBackdropType, ref backdrop, sizeof(int));
++            var mica = 1;
++            _ = DwmSetWindowAttribute(handle, DwmwaMicaEffect, ref mica, sizeof(int));
++
++            var backdropTypes = new[] { DwmsbtTabbedWindow, DwmsbtTransientWindow, DwmsbtMainWindow };
++            foreach (var backdrop in backdropTypes)
++            {
++                var value = backdrop;
++                if (DwmSetWindowAttribute(handle, DwmwaSystemBackdropType, ref value, sizeof(int)) == 0)
++                {
++                    break;
++                }
++            }
++
++            var margins = new MARGINS { Left = -1, Right = -1, Top = -1, Bottom = -1 };
++            _ = DwmExtendFrameIntoClientArea(handle, ref margins);
++            return true;
+         }
+         catch
+         {
+-            // Graceful fallback handled by XAML background.
++            return false;
+         }
+     }
+ }
+diff --git a/src/Awayra.App/Resources/Strings.ar.resx b/src/Awayra.App/Resources/Strings.ar.resx
+deleted file mode 100644
+index 3a4cfe5..0000000
+--- a/src/Awayra.App/Resources/Strings.ar.resx
++++ /dev/null
+@@ -1,81 +0,0 @@
+-<?xml version="1.0" encoding="utf-8"?>
+-<root>
+-  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+-  <resheader name="version"><value>2.0</value></resheader>
+-  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+-  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+-  <data name="AppTitle" xml:space="preserve"><value>╪ú┘ê┘è╪▒╪º</value></data>
+-  <data name="StatusRunning" xml:space="preserve"><value>╪º┘ä╪¬╪░┘â┘è╪▒╪º╪¬ ┘å╪┤╪╖╪⌐</value></data>
+-  <data name="StatusPaused" xml:space="preserve"><value>┘à╪¬┘ê┘é┘ü ┘à╪ñ┘é╪¬┘ï╪º</value></data>
+-  <data name="StatusPausedIdle" xml:space="preserve"><value>┘à╪¬┘ê┘é┘ü ╪ú╪½┘å╪º╪í ╪º┘ä╪«┘à┘ê┘ä</value></data>
+-  <data name="StatusOutsideWorkHours" xml:space="preserve"><value>╪«╪º╪▒╪¼ ╪│╪º╪╣╪º╪¬ ╪º┘ä╪╣┘à┘ä</value></data>
+-  <data name="StatusBreakActive" xml:space="preserve"><value>╪º╪│╪¬╪▒╪º╪¡╪⌐ ╪¼╪º╪▒┘è╪⌐</value></data>
+-  <data name="StatusSnoozed" xml:space="preserve"><value>┘à╪ñ╪¼┘ä</value></data>
+-  <data name="StatusDisabled" xml:space="preserve"><value>╪º┘ä╪¬╪░┘â┘è╪▒╪º╪¬ ┘à╪╣╪╖┘ä╪⌐</value></data>
+-  <data name="EyeReset" xml:space="preserve"><value>╪▒╪º╪¡╪⌐ ╪º┘ä╪╣┘è┘å</value></data>
+-  <data name="MoveBreak" xml:space="preserve"><value>╪º╪│╪¬╪▒╪º╪¡╪⌐ ╪º┘ä╪¡╪▒┘â╪⌐</value></data>
+-  <data name="Enabled" xml:space="preserve"><value>┘à┘ü╪╣┘æ┘ä</value></data>
+-  <data name="Disabled" xml:space="preserve"><value>┘à╪╣╪╖┘æ┘ä</value></data>
+-  <data name="Pause" xml:space="preserve"><value>╪Ñ┘è┘é╪º┘ü</value></data>
+-  <data name="Resume" xml:space="preserve"><value>╪º╪│╪¬╪ª┘å╪º┘ü</value></data>
+-  <data name="EyeResetNow" xml:space="preserve"><value>╪▒╪º╪¡╪⌐ ╪º┘ä╪╣┘è┘å ╪º┘ä╪ó┘å</value></data>
+-  <data name="MoveBreakNow" xml:space="preserve"><value>╪º╪│╪¬╪▒╪º╪¡╪⌐ ╪º┘ä╪¡╪▒┘â╪⌐ ╪º┘ä╪ó┘å</value></data>
+-  <data name="Settings" xml:space="preserve"><value>╪º┘ä╪Ñ╪╣╪»╪º╪»╪º╪¬</value></data>
+-  <data name="Quit" xml:space="preserve"><value>╪Ñ┘å┘ç╪º╪í</value></data>
+-  <data name="OpenAwayra" xml:space="preserve"><value>┘ü╪¬╪¡ ╪ú┘ê┘è╪▒╪º</value></data>
+-  <data name="TodayEyeCompleted" xml:space="preserve"><value>╪▒╪º╪¡╪º╪¬ ╪º┘ä╪╣┘è┘å ╪º┘ä┘è┘ê┘à</value></data>
+-  <data name="TodayMoveCompleted" xml:space="preserve"><value>╪º╪│╪¬╪▒╪º╪¡╪º╪¬ ╪º┘ä╪¡╪▒┘â╪⌐ ╪º┘ä┘è┘ê┘à</value></data>
+-  <data name="TodaySkipped" xml:space="preserve"><value>╪¬┘à ╪¬╪«╪╖┘è┘ç╪º ╪º┘ä┘è┘ê┘à</value></data>
+-  <data name="TodaySnoozed" xml:space="preserve"><value>┘à╪ñ╪¼┘ä╪⌐ ╪º┘ä┘è┘ê┘à</value></data>
+-  <data name="EyeResetInstructionDistance" xml:space="preserve"><value>╪º┘å╪╕╪▒ ╪Ñ┘ä┘ë ╪¼╪│┘à ╪¿╪╣┘è╪» ┘ä╪╣╪»╪⌐ ╪ú┘å┘ü╪º╪│.</value></data>
+-  <data name="EyeResetInstructionBlink" xml:space="preserve"><value>╪º╪▒┘à╪┤ ╪¿╪┤┘â┘ä ╪╖╪¿┘è╪╣┘è ┘ê╪ú╪▒╪«┘É ┘ê╪¼┘ç┘â.</value></data>
+-  <data name="Skip" xml:space="preserve"><value>╪¬╪«╪╖┘è</value></data>
+-  <data name="Snooze" xml:space="preserve"><value>╪¬╪ú╪¼┘è┘ä</value></data>
+-  <data name="Complete" xml:space="preserve"><value>╪Ñ┘â┘à╪º┘ä</value></data>
+-  <data name="SecondsRemaining" xml:space="preserve"><value>╪½┘ê╪º┘å┘ì ┘à╪¬╪¿┘é┘è╪⌐</value></data>
+-  <data name="MoveActivityStand" xml:space="preserve"><value>┘é┘ü ┘ê╪╣╪»┘æ┘ä ┘ê╪╢╪╣┘è╪⌐ ╪¼┘ä┘ê╪│┘â.</value></data>
+-  <data name="MoveActivityWalk" xml:space="preserve"><value>╪º┘à╪┤┘É ┘é┘ä┘è┘ä┘ï╪º ╪¿╪╣┘è╪»┘ï╪º ╪╣┘å ┘à┘â╪¬╪¿┘â.</value></data>
+-  <data name="MoveActivityShoulders" xml:space="preserve"><value>╪ú╪▒╪«┘É ┘â╪¬┘ü┘è┘â ┘ê╪ú┘ü┘â ┘ü┘â┘â.</value></data>
+-  <data name="MoveActivityNeck" xml:space="preserve"><value>╪¡╪▒┘æ┘â ╪▒┘é╪¿╪¬┘â ╪¿┘ä╪╖┘ü ╪╢┘à┘å ┘å╪╖╪º┘é ┘à╪▒┘è╪¡.</value></data>
+-  <data name="MoveActivityStretch" xml:space="preserve"><value>┘à╪»┘æ ╪░╪▒╪º╪╣┘è┘â ╪¿┘ä╪╖┘ü ╪»┘ê┘å ╪Ñ╪¼╪¿╪º╪▒.</value></data>
+-  <data name="SettingsEyeReset" xml:space="preserve"><value>╪▒╪º╪¡╪⌐ ╪º┘ä╪╣┘è┘å</value></data>
+-  <data name="SettingsMoveBreak" xml:space="preserve"><value>╪º╪│╪¬╪▒╪º╪¡╪⌐ ╪º┘ä╪¡╪▒┘â╪⌐</value></data>
+-  <data name="SettingsBehavior" xml:space="preserve"><value>╪º┘ä╪│┘ä┘ê┘â</value></data>
+-  <data name="SettingsAppearance" xml:space="preserve"><value>╪º┘ä┘à╪╕┘ç╪▒</value></data>
+-  <data name="SettingsEnabled" xml:space="preserve"><value>┘à┘ü╪╣┘æ┘ä</value></data>
+-  <data name="SettingsIntervalMinutes" xml:space="preserve"><value>╪º┘ä┘ü╪º╪╡┘ä (╪»┘é╪º╪ª┘é)</value></data>
+-  <data name="SettingsDurationSeconds" xml:space="preserve"><value>╪º┘ä┘à╪»╪⌐ (╪½┘ê╪º┘å┘ì)</value></data>
+-  <data name="SettingsAllowSkip" xml:space="preserve"><value>╪º┘ä╪│┘à╪º╪¡ ╪¿╪º┘ä╪¬╪«╪╖┘è</value></data>
+-  <data name="SettingsAllowSnooze" xml:space="preserve"><value>╪º┘ä╪│┘à╪º╪¡ ╪¿╪º┘ä╪¬╪ú╪¼┘è┘ä</value></data>
+-  <data name="SettingsSnoozeDuration" xml:space="preserve"><value>┘à╪»╪⌐ ╪º┘ä╪¬╪ú╪¼┘è┘ä (╪»┘é╪º╪ª┘é)</value></data>
+-  <data name="SettingsPauseWhileIdle" xml:space="preserve"><value>╪Ñ┘è┘é╪º┘ü ╪ú╪½┘å╪º╪í ╪«┘à┘ê┘ä ╪º┘ä╪¼┘ç╪º╪▓</value></data>
+-  <data name="SettingsIdleThreshold" xml:space="preserve"><value>╪¡╪» ╪º┘ä╪«┘à┘ê┘ä (╪»┘é╪º╪ª┘é)</value></data>
+-  <data name="SettingsWorkHoursEnabled" xml:space="preserve"><value>╪¬┘ü╪╣┘è┘ä ╪│╪º╪╣╪º╪¬ ╪º┘ä╪╣┘à┘ä</value></data>
+-  <data name="SettingsWorkStart" xml:space="preserve"><value>╪¿╪»╪º┘è╪⌐ ╪º┘ä╪╣┘à┘ä</value></data>
+-  <data name="SettingsWorkEnd" xml:space="preserve"><value>┘å┘ç╪º┘è╪⌐ ╪º┘ä╪╣┘à┘ä</value></data>
+-  <data name="SettingsRunAtStartup" xml:space="preserve"><value>╪º┘ä╪¬╪┤╪║┘è┘ä ╪╣┘å╪» ╪¿╪»╪í ┘ê┘è┘å╪»┘ê╪▓</value></data>
+-  <data name="SettingsStartMinimized" xml:space="preserve"><value>╪º┘ä╪¿╪»╪í ┘à╪╡╪║┘æ╪▒┘ï╪º</value></data>
+-  <data name="SettingsCloseToTray" xml:space="preserve"><value>╪Ñ╪║┘ä╪º┘é ╪º┘ä┘ä┘ê╪¡╪⌐ ╪Ñ┘ä┘ë ╪º┘ä╪»╪▒╪¼</value></data>
+-  <data name="SettingsOverlayOpacity" xml:space="preserve"><value>╪┤┘ü╪º┘ü┘è╪⌐ ╪º┘ä╪╖╪¿┘é╪⌐</value></data>
+-  <data name="SettingsReducedMotion" xml:space="preserve"><value>╪¬┘é┘ä┘è┘ä ╪º┘ä╪¡╪▒┘â╪⌐</value></data>
+-  <data name="SettingsLanguage" xml:space="preserve"><value>╪º┘ä┘ä╪║╪⌐</value></data>
+-  <data name="SettingsTheme" xml:space="preserve"><value>╪º┘ä╪│┘à╪⌐</value></data>
+-  <data name="SettingsSave" xml:space="preserve"><value>╪¡┘ü╪╕</value></data>
+-  <data name="SettingsClose" xml:space="preserve"><value>╪Ñ╪║┘ä╪º┘é</value></data>
+-  <data name="LanguageAuto" xml:space="preserve"><value>╪¬┘ä┘é╪º╪ª┘è</value></data>
+-  <data name="LanguageEnglish" xml:space="preserve"><value>╪º┘ä╪Ñ┘å╪¼┘ä┘è╪▓┘è╪⌐</value></data>
+-  <data name="LanguagePersian" xml:space="preserve"><value>╪º┘ä┘ü╪º╪▒╪│┘è╪⌐</value></data>
+-  <data name="LanguageArabic" xml:space="preserve"><value>╪º┘ä╪╣╪▒╪¿┘è╪⌐</value></data>
+-  <data name="ValidationEyeResetIntervalInvalid" xml:space="preserve"><value>┘è╪¼╪¿ ╪ú┘å ┘è┘â┘ê┘å ┘ü╪º╪╡┘ä ╪▒╪º╪¡╪⌐ ╪º┘ä╪╣┘è┘å ╪¿┘è┘å 1 ┘ê480 ╪»┘é┘è┘é╪⌐.</value></data>
+-  <data name="ValidationEyeResetDurationInvalid" xml:space="preserve"><value>┘è╪¼╪¿ ╪ú┘å ╪¬┘â┘ê┘å ┘à╪»╪⌐ ╪▒╪º╪¡╪⌐ ╪º┘ä╪╣┘è┘å ╪¿┘è┘å 5 ┘ê600 ╪½╪º┘å┘è╪⌐.</value></data>
+-  <data name="ValidationMoveBreakIntervalInvalid" xml:space="preserve"><value>┘è╪¼╪¿ ╪ú┘å ┘è┘â┘ê┘å ┘ü╪º╪╡┘ä ╪º╪│╪¬╪▒╪º╪¡╪⌐ ╪º┘ä╪¡╪▒┘â╪⌐ ╪¿┘è┘å 1 ┘ê480 ╪»┘é┘è┘é╪⌐.</value></data>
+-  <data name="ValidationMoveBreakDurationInvalid" xml:space="preserve"><value>┘è╪¼╪¿ ╪ú┘å ╪¬┘â┘ê┘å ┘à╪»╪⌐ ╪º╪│╪¬╪▒╪º╪¡╪⌐ ╪º┘ä╪¡╪▒┘â╪⌐ ╪¿┘è┘å 5 ┘ê600 ╪½╪º┘å┘è╪⌐.</value></data>
+-  <data name="ValidationSnoozeDurationInvalid" xml:space="preserve"><value>┘è╪¼╪¿ ╪ú┘å ╪¬┘â┘ê┘å ┘à╪»╪⌐ ╪º┘ä╪¬╪ú╪¼┘è┘ä ╪¿┘è┘å 1 ┘ê60 ╪»┘é┘è┘é╪⌐.</value></data>
+-  <data name="ValidationIdleThresholdInvalid" xml:space="preserve"><value>┘è╪¼╪¿ ╪ú┘å ┘è┘â┘ê┘å ╪¡╪» ╪º┘ä╪«┘à┘ê┘ä ╪¿┘è┘å 1 ┘ê120 ╪»┘é┘è┘é╪⌐.</value></data>
+-  <data name="ValidationOverlayOpacityInvalid" xml:space="preserve"><value>┘è╪¼╪¿ ╪ú┘å ╪¬┘â┘ê┘å ╪┤┘ü╪º┘ü┘è╪⌐ ╪º┘ä╪╖╪¿┘é╪⌐ ╪¿┘è┘å 0.3 ┘ê1.0.</value></data>
+-  <data name="ValidationWorkHoursRangeInvalid" xml:space="preserve"><value>┘ä╪º ┘è┘à┘â┘å ╪ú┘å ┘è┘â┘ê┘å ┘ê┘é╪¬ ╪º┘ä╪¿╪»╪º┘è╪⌐ ┘ê╪º┘ä┘å┘ç╪º┘è╪⌐ ┘à╪¬╪╖╪º╪¿┘é┘è┘å.</value></data>
+-  <data name="TrayTooltipStatus" xml:space="preserve"><value>╪ú┘ê┘è╪▒╪º</value></data>
+-  <data name="TrayTooltipNextBreak" xml:space="preserve"><value>╪º┘ä╪º╪│╪¬╪▒╪º╪¡╪⌐ ╪º┘ä╪¬╪º┘ä┘è╪⌐ ╪«┘ä╪º┘ä {0}</value></data>
+-  <data name="TrayPauseReminders" xml:space="preserve"><value>╪Ñ┘è┘é╪º┘ü ╪º┘ä╪¬╪░┘â┘è╪▒╪º╪¬</value></data>
+-  <data name="TrayResumeReminders" xml:space="preserve"><value>╪º╪│╪¬╪ª┘å╪º┘ü ╪º┘ä╪¬╪░┘â┘è╪▒╪º╪¬</value></data>
+-</root>
+diff --git a/src/Awayra.App/Resources/Strings.fa.resx b/src/Awayra.App/Resources/Strings.fa.resx
+deleted file mode 100644
+index e31f29e..0000000
+--- a/src/Awayra.App/Resources/Strings.fa.resx
++++ /dev/null
+@@ -1,81 +0,0 @@
+-<?xml version="1.0" encoding="utf-8"?>
+-<root>
+-  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+-  <resheader name="version"><value>2.0</value></resheader>
+-  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+-  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+-  <data name="AppTitle" xml:space="preserve"><value>╪ó┘ê╪º█î╪▒╪º</value></data>
+-  <data name="StatusRunning" xml:space="preserve"><value>█î╪º╪»╪ó┘ê╪▒┘ç╪º ┘ü╪╣╪º┘ä ┘ç╪│╪¬┘å╪»</value></data>
+-  <data name="StatusPaused" xml:space="preserve"><value>┘à╪¬┘ê┘é┘ü ╪┤╪»┘ç</value></data>
+-  <data name="StatusPausedIdle" xml:space="preserve"><value>╪»╪▒ ╪▓┘à╪º┘å ╪¿█î┌⌐╪º╪▒█î ┘à╪¬┘ê┘é┘ü ╪┤╪»┘ç</value></data>
+-  <data name="StatusOutsideWorkHours" xml:space="preserve"><value>╪«╪º╪▒╪¼ ╪º╪▓ ╪│╪º╪╣╪º╪¬ ┌⌐╪º╪▒█î</value></data>
+-  <data name="StatusBreakActive" xml:space="preserve"><value>╪º╪│╪¬╪▒╪º╪¡╪¬ ╪»╪▒ ╪¼╪▒█î╪º┘å ╪º╪│╪¬</value></data>
+-  <data name="StatusSnoozed" xml:space="preserve"><value>╪¿┘ç ╪¬╪╣┘ê█î┘é ╪º┘ü╪¬╪º╪»┘ç</value></data>
+-  <data name="StatusDisabled" xml:space="preserve"><value>█î╪º╪»╪ó┘ê╪▒┘ç╪º ╪║█î╪▒┘ü╪╣╪º┘ä ┘ç╪│╪¬┘å╪»</value></data>
+-  <data name="EyeReset" xml:space="preserve"><value>╪º╪│╪¬╪▒╪º╪¡╪¬ ┌å╪┤┘à</value></data>
+-  <data name="MoveBreak" xml:space="preserve"><value>╪º╪│╪¬╪▒╪º╪¡╪¬ ╪¡╪▒┌⌐╪¬█î</value></data>
+-  <data name="Enabled" xml:space="preserve"><value>┘ü╪╣╪º┘ä</value></data>
+-  <data name="Disabled" xml:space="preserve"><value>╪║█î╪▒┘ü╪╣╪º┘ä</value></data>
+-  <data name="Pause" xml:space="preserve"><value>╪¬┘ê┘é┘ü</value></data>
+-  <data name="Resume" xml:space="preserve"><value>╪º╪»╪º┘à┘ç</value></data>
+-  <data name="EyeResetNow" xml:space="preserve"><value>╪º╪│╪¬╪▒╪º╪¡╪¬ ┌å╪┤┘à ╪º┘ä╪º┘å</value></data>
+-  <data name="MoveBreakNow" xml:space="preserve"><value>╪º╪│╪¬╪▒╪º╪¡╪¬ ╪¡╪▒┌⌐╪¬█î ╪º┘ä╪º┘å</value></data>
+-  <data name="Settings" xml:space="preserve"><value>╪¬┘å╪╕█î┘à╪º╪¬</value></data>
+-  <data name="Quit" xml:space="preserve"><value>╪«╪▒┘ê╪¼</value></data>
+-  <data name="OpenAwayra" xml:space="preserve"><value>╪¿╪º╪▓ ┌⌐╪▒╪»┘å ╪ó┘ê╪º█î╪▒╪º</value></data>
+-  <data name="TodayEyeCompleted" xml:space="preserve"><value>╪º╪│╪¬╪▒╪º╪¡╪¬ ┌å╪┤┘à ╪º┘à╪▒┘ê╪▓</value></data>
+-  <data name="TodayMoveCompleted" xml:space="preserve"><value>╪º╪│╪¬╪▒╪º╪¡╪¬ ╪¡╪▒┌⌐╪¬█î ╪º┘à╪▒┘ê╪▓</value></data>
+-  <data name="TodaySkipped" xml:space="preserve"><value>╪▒╪» ╪┤╪»┘ç ╪º┘à╪▒┘ê╪▓</value></data>
+-  <data name="TodaySnoozed" xml:space="preserve"><value>╪¿┘ç ╪¬╪╣┘ê█î┘é ╪º┘ü╪¬╪º╪»┘ç ╪º┘à╪▒┘ê╪▓</value></data>
+-  <data name="EyeResetInstructionDistance" xml:space="preserve"><value>╪¿┘ç █î┌⌐ ╪¼╪│┘à ╪»┘ê╪▒ ┘å┌»╪º┘ç ┌⌐┘å█î╪» ┘ê ┌å┘å╪» ┘å┘ü╪│ ╪ó╪▒╪º┘à ╪¿┌⌐╪┤█î╪».</value></data>
+-  <data name="EyeResetInstructionBlink" xml:space="preserve"><value>╪╖╪¿█î╪╣█î ┘╛┘ä┌⌐ ╪¿╪▓┘å█î╪» ┘ê ╪╡┘ê╪▒╪¬ ╪«┘ê╪» ╪▒╪º ╪┤┘ä ┌⌐┘å█î╪».</value></data>
+-  <data name="Skip" xml:space="preserve"><value>╪▒╪» ┌⌐╪▒╪»┘å</value></data>
+-  <data name="Snooze" xml:space="preserve"><value>╪¬╪╣┘ê█î┘é</value></data>
+-  <data name="Complete" xml:space="preserve"><value>┘╛╪º█î╪º┘å</value></data>
+-  <data name="SecondsRemaining" xml:space="preserve"><value>╪½╪º┘å█î┘ç ╪¿╪º┘é█îΓÇî┘à╪º┘å╪»┘ç</value></data>
+-  <data name="MoveActivityStand" xml:space="preserve"><value>╪¿┘ä┘å╪» ╪┤┘ê█î╪» ┘ê ┘ê╪╢╪╣█î╪¬ ┘å╪┤╪│╪¬┘å ╪«┘ê╪» ╪▒╪º ╪º╪╡┘ä╪º╪¡ ┌⌐┘å█î╪».</value></data>
+-  <data name="MoveActivityWalk" xml:space="preserve"><value>┌⌐┘à█î ╪º╪▓ ┘à█î╪▓ ┘ü╪º╪╡┘ä┘ç ╪¿┌»█î╪▒█î╪» ┘ê ╪▒╪º┘ç ╪¿╪▒┘ê█î╪».</value></data>
+-  <data name="MoveActivityShoulders" xml:space="preserve"><value>╪┤╪º┘å┘çΓÇî┘ç╪º█î ╪«┘ê╪» ╪▒╪º ╪┤┘ä ┌⌐┘å█î╪» ┘ê ┘ü┌⌐ ╪▒╪º ╪º╪▓ ╪¡╪º┘ä╪¬ ┘ü╪┤╪▒╪»┌»█î ╪«╪º╪▒╪¼ ┌⌐┘å█î╪».</value></data>
+-  <data name="MoveActivityNeck" xml:space="preserve"><value>┌»╪▒╪»┘å ╪▒╪º ╪¿┘çΓÇî╪ó╪▒╪º┘à█î ╪»╪▒ ┘à╪¡╪»┘ê╪»┘çΓÇî╪º█î ╪▒╪º╪¡╪¬ ╪¡╪▒┌⌐╪¬ ╪»┘ç█î╪».</value></data>
+-  <data name="MoveActivityStretch" xml:space="preserve"><value>╪¿╪º╪▓┘ê┘ç╪º ╪▒╪º ╪¿┘çΓÇî╪ó╪▒╪º┘à█î ┘ê ╪¿╪»┘ê┘å ┘ü╪┤╪º╪▒ ╪¿┌⌐╪┤█î╪».</value></data>
+-  <data name="SettingsEyeReset" xml:space="preserve"><value>╪º╪│╪¬╪▒╪º╪¡╪¬ ┌å╪┤┘à</value></data>
+-  <data name="SettingsMoveBreak" xml:space="preserve"><value>╪º╪│╪¬╪▒╪º╪¡╪¬ ╪¡╪▒┌⌐╪¬█î</value></data>
+-  <data name="SettingsBehavior" xml:space="preserve"><value>╪▒┘ü╪¬╪º╪▒</value></data>
+-  <data name="SettingsAppearance" xml:space="preserve"><value>╪╕╪º┘ç╪▒</value></data>
+-  <data name="SettingsEnabled" xml:space="preserve"><value>┘ü╪╣╪º┘ä</value></data>
+-  <data name="SettingsIntervalMinutes" xml:space="preserve"><value>┘ü╪º╪╡┘ä┘ç (╪»┘é█î┘é┘ç)</value></data>
+-  <data name="SettingsDurationSeconds" xml:space="preserve"><value>┘à╪»╪¬ (╪½╪º┘å█î┘ç)</value></data>
+-  <data name="SettingsAllowSkip" xml:space="preserve"><value>╪º╪¼╪º╪▓┘ç ╪▒╪» ┌⌐╪▒╪»┘å</value></data>
+-  <data name="SettingsAllowSnooze" xml:space="preserve"><value>╪º╪¼╪º╪▓┘ç ╪¬╪╣┘ê█î┘é</value></data>
+-  <data name="SettingsSnoozeDuration" xml:space="preserve"><value>┘à╪»╪¬ ╪¬╪╣┘ê█î┘é (╪»┘é█î┘é┘ç)</value></data>
+-  <data name="SettingsPauseWhileIdle" xml:space="preserve"><value>╪¬┘ê┘é┘ü ┘ç┘å┌»╪º┘à ╪¿█î┌⌐╪º╪▒█î ╪│█î╪│╪¬┘à</value></data>
+-  <data name="SettingsIdleThreshold" xml:space="preserve"><value>╪ó╪│╪¬╪º┘å┘ç ╪¿█î┌⌐╪º╪▒█î (╪»┘é█î┘é┘ç)</value></data>
+-  <data name="SettingsWorkHoursEnabled" xml:space="preserve"><value>┘ü╪╣╪º┘äΓÇî╪│╪º╪▓█î ╪│╪º╪╣╪º╪¬ ┌⌐╪º╪▒█î</value></data>
+-  <data name="SettingsWorkStart" xml:space="preserve"><value>╪┤╪▒┘ê╪╣ ┌⌐╪º╪▒</value></data>
+-  <data name="SettingsWorkEnd" xml:space="preserve"><value>┘╛╪º█î╪º┘å ┌⌐╪º╪▒</value></data>
+-  <data name="SettingsRunAtStartup" xml:space="preserve"><value>╪º╪¼╪▒╪º█î ┘ç┘å┌»╪º┘à ╪▒╪º┘çΓÇî╪º┘å╪»╪º╪▓█î ┘ê█î┘å╪»┘ê╪▓</value></data>
+-  <data name="SettingsStartMinimized" xml:space="preserve"><value>╪┤╪▒┘ê╪╣ ╪¿┘çΓÇî╪╡┘ê╪▒╪¬ ┌⌐┘ê┌å┌⌐ΓÇî╪┤╪»┘ç</value></data>
+-  <data name="SettingsCloseToTray" xml:space="preserve"><value>╪¿╪│╪¬┘å ╪»╪º╪┤╪¿┘ê╪▒╪» ╪¿┘ç ╪│█î┘å█î</value></data>
+-  <data name="SettingsOverlayOpacity" xml:space="preserve"><value>╪┤┘ü╪º┘ü█î╪¬ ┘╛┘ê╪┤╪┤</value></data>
+-  <data name="SettingsReducedMotion" xml:space="preserve"><value>┌⌐╪º┘ç╪┤ ╪¡╪▒┌⌐╪¬</value></data>
+-  <data name="SettingsLanguage" xml:space="preserve"><value>╪▓╪¿╪º┘å</value></data>
+-  <data name="SettingsTheme" xml:space="preserve"><value>┘╛┘ê╪│╪¬┘ç</value></data>
+-  <data name="SettingsSave" xml:space="preserve"><value>╪░╪«█î╪▒┘ç</value></data>
+-  <data name="SettingsClose" xml:space="preserve"><value>╪¿╪│╪¬┘å</value></data>
+-  <data name="LanguageAuto" xml:space="preserve"><value>╪«┘ê╪»┌⌐╪º╪▒</value></data>
+-  <data name="LanguageEnglish" xml:space="preserve"><value>╪º┘å┌»┘ä█î╪│█î</value></data>
+-  <data name="LanguagePersian" xml:space="preserve"><value>┘ü╪º╪▒╪│█î</value></data>
+-  <data name="LanguageArabic" xml:space="preserve"><value>╪╣╪▒╪¿█î</value></data>
+-  <data name="ValidationEyeResetIntervalInvalid" xml:space="preserve"><value>┘ü╪º╪╡┘ä┘ç ╪º╪│╪¬╪▒╪º╪¡╪¬ ┌å╪┤┘à ╪¿╪º█î╪» ╪¿█î┘å █▒ ╪¬╪º █┤█╕█░ ╪»┘é█î┘é┘ç ╪¿╪º╪┤╪».</value></data>
+-  <data name="ValidationEyeResetDurationInvalid" xml:space="preserve"><value>┘à╪»╪¬ ╪º╪│╪¬╪▒╪º╪¡╪¬ ┌å╪┤┘à ╪¿╪º█î╪» ╪¿█î┘å █╡ ╪¬╪º █╢█░█░ ╪½╪º┘å█î┘ç ╪¿╪º╪┤╪».</value></data>
+-  <data name="ValidationMoveBreakIntervalInvalid" xml:space="preserve"><value>┘ü╪º╪╡┘ä┘ç ╪º╪│╪¬╪▒╪º╪¡╪¬ ╪¡╪▒┌⌐╪¬█î ╪¿╪º█î╪» ╪¿█î┘å █▒ ╪¬╪º █┤█╕█░ ╪»┘é█î┘é┘ç ╪¿╪º╪┤╪».</value></data>
+-  <data name="ValidationMoveBreakDurationInvalid" xml:space="preserve"><value>┘à╪»╪¬ ╪º╪│╪¬╪▒╪º╪¡╪¬ ╪¡╪▒┌⌐╪¬█î ╪¿╪º█î╪» ╪¿█î┘å █╡ ╪¬╪º █╢█░█░ ╪½╪º┘å█î┘ç ╪¿╪º╪┤╪».</value></data>
+-  <data name="ValidationSnoozeDurationInvalid" xml:space="preserve"><value>┘à╪»╪¬ ╪¬╪╣┘ê█î┘é ╪¿╪º█î╪» ╪¿█î┘å █▒ ╪¬╪º █╢█░ ╪»┘é█î┘é┘ç ╪¿╪º╪┤╪».</value></data>
+-  <data name="ValidationIdleThresholdInvalid" xml:space="preserve"><value>╪ó╪│╪¬╪º┘å┘ç ╪¿█î┌⌐╪º╪▒█î ╪¿╪º█î╪» ╪¿█î┘å █▒ ╪¬╪º █▒█▓█░ ╪»┘é█î┘é┘ç ╪¿╪º╪┤╪».</value></data>
+-  <data name="ValidationOverlayOpacityInvalid" xml:space="preserve"><value>╪┤┘ü╪º┘ü█î╪¬ ┘╛┘ê╪┤╪┤ ╪¿╪º█î╪» ╪¿█î┘å █░┘½█│ ╪¬╪º █▒┘½█░ ╪¿╪º╪┤╪».</value></data>
+-  <data name="ValidationWorkHoursRangeInvalid" xml:space="preserve"><value>╪▓┘à╪º┘å ╪┤╪▒┘ê╪╣ ┘ê ┘╛╪º█î╪º┘å ┌⌐╪º╪▒ ┘å┘à█îΓÇî╪¬┘ê╪º┘å╪» █î┌⌐╪│╪º┘å ╪¿╪º╪┤╪».</value></data>
+-  <data name="TrayTooltipStatus" xml:space="preserve"><value>╪ó┘ê╪º█î╪▒╪º</value></data>
+-  <data name="TrayTooltipNextBreak" xml:space="preserve"><value>╪º╪│╪¬╪▒╪º╪¡╪¬ ╪¿╪╣╪»█î ╪»╪▒ {0}</value></data>
+-  <data name="TrayPauseReminders" xml:space="preserve"><value>╪¬┘ê┘é┘ü █î╪º╪»╪ó┘ê╪▒┘ç╪º</value></data>
+-  <data name="TrayResumeReminders" xml:space="preserve"><value>╪º╪»╪º┘à┘ç █î╪º╪»╪ó┘ê╪▒┘ç╪º</value></data>
+-</root>
+diff --git a/src/Awayra.App/Resources/Strings.resx b/src/Awayra.App/Resources/Strings.resx
+index 818a776..b03477f 100644
+--- a/src/Awayra.App/Resources/Strings.resx
++++ b/src/Awayra.App/Resources/Strings.resx
+@@ -8,6 +8,8 @@
+   <data name="StatusRunning" xml:space="preserve"><value>Reminders active</value></data>
+   <data name="StatusPaused" xml:space="preserve"><value>Paused</value></data>
+   <data name="StatusPausedIdle" xml:space="preserve"><value>Paused while idle</value></data>
++  <data name="StatusIdle" xml:space="preserve"><value>Idle</value></data>
++  <data name="StatusConfigurationPaused" xml:space="preserve"><value>Settings open</value></data>
+   <data name="StatusOutsideWorkHours" xml:space="preserve"><value>Outside work hours</value></data>
+   <data name="StatusBreakActive" xml:space="preserve"><value>Break in progress</value></data>
+   <data name="StatusSnoozed" xml:space="preserve"><value>Snoozed</value></data>
+@@ -48,7 +50,7 @@
+   <data name="SettingsAllowSkip" xml:space="preserve"><value>Allow skip</value></data>
+   <data name="SettingsAllowSnooze" xml:space="preserve"><value>Allow snooze</value></data>
+   <data name="SettingsSnoozeDuration" xml:space="preserve"><value>Snooze duration (minutes)</value></data>
+-  <data name="SettingsPauseWhileIdle" xml:space="preserve"><value>Pause while computer is idle</value></data>
++  <data name="SettingsPauseWhileIdle" xml:space="preserve"><value>Reset reminders after idle</value></data>
+   <data name="SettingsIdleThreshold" xml:space="preserve"><value>Idle threshold (minutes)</value></data>
+   <data name="SettingsWorkHoursEnabled" xml:space="preserve"><value>Enable work hours</value></data>
+   <data name="SettingsWorkStart" xml:space="preserve"><value>Work start</value></data>
+@@ -56,23 +58,18 @@
+   <data name="SettingsRunAtStartup" xml:space="preserve"><value>Run at Windows startup</value></data>
+   <data name="SettingsStartMinimized" xml:space="preserve"><value>Start minimized</value></data>
+   <data name="SettingsCloseToTray" xml:space="preserve"><value>Close dashboard to tray</value></data>
+-  <data name="SettingsOverlayOpacity" xml:space="preserve"><value>Overlay opacity</value></data>
++  <data name="SettingsGlassClarity" xml:space="preserve"><value>Glass clarity</value></data>
+   <data name="SettingsReducedMotion" xml:space="preserve"><value>Reduced motion</value></data>
+-  <data name="SettingsLanguage" xml:space="preserve"><value>Language</value></data>
+   <data name="SettingsTheme" xml:space="preserve"><value>Theme</value></data>
+   <data name="SettingsSave" xml:space="preserve"><value>Save</value></data>
+   <data name="SettingsClose" xml:space="preserve"><value>Close</value></data>
+-  <data name="LanguageAuto" xml:space="preserve"><value>Automatic</value></data>
+-  <data name="LanguageEnglish" xml:space="preserve"><value>English</value></data>
+-  <data name="LanguagePersian" xml:space="preserve"><value>Persian</value></data>
+-  <data name="LanguageArabic" xml:space="preserve"><value>Arabic</value></data>
+   <data name="ValidationEyeResetIntervalInvalid" xml:space="preserve"><value>Eye reset interval must be between 1 and 480 minutes.</value></data>
+   <data name="ValidationEyeResetDurationInvalid" xml:space="preserve"><value>Eye reset duration must be between 5 and 600 seconds.</value></data>
+   <data name="ValidationMoveBreakIntervalInvalid" xml:space="preserve"><value>Move break interval must be between 1 and 480 minutes.</value></data>
+   <data name="ValidationMoveBreakDurationInvalid" xml:space="preserve"><value>Move break duration must be between 5 and 600 seconds.</value></data>
+   <data name="ValidationSnoozeDurationInvalid" xml:space="preserve"><value>Snooze duration must be between 1 and 60 minutes.</value></data>
+   <data name="ValidationIdleThresholdInvalid" xml:space="preserve"><value>Idle threshold must be between 1 and 120 minutes.</value></data>
+-  <data name="ValidationOverlayOpacityInvalid" xml:space="preserve"><value>Overlay opacity must be between 0.3 and 1.0.</value></data>
++  <data name="ValidationGlassClarityInvalid" xml:space="preserve"><value>Glass clarity must be between 0 and 150.</value></data>
+   <data name="ValidationWorkHoursRangeInvalid" xml:space="preserve"><value>Work start and end cannot be the same time.</value></data>
+   <data name="TrayTooltipStatus" xml:space="preserve"><value>Awayra</value></data>
+   <data name="TrayTooltipNextBreak" xml:space="preserve"><value>Next break in {0}</value></data>
+diff --git a/src/Awayra.App/Resources/Theme.xaml b/src/Awayra.App/Resources/Theme.xaml
+index 915c0b3..3acb92c 100644
+--- a/src/Awayra.App/Resources/Theme.xaml
++++ b/src/Awayra.App/Resources/Theme.xaml
+@@ -1,57 +1,273 @@
+ <ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+-  <Color x:Key="Awayra.Background">#FF121316</Color>
+-  <Color x:Key="Awayra.Surface">#FF1B1E24</Color>
+-  <Color x:Key="Awayra.Border">#FF2B3038</Color>
+-  <Color x:Key="Awayra.Text">#FFF3F5F7</Color>
+-  <Color x:Key="Awayra.TextMuted">#FFB8C0CC</Color>
+-  <Color x:Key="Awayra.Accent">#FF4CC2FF</Color>
+-
+-  <SolidColorBrush x:Key="Awayra.BackgroundBrush" Color="{StaticResource Awayra.Background}" />
+-  <SolidColorBrush x:Key="Awayra.SurfaceBrush" Color="{StaticResource Awayra.Surface}" />
+-  <SolidColorBrush x:Key="Awayra.BorderBrush" Color="{StaticResource Awayra.Border}" />
+-  <SolidColorBrush x:Key="Awayra.TextBrush" Color="{StaticResource Awayra.Text}" />
+-  <SolidColorBrush x:Key="Awayra.TextMutedBrush" Color="{StaticResource Awayra.TextMuted}" />
+-  <SolidColorBrush x:Key="Awayra.AccentBrush" Color="{StaticResource Awayra.Accent}" />
++
++  <!-- Palette -->
++  <Color x:Key="PrimaryText">#FFF4F7FB</Color>
++  <Color x:Key="SecondaryText">#FFC7D0E0</Color>
++  <Color x:Key="MutedText">#FF98A4B8</Color>
++  <Color x:Key="DarkSurface">#FF1A1E24</Color>
++  <Color x:Key="DarkSurfaceElevated">#FF20252D</Color>
++  <Color x:Key="DarkBorder">#FF46505E</Color>
++  <Color x:Key="Accent">#FF4DBCF3</Color>
++  <Color x:Key="AccentHover">#FF67C8F7</Color>
++  <Color x:Key="AccentPressed">#FF32A9E3</Color>
++  <Color x:Key="AccentText">#FF07131C</Color>
++  <Color x:Key="DisabledText">#FF717B89</Color>
++  <Color x:Key="LightWindowBackground">#FFF4F7FB</Color>
++  <Color x:Key="LightPrimaryText">#FF111827</Color>
++  <Color x:Key="LightInputBackground">#FFFFFFFF</Color>
++  <Color x:Key="LightInputText">#FF111827</Color>
++  <Color x:Key="Validation">#FFFF6B6B</Color>
++  <Color x:Key="OverlayScrim">#660E1116</Color>
++
++  <SolidColorBrush x:Key="PrimaryTextBrush" Color="{StaticResource PrimaryText}" />
++  <SolidColorBrush x:Key="SecondaryTextBrush" Color="{StaticResource SecondaryText}" />
++  <SolidColorBrush x:Key="MutedTextBrush" Color="{StaticResource MutedText}" />
++  <SolidColorBrush x:Key="DarkSurfaceBrush" Color="{StaticResource DarkSurface}" />
++  <SolidColorBrush x:Key="DarkSurfaceElevatedBrush" Color="{StaticResource DarkSurfaceElevated}" />
++  <SolidColorBrush x:Key="DarkBorderBrush" Color="{StaticResource DarkBorder}" />
++  <SolidColorBrush x:Key="AccentBrush" Color="{StaticResource Accent}" />
++  <SolidColorBrush x:Key="AccentHoverBrush" Color="{StaticResource AccentHover}" />
++  <SolidColorBrush x:Key="AccentPressedBrush" Color="{StaticResource AccentPressed}" />
++  <SolidColorBrush x:Key="AccentTextBrush" Color="{StaticResource AccentText}" />
++  <SolidColorBrush x:Key="DisabledTextBrush" Color="{StaticResource DisabledText}" />
++  <SolidColorBrush x:Key="LightWindowBackgroundBrush" Color="{StaticResource LightWindowBackground}" />
++  <SolidColorBrush x:Key="LightPrimaryTextBrush" Color="{StaticResource LightPrimaryText}" />
++  <SolidColorBrush x:Key="LightInputBackgroundBrush" Color="{StaticResource LightInputBackground}" />
++  <SolidColorBrush x:Key="LightInputTextBrush" Color="{StaticResource LightInputText}" />
++  <SolidColorBrush x:Key="ValidationBrush" Color="{StaticResource Validation}" />
++  <SolidColorBrush x:Key="OverlayScrimBrush" Color="{StaticResource OverlayScrim}" />
++
++  <!-- Legacy aliases -->
++  <SolidColorBrush x:Key="Awayra.BackgroundBrush" Color="{StaticResource LightWindowBackground}" />
++  <SolidColorBrush x:Key="Awayra.SurfaceBrush" Color="{StaticResource DarkSurface}" />
++  <SolidColorBrush x:Key="Awayra.BorderBrush" Color="{StaticResource DarkBorder}" />
++  <SolidColorBrush x:Key="Awayra.TextBrush" Color="{StaticResource PrimaryText}" />
++  <SolidColorBrush x:Key="Awayra.TextMutedBrush" Color="{StaticResource SecondaryText}" />
++  <SolidColorBrush x:Key="Awayra.AccentBrush" Color="{StaticResource Accent}" />
+ 
+   <FontFamily x:Key="Awayra.Font">Segoe UI Variable, Segoe UI, Tahoma</FontFamily>
+ 
++  <!-- Scoped resources for dark cards and overlay panels -->
++  <ResourceDictionary x:Key="Awayra.DarkSurfaceResources">
++    <Style TargetType="TextBlock">
++      <Setter Property="Foreground" Value="{StaticResource PrimaryTextBrush}" />
++    </Style>
++    <Style TargetType="Label">
++      <Setter Property="Foreground" Value="{StaticResource PrimaryTextBrush}" />
++    </Style>
++    <Style TargetType="CheckBox">
++      <Setter Property="Foreground" Value="{StaticResource PrimaryTextBrush}" />
++      <Setter Property="FontFamily" Value="{StaticResource Awayra.Font}" />
++      <Setter Property="Cursor" Value="Hand" />
++      <Setter Property="Template">
++        <Setter.Value>
++          <ControlTemplate TargetType="CheckBox">
++            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
++              <Border x:Name="Box"
++                      Width="16" Height="16"
++                      CornerRadius="3"
++                      BorderBrush="{StaticResource DarkBorderBrush}"
++                      BorderThickness="1.5"
++                      Background="{StaticResource DarkSurfaceElevatedBrush}"
++                      Margin="0,0,8,0"
++                      VerticalAlignment="Center">
++                <Path x:Name="CheckMark"
++                      Data="M 2,5 L 5,8 L 10,2"
++                      Stroke="{StaticResource PrimaryTextBrush}"
++                      StrokeThickness="2"
++                      Visibility="Collapsed"
++                      Margin="1" />
++              </Border>
++              <ContentPresenter VerticalAlignment="Center" RecognizesAccessKey="True" />
++            </StackPanel>
++            <ControlTemplate.Triggers>
++              <Trigger Property="IsChecked" Value="True">
++                <Setter TargetName="CheckMark" Property="Visibility" Value="Visible" />
++                <Setter TargetName="Box" Property="BorderBrush" Value="{StaticResource AccentBrush}" />
++                <Setter TargetName="Box" Property="Background" Value="{StaticResource AccentBrush}" />
++                <Setter TargetName="CheckMark" Property="Stroke" Value="{StaticResource AccentTextBrush}" />
++              </Trigger>
++              <Trigger Property="IsMouseOver" Value="True">
++                <Setter TargetName="Box" Property="BorderBrush" Value="{StaticResource AccentHoverBrush}" />
++              </Trigger>
++              <Trigger Property="IsEnabled" Value="False">
++                <Setter Property="Foreground" Value="{StaticResource DisabledTextBrush}" />
++                <Setter TargetName="Box" Property="Opacity" Value="0.5" />
++              </Trigger>
++              <Trigger Property="IsKeyboardFocused" Value="True">
++                <Setter TargetName="Box" Property="BorderBrush" Value="{StaticResource AccentBrush}" />
++              </Trigger>
++            </ControlTemplate.Triggers>
++          </ControlTemplate>
++        </Setter.Value>
++      </Setter>
++    </Style>
++    <Style TargetType="RadioButton">
++      <Setter Property="Foreground" Value="{StaticResource PrimaryTextBrush}" />
++      <Setter Property="FontFamily" Value="{StaticResource Awayra.Font}" />
++    </Style>
++    <Style TargetType="Slider">
++      <Setter Property="Foreground" Value="{StaticResource PrimaryTextBrush}" />
++    </Style>
++  </ResourceDictionary>
++
++  <!-- Light chrome windows (dashboard, settings) -->
++  <Style x:Key="Awayra.LightChromeWindow" TargetType="Window">
++    <Setter Property="Background" Value="{StaticResource LightWindowBackgroundBrush}" />
++    <Setter Property="Foreground" Value="{StaticResource LightPrimaryTextBrush}" />
++    <Setter Property="FontFamily" Value="{StaticResource Awayra.Font}" />
++  </Style>
++
++  <!-- Dark chrome windows (if needed elsewhere) -->
+   <Style TargetType="Window">
+-    <Setter Property="Background" Value="{StaticResource Awayra.BackgroundBrush}" />
+-    <Setter Property="Foreground" Value="{StaticResource Awayra.TextBrush}" />
++    <Setter Property="Background" Value="{StaticResource LightWindowBackgroundBrush}" />
++    <Setter Property="Foreground" Value="{StaticResource LightPrimaryTextBrush}" />
+     <Setter Property="FontFamily" Value="{StaticResource Awayra.Font}" />
+   </Style>
+ 
+   <Style x:Key="Awayra.Card" TargetType="Border">
+-    <Setter Property="Background" Value="{StaticResource Awayra.SurfaceBrush}" />
+-    <Setter Property="BorderBrush" Value="{StaticResource Awayra.BorderBrush}" />
++    <Setter Property="Background" Value="{StaticResource DarkSurfaceBrush}" />
++    <Setter Property="BorderBrush" Value="{StaticResource DarkBorderBrush}" />
+     <Setter Property="BorderThickness" Value="1" />
+     <Setter Property="CornerRadius" Value="14" />
+     <Setter Property="Padding" Value="16" />
+   </Style>
+ 
++  <!-- Inheritable foreground for content inside dark cards and overlays -->
++  <Style x:Key="Awayra.CardContent" TargetType="FrameworkElement">
++    <Setter Property="TextElement.Foreground" Value="{StaticResource PrimaryTextBrush}" />
++  </Style>
++
++  <!-- Muted text inside dark cards -->
++  <Style x:Key="Awayra.MutedText" TargetType="TextBlock">
++    <Setter Property="Foreground" Value="{StaticResource SecondaryTextBrush}" />
++  </Style>
++
++  <!-- Input controls -->
++  <Style x:Key="Awayra.InputTextBox" TargetType="TextBox">
++    <Setter Property="Background" Value="{StaticResource LightInputBackgroundBrush}" />
++    <Setter Property="Foreground" Value="{StaticResource LightInputTextBrush}" />
++    <Setter Property="CaretBrush" Value="{StaticResource LightInputTextBrush}" />
++    <Setter Property="BorderBrush" Value="{StaticResource DarkBorderBrush}" />
++    <Setter Property="BorderThickness" Value="1" />
++    <Setter Property="Padding" Value="6,4" />
++    <Setter Property="FontFamily" Value="{StaticResource Awayra.Font}" />
++    <Style.Triggers>
++      <Trigger Property="IsMouseOver" Value="True">
++        <Setter Property="BorderBrush" Value="{StaticResource AccentHoverBrush}" />
++      </Trigger>
++      <Trigger Property="IsKeyboardFocused" Value="True">
++        <Setter Property="BorderBrush" Value="{StaticResource AccentBrush}" />
++      </Trigger>
++      <Trigger Property="IsEnabled" Value="False">
++        <Setter Property="Foreground" Value="{StaticResource DisabledTextBrush}" />
++        <Setter Property="Background" Value="#FFE8ECF2" />
++      </Trigger>
++    </Style.Triggers>
++  </Style>
++
++  <Style x:Key="Awayra.InputComboBox" TargetType="ComboBox">
++    <Setter Property="Background" Value="{StaticResource LightInputBackgroundBrush}" />
++    <Setter Property="Foreground" Value="{StaticResource LightInputTextBrush}" />
++    <Setter Property="BorderBrush" Value="{StaticResource DarkBorderBrush}" />
++    <Setter Property="BorderThickness" Value="1" />
++    <Setter Property="Padding" Value="6,4" />
++    <Setter Property="FontFamily" Value="{StaticResource Awayra.Font}" />
++    <Style.Triggers>
++      <Trigger Property="IsMouseOver" Value="True">
++        <Setter Property="BorderBrush" Value="{StaticResource AccentHoverBrush}" />
++      </Trigger>
++      <Trigger Property="IsKeyboardFocused" Value="True">
++        <Setter Property="BorderBrush" Value="{StaticResource AccentBrush}" />
++      </Trigger>
++      <Trigger Property="IsEnabled" Value="False">
++        <Setter Property="Foreground" Value="{StaticResource DisabledTextBrush}" />
++      </Trigger>
++    </Style.Triggers>
++  </Style>
++
++  <!-- Buttons -->
+   <Style x:Key="Awayra.PrimaryButton" TargetType="Button">
+-    <Setter Property="Background" Value="{StaticResource Awayra.AccentBrush}" />
+-    <Setter Property="Foreground" Value="#FF0B1118" />
++    <Setter Property="Background" Value="{StaticResource AccentBrush}" />
++    <Setter Property="Foreground" Value="{StaticResource AccentTextBrush}" />
+     <Setter Property="Padding" Value="14,8" />
+     <Setter Property="BorderThickness" Value="0" />
+     <Setter Property="FontWeight" Value="SemiBold" />
++    <Setter Property="FontFamily" Value="{StaticResource Awayra.Font}" />
+     <Setter Property="Cursor" Value="Hand" />
+     <Setter Property="Template">
+       <Setter.Value>
+         <ControlTemplate TargetType="Button">
+-          <Border Background="{TemplateBinding Background}" CornerRadius="10" Padding="{TemplateBinding Padding}">
++          <Border x:Name="Root"
++                  Background="{TemplateBinding Background}"
++                  BorderBrush="{TemplateBinding BorderBrush}"
++                  BorderThickness="{TemplateBinding BorderThickness}"
++                  CornerRadius="10"
++                  Padding="{TemplateBinding Padding}">
+             <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+           </Border>
++          <ControlTemplate.Triggers>
++            <Trigger Property="IsMouseOver" Value="True">
++              <Setter TargetName="Root" Property="Background" Value="{StaticResource AccentHoverBrush}" />
++            </Trigger>
++            <Trigger Property="IsPressed" Value="True">
++              <Setter TargetName="Root" Property="Background" Value="{StaticResource AccentPressedBrush}" />
++            </Trigger>
++            <Trigger Property="IsEnabled" Value="False">
++              <Setter TargetName="Root" Property="Background" Value="{StaticResource DarkBorderBrush}" />
++              <Setter Property="Foreground" Value="{StaticResource DisabledTextBrush}" />
++            </Trigger>
++            <Trigger Property="IsKeyboardFocused" Value="True">
++              <Setter TargetName="Root" Property="BorderBrush" Value="{StaticResource PrimaryTextBrush}" />
++              <Setter TargetName="Root" Property="BorderThickness" Value="1" />
++            </Trigger>
++          </ControlTemplate.Triggers>
+         </ControlTemplate>
+       </Setter.Value>
+     </Setter>
+   </Style>
+ 
+-  <Style x:Key="Awayra.SecondaryButton" TargetType="Button" BasedOn="{StaticResource Awayra.PrimaryButton}">
+-    <Setter Property="Background" Value="{StaticResource Awayra.SurfaceBrush}" />
+-    <Setter Property="Foreground" Value="{StaticResource Awayra.TextBrush}" />
+-    <Setter Property="BorderBrush" Value="{StaticResource Awayra.BorderBrush}" />
++  <Style x:Key="Awayra.SecondaryButton" TargetType="Button">
++    <Setter Property="Background" Value="{StaticResource DarkSurfaceElevatedBrush}" />
++    <Setter Property="Foreground" Value="{StaticResource PrimaryTextBrush}" />
++    <Setter Property="BorderBrush" Value="{StaticResource DarkBorderBrush}" />
+     <Setter Property="BorderThickness" Value="1" />
++    <Setter Property="Padding" Value="14,8" />
++    <Setter Property="FontWeight" Value="SemiBold" />
++    <Setter Property="FontFamily" Value="{StaticResource Awayra.Font}" />
++    <Setter Property="Cursor" Value="Hand" />
++    <Setter Property="Template">
++      <Setter.Value>
++        <ControlTemplate TargetType="Button">
++          <Border x:Name="Root"
++                  Background="{TemplateBinding Background}"
++                  BorderBrush="{TemplateBinding BorderBrush}"
++                  BorderThickness="{TemplateBinding BorderThickness}"
++                  CornerRadius="10"
++                  Padding="{TemplateBinding Padding}">
++            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
++          </Border>
++          <ControlTemplate.Triggers>
++            <Trigger Property="IsMouseOver" Value="True">
++              <Setter TargetName="Root" Property="Background" Value="{StaticResource DarkBorderBrush}" />
++              <Setter TargetName="Root" Property="BorderBrush" Value="{StaticResource AccentHoverBrush}" />
++            </Trigger>
++            <Trigger Property="IsPressed" Value="True">
++              <Setter TargetName="Root" Property="Background" Value="{StaticResource DarkSurfaceBrush}" />
++              <Setter TargetName="Root" Property="BorderBrush" Value="{StaticResource AccentPressedBrush}" />
++            </Trigger>
++            <Trigger Property="IsEnabled" Value="False">
++              <Setter Property="Foreground" Value="{StaticResource DisabledTextBrush}" />
++              <Setter TargetName="Root" Property="Opacity" Value="0.6" />
++            </Trigger>
++            <Trigger Property="IsKeyboardFocused" Value="True">
++              <Setter TargetName="Root" Property="BorderBrush" Value="{StaticResource AccentBrush}" />
++            </Trigger>
++          </ControlTemplate.Triggers>
++        </ControlTemplate>
++      </Setter.Value>
++    </Setter>
+   </Style>
++
+ </ResourceDictionary>
+diff --git a/src/Awayra.App/Services/ApplicationHost.cs b/src/Awayra.App/Services/ApplicationHost.cs
+index 2f1daf6..4250ea8 100644
+--- a/src/Awayra.App/Services/ApplicationHost.cs
++++ b/src/Awayra.App/Services/ApplicationHost.cs
+@@ -1,3 +1,4 @@
++using Awayra.App;
+ using Awayra.Core.Abstractions;
+ using Awayra.Core.Models;
+ using Awayra.Core.Persistence;
+@@ -21,7 +22,10 @@ public sealed class ApplicationHost : IDisposable
+     private StatisticsService _statistics = null!;
+     private System.Timers.Timer? _tickTimer;
+     private System.Timers.Timer? _idleTimer;
++    private System.Timers.Timer? _diagnosticsTimer;
+     private bool _isShuttingDown;
++    private bool _configurationSessionActive;
++    private bool _wasIdle;
+ 
+     public ApplicationHost(
+         IAppLogger logger,
+@@ -48,8 +52,10 @@ public sealed class ApplicationHost : IDisposable
+     public AppSettings Settings => _settings;
+     public LocalizationService Localization => _localization;
+     public IAppLogger Logger => _logger;
++    public IIdleMonitor IdleMonitor => _idleMonitor;
+ 
+     public event EventHandler? StateChanged;
++    public event EventHandler<int>? GlassClarityPreviewChanged;
+ 
+     public async Task InitializeAsync()
+     {
+@@ -60,7 +66,13 @@ public sealed class ApplicationHost : IDisposable
+             _settings = AppSettings.CreateDefault();
+         }
+ 
+-        _localization.Apply(_settings.Language);
++        if (UiTestMode.IsEnabled)
++        {
++            _settings = UiTestMode.ApplyDefaults(_settings);
++            await _settingsStore.SaveAsync(_settings).ConfigureAwait(false);
++        }
++
++        _localization.Apply();
+         var state = await _stateStore.LoadAsync().ConfigureAwait(false);
+         _scheduler = new BreakScheduler(_clock, _settings, state);
+         var statsData = await _statisticsStore.LoadAsync().ConfigureAwait(false);
+@@ -74,16 +86,70 @@ public sealed class ApplicationHost : IDisposable
+         _tickTimer.AutoReset = true;
+         _tickTimer.Start();
+ 
+-        _idleTimer = new System.Timers.Timer(30_000);
++        _idleTimer = new System.Timers.Timer(UiTestMode.IsEnabled ? 1_000 : 5_000);
+         _idleTimer.Elapsed += (_, _) => UpdateIdleState();
+         _idleTimer.AutoReset = true;
+         _idleTimer.Start();
+         UpdateIdleState();
+ 
++        if (UiTestMode.IsEnabled && UiTestMode.DataRoot is not null)
++        {
++            UiTestDiagnosticsWriter.Initialize(UiTestMode.DataRoot);
++            _diagnosticsTimer = new System.Timers.Timer(1_000);
++            _diagnosticsTimer.Elapsed += (_, _) => PublishUiTestDiagnostics();
++            _diagnosticsTimer.AutoReset = true;
++            _diagnosticsTimer.Start();
++            PublishUiTestDiagnostics();
++        }
++
+         _logger.Info("Awayra initialized.");
+         await PersistStateAsync().ConfigureAwait(false);
+     }
+ 
++    public void BeginConfigurationSession()
++    {
++        _scheduler.EnterConfigurationPause();
++        _configurationSessionActive = true;
++        StateChanged?.Invoke(this, EventArgs.Empty);
++    }
++
++    public async Task SaveConfigurationAsync(AppSettings settings)
++    {
++        if (!SettingsValidator.IsValid(settings))
++        {
++            throw new InvalidOperationException("Invalid settings.");
++        }
++
++        var saveTime = _clock.Now;
++        _settings = settings;
++        _scheduler.ApplyConfigurationSave(settings, saveTime);
++        _configurationSessionActive = false;
++        _localization.Apply();
++        await _settingsStore.SaveAsync(settings).ConfigureAwait(false);
++        await PersistStateAsync().ConfigureAwait(false);
++        ApplyAutostartSetting();
++        StateChanged?.Invoke(this, EventArgs.Empty);
++    }
++
++    public void EndConfigurationSession(bool saved)
++    {
++        if (!_configurationSessionActive)
++        {
++            return;
++        }
++
++        if (!saved)
++        {
++            _scheduler.CancelConfigurationPause();
++        }
++
++        _configurationSessionActive = false;
++        StateChanged?.Invoke(this, EventArgs.Empty);
++    }
++
++    public void PreviewGlassClarity(int glassClarity) =>
++        GlassClarityPreviewChanged?.Invoke(this, OverlayGlassSettings.NormalizeGlassClarity(glassClarity));
++
+     public async Task UpdateSettingsAsync(AppSettings settings)
+     {
+         if (!SettingsValidator.IsValid(settings))
+@@ -93,7 +159,7 @@ public sealed class ApplicationHost : IDisposable
+ 
+         _settings = settings;
+         _scheduler.UpdateSettings(settings);
+-        _localization.Apply(settings.Language);
++        _localization.Apply();
+         await _settingsStore.SaveAsync(settings).ConfigureAwait(false);
+         await PersistStateAsync().ConfigureAwait(false);
+         ApplyAutostartSetting();
+@@ -150,21 +216,54 @@ public sealed class ApplicationHost : IDisposable
+         _idleTimer?.Stop();
+         _tickTimer?.Dispose();
+         _idleTimer?.Dispose();
++        _diagnosticsTimer?.Dispose();
+         _logger.Info("Awayra shutting down.");
+     }
+ 
+     public void Dispose() => Shutdown();
+ 
+-    private void UpdateIdleState()
++    private async void UpdateIdleState()
+     {
+         if (!_settings.PauseWhileIdle)
+         {
++            if (_wasIdle)
++            {
++                _wasIdle = false;
++            }
++
+             _scheduler.SetIdle(false);
+             return;
+         }
+ 
+         var threshold = TimeSpan.FromMinutes(_settings.IdleThresholdMinutes);
+-        _scheduler.SetIdle(_idleMonitor.IsIdle(threshold));
++        var isIdle = _idleMonitor.IsIdle(threshold);
++        var wasIdle = _wasIdle;
++        _wasIdle = isIdle;
++        _scheduler.SetIdle(isIdle);
++
++        if (wasIdle && !isIdle)
++        {
++            try
++            {
++                await PersistStateAsync().ConfigureAwait(false);
++            }
++            catch (Exception ex)
++            {
++                _logger.Error("Failed to persist after idle return", ex);
++            }
++        }
++    }
++
++    private void PublishUiTestDiagnostics()
++    {
++        var diagnostics = _scheduler.GetDiagnostics(_idleMonitor.GetIdleTime().TotalSeconds);
++        diagnostics.SnapshotCaptured = false;
++        var today = _statistics.GetToday();
++        diagnostics.EyeCompleted = today.EyeCompleted;
++        diagnostics.MoveCompleted = today.MoveCompleted;
++        diagnostics.Skipped = today.Skipped;
++        diagnostics.Snoozed = today.Snoozed;
++        UiTestDiagnosticsWriter.Write(diagnostics);
+     }
+ 
+     private async void OnBreakEnded(object? sender, BreakEndedEventArgs e)
+diff --git a/src/Awayra.App/Services/LocalizationService.cs b/src/Awayra.App/Services/LocalizationService.cs
+index 47db2e7..9292af2 100644
+--- a/src/Awayra.App/Services/LocalizationService.cs
++++ b/src/Awayra.App/Services/LocalizationService.cs
+@@ -1,5 +1,4 @@
+ using System.Globalization;
+-using System.Windows;
+ using Awayra.Core.Localization;
+ using Awayra.Core.Models;
+ using Awayra.Core.Services;
+@@ -9,22 +8,15 @@ namespace Awayra.App.Services;
+ 
+ public sealed class LocalizationService
+ {
+-    public event EventHandler? CultureChanged;
+-
+     public string CurrentCultureName { get; private set; } = "en";
+ 
+-    public System.Windows.FlowDirection CurrentFlowDirection =>
+-        CultureDirection.IsRightToLeft(CurrentCultureName) ? System.Windows.FlowDirection.RightToLeft : System.Windows.FlowDirection.LeftToRight;
+-
+-    public void Apply(AppLanguage language)
++    public void Apply()
+     {
+-        var cultureName = LanguageResolver.ResolveCulture(language);
+-        var culture = CultureInfo.GetCultureInfo(cultureName);
++        var culture = CultureInfo.GetCultureInfo("en");
+         CultureInfo.CurrentUICulture = culture;
+         CultureInfo.CurrentCulture = culture;
+         Strings.Culture = culture;
+-        CurrentCultureName = cultureName;
+-        CultureChanged?.Invoke(this, EventArgs.Empty);
++        CurrentCultureName = "en";
+     }
+ 
+     public string Get(string key) => Strings.Get(key);
+@@ -34,6 +26,8 @@ public sealed class LocalizationService
+         SchedulerStatus.Running => Get(StringKeys.StatusRunning),
+         SchedulerStatus.PausedManual => Get(StringKeys.StatusPaused),
+         SchedulerStatus.PausedIdle => Get(StringKeys.StatusPausedIdle),
++        SchedulerStatus.Idle => Get(StringKeys.StatusIdle),
++        SchedulerStatus.ConfigurationPaused => Get(StringKeys.StatusConfigurationPaused),
+         SchedulerStatus.OutsideWorkHours => Get(StringKeys.StatusOutsideWorkHours),
+         SchedulerStatus.BreakActive => Get(StringKeys.StatusBreakActive),
+         SchedulerStatus.Snoozed => Get(StringKeys.StatusSnoozed),
+@@ -58,7 +52,7 @@ public sealed class LocalizationService
+         "MoveBreakDurationInvalid" => Get(StringKeys.ValidationMoveBreakDurationInvalid),
+         "SnoozeDurationInvalid" => Get(StringKeys.ValidationSnoozeDurationInvalid),
+         "IdleThresholdInvalid" => Get(StringKeys.ValidationIdleThresholdInvalid),
+-        "OverlayOpacityInvalid" => Get(StringKeys.ValidationOverlayOpacityInvalid),
++        "GlassClarityInvalid" => Get(StringKeys.ValidationGlassClarityInvalid),
+         "WorkHoursRangeInvalid" => Get(StringKeys.ValidationWorkHoursRangeInvalid),
+         _ => errorKey
+     };
+diff --git a/src/Awayra.App/Services/TrayAndOverlay.cs b/src/Awayra.App/Services/TrayAndOverlay.cs
+index 829ac5c..f4ebc61 100644
+--- a/src/Awayra.App/Services/TrayAndOverlay.cs
++++ b/src/Awayra.App/Services/TrayAndOverlay.cs
+@@ -1,8 +1,10 @@
+ using System.Drawing;
+ using System.Windows;
++using Awayra.App.ViewModels;
+ using Awayra.Core.Abstractions;
+ using Awayra.Core.Localization;
+ using Awayra.App.Views;
++using Awayra.Core.Coordination;
+ using Awayra.Core.Models;
+ using Awayra.Core.Services;
+ 
+@@ -16,6 +18,8 @@ public sealed class OverlayCoordinator
+ 
+     private BreakOverlayWindow? _eyeOverlay;
+     private BreakOverlayWindow? _moveOverlay;
++    private OverlaySessionState _session = OverlaySessionState.Empty;
++    public bool LastSnapshotCaptured { get; private set; }
+ 
+     public OverlayCoordinator(
+         Func<BreakOverlayWindow> eyeOverlayFactory,
+@@ -32,18 +36,23 @@ public sealed class OverlayCoordinator
+         try
+         {
+             CloseAll();
++            _session = OverlaySessionPolicy.AfterCloseAll();
+             if (args.BreakType == BreakType.Eye)
+             {
+                 _eyeOverlay = _eyeOverlayFactory();
+                 _eyeOverlay.Configure(args, settings, localization, isEye: true);
++                LastSnapshotCaptured = _eyeOverlay.DataContext is OverlayViewModel eyeVm && eyeVm.SnapshotSource is not null;
+                 _eyeOverlay.ShowOnActiveMonitor();
+             }
+             else
+             {
+                 _moveOverlay = _moveOverlayFactory();
+                 _moveOverlay.Configure(args, settings, localization, isEye: false);
++                LastSnapshotCaptured = _moveOverlay.DataContext is OverlayViewModel moveVm && moveVm.SnapshotSource is not null;
+                 _moveOverlay.ShowOnActiveMonitor();
+             }
++
++            _session = OverlaySessionPolicy.AfterShow(args.BreakType, _session);
+         }
+         catch (Exception ex)
+         {
+@@ -64,6 +73,12 @@ public sealed class OverlayCoordinator
+         }
+     }
+ 
++    public void UpdateGlassClarity(int glassClarity)
++    {
++        _eyeOverlay?.ApplyGlassClarity(glassClarity);
++        _moveOverlay?.ApplyGlassClarity(glassClarity);
++    }
++
+     public void CloseAll()
+     {
+         if (_eyeOverlay is not null)
+@@ -77,7 +92,11 @@ public sealed class OverlayCoordinator
+             _moveOverlay.CloseSafely();
+             _moveOverlay = null;
+         }
++
++        _session = OverlaySessionPolicy.AfterCloseAll();
+     }
++
++    public OverlaySessionState SessionState => _session;
+ }
+ 
+ public sealed class TrayService : IDisposable
+@@ -131,7 +150,6 @@ public sealed class TrayService : IDisposable
+ 
+         _icon.DoubleClick += (_, _) => _openDashboard();
+         RebuildMenu();
+-        _localization.CultureChanged += (_, _) => RebuildMenu();
+     }
+ 
+     public void UpdateTooltip() => _icon.Text = TrimTooltip(_tooltipProvider());
+diff --git a/src/Awayra.App/Services/WindowsIdleMonitor.cs b/src/Awayra.App/Services/WindowsIdleMonitor.cs
+index f89aef6..3fcf850 100644
+--- a/src/Awayra.App/Services/WindowsIdleMonitor.cs
++++ b/src/Awayra.App/Services/WindowsIdleMonitor.cs
+@@ -19,7 +19,8 @@ public sealed class WindowsIdleMonitor : IIdleMonitor
+         }
+ 
+         var tick = unchecked((uint)Environment.TickCount);
+-        var idleMs = tick - info.DwTime;
++        var lastInput = info.DwTime;
++        var idleMs = tick >= lastInput ? tick - lastInput : uint.MaxValue - lastInput + tick;
+         return TimeSpan.FromMilliseconds(idleMs);
+     }
+ 
+diff --git a/src/Awayra.App/ViewModels/MainViewModel.cs b/src/Awayra.App/ViewModels/MainViewModel.cs
+index a2b5312..ce453e3 100644
+--- a/src/Awayra.App/ViewModels/MainViewModel.cs
++++ b/src/Awayra.App/ViewModels/MainViewModel.cs
+@@ -1,4 +1,3 @@
+-using System.Windows;
+ using System.Windows.Threading;
+ using CommunityToolkit.Mvvm.ComponentModel;
+ using CommunityToolkit.Mvvm.Input;
+@@ -25,7 +24,15 @@ public partial class MainViewModel : ObservableObject
+     [ObservableProperty] private int _todayMoveCompleted;
+     [ObservableProperty] private int _todaySkipped;
+     [ObservableProperty] private int _todaySnoozed;
+-    [ObservableProperty] private System.Windows.FlowDirection _flowDirection;
++    [ObservableProperty] private string _eyeResetLabel = string.Empty;
++    [ObservableProperty] private string _moveBreakLabel = string.Empty;
++    [ObservableProperty] private string _settingsLabel = string.Empty;
++    [ObservableProperty] private string _eyeResetNowLabel = string.Empty;
++    [ObservableProperty] private string _moveBreakNowLabel = string.Empty;
++    [ObservableProperty] private string _todayEyeText = string.Empty;
++    [ObservableProperty] private string _todayMoveText = string.Empty;
++    [ObservableProperty] private string _todaySkippedText = string.Empty;
++    [ObservableProperty] private string _todaySnoozedText = string.Empty;
+ 
+     public MainViewModel(ApplicationHost host, Action openSettings)
+     {
+@@ -34,7 +41,6 @@ public partial class MainViewModel : ObservableObject
+         _uiTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
+         _uiTimer.Tick += (_, _) => Refresh();
+         _host.StateChanged += (_, _) => Refresh();
+-        _host.Localization.CultureChanged += (_, _) => Refresh();
+         Refresh();
+         _uiTimer.Start();
+     }
+@@ -79,6 +85,15 @@ public partial class MainViewModel : ObservableObject
+ 
+         Title = l.Get(StringKeys.AppTitle);
+         StatusText = l.GetStatus(snapshot.Status);
++        EyeResetLabel = l.Get(StringKeys.EyeReset);
++        MoveBreakLabel = l.Get(StringKeys.MoveBreak);
++        SettingsLabel = l.Get(StringKeys.Settings);
++        EyeResetNowLabel = l.Get(StringKeys.EyeResetNow);
++        MoveBreakNowLabel = l.Get(StringKeys.MoveBreakNow);
++        TodayEyeText = $"{l.Get(StringKeys.TodayEyeCompleted)}: {today.EyeCompleted}";
++        TodayMoveText = $"{l.Get(StringKeys.TodayMoveCompleted)}: {today.MoveCompleted}";
++        TodaySkippedText = $"{l.Get(StringKeys.TodaySkipped)}: {today.Skipped}";
++        TodaySnoozedText = $"{l.Get(StringKeys.TodaySnoozed)}: {today.Snoozed}";
+         EyeCountdown = FormatCountdown(snapshot.EyeRemaining);
+         MoveCountdown = FormatCountdown(snapshot.MoveRemaining);
+         EyeStateText = snapshot.EyeEnabled ? l.Get(StringKeys.Enabled) : l.Get(StringKeys.Disabled);
+@@ -88,7 +103,6 @@ public partial class MainViewModel : ObservableObject
+         TodayMoveCompleted = today.MoveCompleted;
+         TodaySkipped = today.Skipped;
+         TodaySnoozed = today.Snoozed;
+-        FlowDirection = l.CurrentFlowDirection;
+     }
+ 
+     private static string FormatCountdown(TimeSpan remaining)
+diff --git a/src/Awayra.App/ViewModels/OverlayViewModel.cs b/src/Awayra.App/ViewModels/OverlayViewModel.cs
+index 5a394fd..84b0bc9 100644
+--- a/src/Awayra.App/ViewModels/OverlayViewModel.cs
++++ b/src/Awayra.App/ViewModels/OverlayViewModel.cs
+@@ -1,9 +1,11 @@
+-using System.Windows;
+ using CommunityToolkit.Mvvm.ComponentModel;
+ using CommunityToolkit.Mvvm.Input;
+ using Awayra.App.Services;
+ using Awayra.Core.Localization;
+ using Awayra.Core.Models;
++using Awayra.Core.Services;
++using System.Windows.Media;
++using System.Windows.Media.Effects;
+ 
+ namespace Awayra.App.ViewModels;
+ 
+@@ -17,14 +19,19 @@ public partial class OverlayViewModel : ObservableObject
+     [ObservableProperty] private bool _showSkip;
+     [ObservableProperty] private bool _showSnooze;
+     [ObservableProperty] private bool _reducedMotion;
+-    [ObservableProperty] private double _overlayOpacity = 0.82;
+-    [ObservableProperty] private System.Windows.FlowDirection _flowDirection;
++    [ObservableProperty] private int _glassClarity = OverlayGlassSettings.DefaultGlassClarity;
++    [ObservableProperty] private ImageSource? _snapshotSource;
++    [ObservableProperty] private double _blurRadius = OverlayGlassSettings.BlurRadiusFromClarity(OverlayGlassSettings.DefaultGlassClarity);
++
++    public double BackgroundTintOpacity => OverlayGlassSettings.BackgroundTintOpacityFromClarity(GlassClarity);
++
++    public double ContentOpacity => OverlayGlassSettings.ContentOpacity;
+ 
+     public IRelayCommand? SkipCommand { get; set; }
+     public IRelayCommand? SnoozeCommand { get; set; }
+     public IRelayCommand? CompleteCommand { get; set; }
+ 
+-    public void ConfigureEye(BreakStartedEventArgs args, AppSettings settings, LocalizationService localization)
++    public void ConfigureEye(BreakStartedEventArgs args, AppSettings settings, LocalizationService localization, ImageSource? snapshot)
+     {
+         Title = localization.Get(StringKeys.EyeReset);
+         InstructionPrimary = localization.Get(StringKeys.EyeResetInstructionDistance);
+@@ -32,12 +39,12 @@ public partial class OverlayViewModel : ObservableObject
+         ShowSkip = settings.AllowSkip;
+         ShowSnooze = settings.AllowSnooze;
+         ReducedMotion = settings.ReducedMotion;
+-        OverlayOpacity = settings.OverlayOpacity;
+-        FlowDirection = localization.CurrentFlowDirection;
++        ApplyGlassClarity(settings.GlassClarity);
++        SnapshotSource = snapshot;
+         UpdateRemaining(TimeSpan.FromSeconds(args.DurationSeconds));
+     }
+ 
+-    public void ConfigureMove(BreakStartedEventArgs args, AppSettings settings, LocalizationService localization)
++    public void ConfigureMove(BreakStartedEventArgs args, AppSettings settings, LocalizationService localization, ImageSource? snapshot)
+     {
+         Title = localization.Get(StringKeys.MoveBreak);
+         InstructionPrimary = localization.GetMoveActivity(args.ActivityIndex);
+@@ -45,11 +52,18 @@ public partial class OverlayViewModel : ObservableObject
+         ShowSkip = settings.AllowSkip;
+         ShowSnooze = settings.AllowSnooze;
+         ReducedMotion = settings.ReducedMotion;
+-        OverlayOpacity = settings.OverlayOpacity;
+-        FlowDirection = localization.CurrentFlowDirection;
++        ApplyGlassClarity(settings.GlassClarity);
++        SnapshotSource = snapshot;
+         UpdateRemaining(TimeSpan.FromSeconds(args.DurationSeconds));
+     }
+ 
++    public void ApplyGlassClarity(int glassClarity)
++    {
++        GlassClarity = OverlayGlassSettings.NormalizeGlassClarity(glassClarity);
++        BlurRadius = OverlayGlassSettings.BlurRadiusFromClarity(GlassClarity);
++        OnPropertyChanged(nameof(BackgroundTintOpacity));
++    }
++
+     public void UpdateRemaining(TimeSpan? remaining)
+     {
+         if (remaining is null)
+diff --git a/src/Awayra.App/ViewModels/SettingsViewModel.cs b/src/Awayra.App/ViewModels/SettingsViewModel.cs
+index f6ec877..e006592 100644
+--- a/src/Awayra.App/ViewModels/SettingsViewModel.cs
++++ b/src/Awayra.App/ViewModels/SettingsViewModel.cs
+@@ -1,9 +1,7 @@
+ using System.Collections.ObjectModel;
+-using System.Windows;
+ using CommunityToolkit.Mvvm.ComponentModel;
+ using CommunityToolkit.Mvvm.Input;
+ using Awayra.App.Services;
+-using Awayra.Core.Localization;
+ using Awayra.Core.Models;
+ using Awayra.Core.Services;
+ 
+@@ -12,7 +10,7 @@ namespace Awayra.App.ViewModels;
+ public partial class SettingsViewModel : ObservableObject
+ {
+     private readonly ApplicationHost _host;
+-    private readonly Action _close;
++    private readonly Action<bool> _close;
+ 
+     [ObservableProperty] private bool _eyeResetEnabled;
+     [ObservableProperty] private int _eyeResetIntervalMinutes;
+@@ -31,22 +29,20 @@ public partial class SettingsViewModel : ObservableObject
+     [ObservableProperty] private bool _runAtStartup;
+     [ObservableProperty] private bool _startMinimized;
+     [ObservableProperty] private bool _closeToTray;
+-    [ObservableProperty] private double _overlayOpacity;
++    [ObservableProperty] private int _glassClarity;
+     [ObservableProperty] private bool _reducedMotion;
+-    [ObservableProperty] private AppLanguage _selectedLanguage;
+-    [ObservableProperty] private System.Windows.FlowDirection _flowDirection;
+ 
+     public ObservableCollection<string> ValidationErrors { get; } = [];
+ 
+-    public SettingsViewModel(ApplicationHost host, Action close)
++    public SettingsViewModel(ApplicationHost host, Action<bool> close)
+     {
+         _host = host;
+         _close = close;
+         LoadFromSettings(host.Settings);
+-        _host.Localization.CultureChanged += (_, _) => FlowDirection = host.Localization.CurrentFlowDirection;
+-        FlowDirection = host.Localization.CurrentFlowDirection;
+     }
+ 
++    partial void OnGlassClarityChanged(int value) => _host.PreviewGlassClarity(value);
++
+     [RelayCommand]
+     private async Task SaveAsync()
+     {
+@@ -63,44 +59,12 @@ public partial class SettingsViewModel : ObservableObject
+             return;
+         }
+ 
+-        await _host.UpdateSettingsAsync(settings).ConfigureAwait(true);
+-        _close();
++        await _host.SaveConfigurationAsync(settings).ConfigureAwait(true);
++        _close(true);
+     }
+ 
+     [RelayCommand]
+-    private void Cancel() => _close();
+-
+-    partial void OnEyeResetEnabledChanged(bool value) => _ = TryAutoSaveAsync();
+-    partial void OnEyeResetIntervalMinutesChanged(int value) => _ = TryAutoSaveAsync();
+-    partial void OnEyeResetDurationSecondsChanged(int value) => _ = TryAutoSaveAsync();
+-    partial void OnMoveBreakEnabledChanged(bool value) => _ = TryAutoSaveAsync();
+-    partial void OnMoveBreakIntervalMinutesChanged(int value) => _ = TryAutoSaveAsync();
+-    partial void OnMoveBreakDurationSecondsChanged(int value) => _ = TryAutoSaveAsync();
+-    partial void OnAllowSkipChanged(bool value) => _ = TryAutoSaveAsync();
+-    partial void OnAllowSnoozeChanged(bool value) => _ = TryAutoSaveAsync();
+-    partial void OnSnoozeDurationMinutesChanged(int value) => _ = TryAutoSaveAsync();
+-    partial void OnPauseWhileIdleChanged(bool value) => _ = TryAutoSaveAsync();
+-    partial void OnIdleThresholdMinutesChanged(int value) => _ = TryAutoSaveAsync();
+-    partial void OnWorkHoursEnabledChanged(bool value) => _ = TryAutoSaveAsync();
+-    partial void OnWorkStartChanged(string value) => _ = TryAutoSaveAsync();
+-    partial void OnWorkEndChanged(string value) => _ = TryAutoSaveAsync();
+-    partial void OnRunAtStartupChanged(bool value) => _ = TryAutoSaveAsync();
+-    partial void OnStartMinimizedChanged(bool value) => _ = TryAutoSaveAsync();
+-    partial void OnCloseToTrayChanged(bool value) => _ = TryAutoSaveAsync();
+-    partial void OnOverlayOpacityChanged(double value) => _ = TryAutoSaveAsync();
+-    partial void OnReducedMotionChanged(bool value) => _ = TryAutoSaveAsync();
+-    partial void OnSelectedLanguageChanged(AppLanguage value) => _ = TryAutoSaveAsync();
+-
+-    private async Task TryAutoSaveAsync()
+-    {
+-        var settings = BuildSettings();
+-        if (!SettingsValidator.IsValid(settings))
+-        {
+-            return;
+-        }
+-
+-        await _host.UpdateSettingsAsync(settings).ConfigureAwait(true);
+-    }
++    private void Cancel() => _close(false);
+ 
+     private void LoadFromSettings(AppSettings settings)
+     {
+@@ -121,9 +85,8 @@ public partial class SettingsViewModel : ObservableObject
+         RunAtStartup = settings.RunAtStartup;
+         StartMinimized = settings.StartMinimized;
+         CloseToTray = settings.CloseToTray;
+-        OverlayOpacity = settings.OverlayOpacity;
++        GlassClarity = settings.GlassClarity;
+         ReducedMotion = settings.ReducedMotion;
+-        SelectedLanguage = settings.Language;
+     }
+ 
+     private AppSettings BuildSettings()
+@@ -151,9 +114,8 @@ public partial class SettingsViewModel : ObservableObject
+             RunAtStartup = RunAtStartup,
+             StartMinimized = StartMinimized,
+             CloseToTray = CloseToTray,
+-            OverlayOpacity = OverlayOpacity,
++            GlassClarity = GlassClarity,
+             ReducedMotion = ReducedMotion,
+-            Language = SelectedLanguage,
+             Theme = AppTheme.Dark
+         };
+     }
+diff --git a/src/Awayra.App/Views/BreakOverlayWindow.xaml b/src/Awayra.App/Views/BreakOverlayWindow.xaml
+index 1369795..3e05399 100644
+--- a/src/Awayra.App/Views/BreakOverlayWindow.xaml
++++ b/src/Awayra.App/Views/BreakOverlayWindow.xaml
+@@ -5,29 +5,23 @@
+         ResizeMode="NoResize"
+         ShowInTaskbar="False"
+         Topmost="True"
+-        AllowsTransparency="True"
+-        Background="Transparent"
++        AllowsTransparency="False"
++        Background="#FF000000"
++        Opacity="1"
+         Focusable="True"
+-        KeyDown="Window_OnKeyDown"
+-        FlowDirection="{Binding FlowDirection}">
++        KeyDown="Window_OnKeyDown">
+   <Grid>
+-    <Border Background="#CC0E1116" Opacity="{Binding OverlayOpacity}">
+-      <Border.Style>
+-        <Style TargetType="Border">
+-          <Style.Triggers>
+-            <DataTrigger Binding="{Binding ReducedMotion}" Value="False">
+-              <DataTrigger.EnterActions>
+-                <BeginStoryboard>
+-                  <Storyboard>
+-                    <DoubleAnimation Storyboard.TargetProperty="Opacity" From="0" To="1" Duration="0:0:0.35" />
+-                  </Storyboard>
+-                </BeginStoryboard>
+-              </DataTrigger.EnterActions>
+-            </DataTrigger>
+-          </Style.Triggers>
+-        </Style>
+-      </Border.Style>
+-    </Border>
++    <Image x:Name="SnapshotImage"
++           Stretch="Fill"
++           Source="{Binding SnapshotSource}">
++      <Image.Effect>
++        <BlurEffect Radius="{Binding BlurRadius}" />
++      </Image.Effect>
++    </Image>
++
++    <Border x:Name="TintScrim"
++            Background="#FF0E1116"
++            Opacity="{Binding BackgroundTintOpacity}" />
+ 
+     <Border HorizontalAlignment="Center"
+             VerticalAlignment="Center"
+@@ -37,24 +31,47 @@
+             CornerRadius="24"
+             Background="#E61B1E24"
+             BorderBrush="#663C4654"
+-            BorderThickness="1">
++            BorderThickness="1"
++            Opacity="{Binding ContentOpacity}">
+       <StackPanel HorizontalAlignment="Center">
+         <TextBlock Text="{Binding Title}" FontSize="30" FontWeight="SemiBold" HorizontalAlignment="Center" Margin="0,0,0,16" />
+         <Grid Width="180" Height="180" Margin="0,0,0,20" HorizontalAlignment="Center">
+           <Ellipse Stroke="{StaticResource Awayra.AccentBrush}" StrokeThickness="3" Opacity="0.35" />
+-          <Ellipse x:Name="PulseRing" Stroke="{StaticResource Awayra.AccentBrush}" StrokeThickness="2" Opacity="0.6" RenderTransformOrigin="0.5,0.5">
++          <Ellipse x:Name="PulseRing"
++                   Stroke="{StaticResource Awayra.AccentBrush}"
++                   StrokeThickness="2"
++                   Opacity="0.6"
++                   RenderTransformOrigin="0.5,0.5">
+             <Ellipse.RenderTransform>
+               <ScaleTransform ScaleX="1" ScaleY="1" />
+             </Ellipse.RenderTransform>
+           </Ellipse>
+-          <TextBlock Text="{Binding RemainingText}" FontSize="48" FontWeight="Light" HorizontalAlignment="Center" VerticalAlignment="Center" />
++          <TextBlock x:Name="OverlayCountdown"
++                     Text="{Binding RemainingText}"
++                     FontSize="48"
++                     FontWeight="Light"
++                     HorizontalAlignment="Center"
++                     VerticalAlignment="Center" />
+         </Grid>
+         <TextBlock Text="{Binding InstructionPrimary}" TextWrapping="Wrap" TextAlignment="Center" FontSize="16" Margin="0,0,0,8" />
+         <TextBlock Text="{Binding InstructionSecondary}" TextWrapping="Wrap" TextAlignment="Center" FontSize="14" Foreground="{StaticResource Awayra.TextMutedBrush}" Margin="0,0,0,20" />
+         <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+-          <Button Content="Skip" Command="{Binding SkipCommand}" Style="{StaticResource Awayra.SecondaryButton}" Margin="0,0,8,0" Visibility="{Binding ShowSkip, Converter={StaticResource BoolToVisibility}}" />
+-          <Button Content="Snooze" Command="{Binding SnoozeCommand}" Style="{StaticResource Awayra.SecondaryButton}" Margin="0,0,8,0" Visibility="{Binding ShowSnooze, Converter={StaticResource BoolToVisibility}}" />
+-          <Button Content="Complete" Command="{Binding CompleteCommand}" Style="{StaticResource Awayra.PrimaryButton}" />
++          <Button x:Name="SkipButton"
++                  Content="Skip"
++                  Command="{Binding SkipCommand}"
++                  Style="{StaticResource Awayra.SecondaryButton}"
++                  Margin="0,0,8,0"
++                  Visibility="{Binding ShowSkip, Converter={StaticResource BoolToVisibility}}" />
++          <Button x:Name="SnoozeButton"
++                  Content="Snooze"
++                  Command="{Binding SnoozeCommand}"
++                  Style="{StaticResource Awayra.SecondaryButton}"
++                  Margin="0,0,8,0"
++                  Visibility="{Binding ShowSnooze, Converter={StaticResource BoolToVisibility}}" />
++          <Button x:Name="CompleteButton"
++                  Content="Complete"
++                  Command="{Binding CompleteCommand}"
++                  Style="{StaticResource Awayra.PrimaryButton}" />
+         </StackPanel>
+       </StackPanel>
+     </Border>
+diff --git a/src/Awayra.App/Views/BreakOverlayWindow.xaml.cs b/src/Awayra.App/Views/BreakOverlayWindow.xaml.cs
+index e5bf4ce..4b8027f 100644
+--- a/src/Awayra.App/Views/BreakOverlayWindow.xaml.cs
++++ b/src/Awayra.App/Views/BreakOverlayWindow.xaml.cs
+@@ -1,4 +1,5 @@
+ using System.Windows;
++using System.Windows.Automation;
+ using System.Windows.Input;
+ using System.Windows.Media.Animation;
+ using Awayra.App.Interop;
+@@ -12,12 +13,17 @@ public partial class BreakOverlayWindow : Window
+ {
+     private readonly ApplicationHost _host;
+     private readonly OverlayViewModel _viewModel;
++    private readonly IMonitorSnapshotService _snapshotService;
+     private Storyboard? _pulseStoryboard;
+ 
+-    public BreakOverlayWindow(ApplicationHost host, OverlayViewModel viewModel)
++    public BreakOverlayWindow(
++        ApplicationHost host,
++        OverlayViewModel viewModel,
++        IMonitorSnapshotService snapshotService)
+     {
+         _host = host;
+         _viewModel = viewModel;
++        _snapshotService = snapshotService;
+         InitializeComponent();
+         DataContext = viewModel;
+         viewModel.SkipCommand = new CommunityToolkit.Mvvm.Input.RelayCommand(OnSkip, () => _viewModel.ShowSkip);
+@@ -28,13 +34,21 @@ public partial class BreakOverlayWindow : Window
+ 
+     public void Configure(BreakStartedEventArgs args, AppSettings settings, LocalizationService localization, bool isEye)
+     {
++        var prefix = isEye ? "Eye" : "Move";
++        AutomationProperties.SetAutomationId(this, $"{prefix}OverlayWindow");
++        AutomationProperties.SetAutomationId(OverlayCountdown, $"{prefix}OverlayCountdown");
++        AutomationProperties.SetAutomationId(SkipButton, $"{prefix}SkipButton");
++        AutomationProperties.SetAutomationId(SnoozeButton, $"{prefix}SnoozeButton");
++        AutomationProperties.SetAutomationId(CompleteButton, $"{prefix}CompleteButton");
++
++        var snapshot = _snapshotService.CaptureMonitorAtCursor();
+         if (isEye)
+         {
+-            _viewModel.ConfigureEye(args, settings, localization);
++            _viewModel.ConfigureEye(args, settings, localization, snapshot);
+         }
+         else
+         {
+-            _viewModel.ConfigureMove(args, settings, localization);
++            _viewModel.ConfigureMove(args, settings, localization, snapshot);
+         }
+     }
+ 
+@@ -55,6 +69,9 @@ public partial class BreakOverlayWindow : Window
+         }
+     }
+ 
++    public void ApplyGlassClarity(int glassClarity) =>
++        _viewModel.ApplyGlassClarity(glassClarity);
++
+     public void CloseSafely()
+     {
+         _pulseStoryboard?.Stop();
+@@ -63,7 +80,6 @@ public partial class BreakOverlayWindow : Window
+ 
+     private void OnLoaded(object sender, RoutedEventArgs e)
+     {
+-        DwmHelper.TryApplyBackdrop(this, true);
+         if (!_viewModel.ReducedMotion)
+         {
+             _pulseStoryboard = new Storyboard { RepeatBehavior = RepeatBehavior.Forever };
+diff --git a/src/Awayra.App/Views/MainWindow.xaml b/src/Awayra.App/Views/MainWindow.xaml
+index d32d8d8..1e1201b 100644
+--- a/src/Awayra.App/Views/MainWindow.xaml
++++ b/src/Awayra.App/Views/MainWindow.xaml
+@@ -4,13 +4,14 @@
+         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+         mc:Ignorable="d"
++        AutomationProperties.AutomationId="MainWindow"
+         Title="Awayra"
+         Width="460"
+         Height="620"
+         MinWidth="420"
+         MinHeight="560"
+         WindowStartupLocation="CenterScreen"
+-        FlowDirection="{Binding FlowDirection}">
++        Style="{StaticResource Awayra.LightChromeWindow}">
+   <Grid Margin="20">
+     <Grid.RowDefinitions>
+       <RowDefinition Height="Auto" />
+@@ -22,43 +23,43 @@
+ 
+     <StackPanel Grid.Row="0" Margin="0,0,0,16">
+       <TextBlock Text="{Binding Title}" FontSize="28" FontWeight="SemiBold" />
+-      <TextBlock Text="{Binding StatusText}" Foreground="{StaticResource Awayra.TextMutedBrush}" Margin="0,4,0,0" />
++      <TextBlock AutomationProperties.AutomationId="StatusText" Text="{Binding StatusText}" Foreground="{StaticResource LightPrimaryTextBrush}" Opacity="0.65" Margin="0,4,0,0" />
+     </StackPanel>
+ 
+     <UniformGrid Grid.Row="1" Columns="2" Margin="0,0,0,16">
+-      <Border Style="{StaticResource Awayra.Card}" Margin="0,0,8,0">
+-        <StackPanel>
+-          <TextBlock Text="Eye Reset" FontWeight="SemiBold" />
+-          <TextBlock Text="{Binding EyeCountdown}" FontSize="32" Margin="0,8,0,0" />
+-          <TextBlock Text="{Binding EyeStateText}" Foreground="{StaticResource Awayra.TextMutedBrush}" />
++      <Border Style="{StaticResource Awayra.Card}" Resources="{StaticResource Awayra.DarkSurfaceResources}" Margin="0,0,8,0">
++        <StackPanel Style="{StaticResource Awayra.CardContent}">
++          <TextBlock Text="{Binding EyeResetLabel}" FontWeight="SemiBold" />
++          <TextBlock AutomationProperties.AutomationId="EyeCountdown" Text="{Binding EyeCountdown}" FontSize="32" Margin="0,8,0,0" />
++          <TextBlock Text="{Binding EyeStateText}" Style="{StaticResource Awayra.MutedText}" />
+         </StackPanel>
+       </Border>
+-      <Border Style="{StaticResource Awayra.Card}" Margin="8,0,0,0">
+-        <StackPanel>
+-          <TextBlock Text="Move Break" FontWeight="SemiBold" />
+-          <TextBlock Text="{Binding MoveCountdown}" FontSize="32" Margin="0,8,0,0" />
+-          <TextBlock Text="{Binding MoveStateText}" Foreground="{StaticResource Awayra.TextMutedBrush}" />
++      <Border Style="{StaticResource Awayra.Card}" Resources="{StaticResource Awayra.DarkSurfaceResources}" Margin="8,0,0,0">
++        <StackPanel Style="{StaticResource Awayra.CardContent}">
++          <TextBlock Text="{Binding MoveBreakLabel}" FontWeight="SemiBold" />
++          <TextBlock AutomationProperties.AutomationId="MoveCountdown" Text="{Binding MoveCountdown}" FontSize="32" Margin="0,8,0,0" />
++          <TextBlock Text="{Binding MoveStateText}" Style="{StaticResource Awayra.MutedText}" />
+         </StackPanel>
+       </Border>
+     </UniformGrid>
+ 
+-    <Border Grid.Row="2" Style="{StaticResource Awayra.Card}">
+-      <UniformGrid Columns="2" Rows="2">
+-        <TextBlock Text="{Binding TodayEyeCompleted, StringFormat=Eye resets: {0}}" Margin="0,0,8,8" />
+-        <TextBlock Text="{Binding TodayMoveCompleted, StringFormat=Move breaks: {0}}" Margin="8,0,0,8" />
+-        <TextBlock Text="{Binding TodaySkipped, StringFormat=Skipped: {0}}" Margin="0,0,8,0" />
+-        <TextBlock Text="{Binding TodaySnoozed, StringFormat=Snoozed: {0}}" Margin="8,0,0,0" />
++    <Border Grid.Row="2" Style="{StaticResource Awayra.Card}" Resources="{StaticResource Awayra.DarkSurfaceResources}">
++      <UniformGrid Columns="2" Rows="2" Style="{StaticResource Awayra.CardContent}">
++        <TextBlock AutomationProperties.AutomationId="TodayEyeCompleted" Text="{Binding TodayEyeText}" Margin="0,0,8,8" />
++        <TextBlock AutomationProperties.AutomationId="TodayMoveCompleted" Text="{Binding TodayMoveText}" Margin="8,0,0,8" />
++        <TextBlock AutomationProperties.AutomationId="TodaySkipped" Text="{Binding TodaySkippedText}" Margin="0,0,8,0" />
++        <TextBlock AutomationProperties.AutomationId="TodaySnoozed" Text="{Binding TodaySnoozedText}" Margin="8,0,0,0" />
+       </UniformGrid>
+     </Border>
+ 
+     <UniformGrid Grid.Row="3" Columns="2" Margin="0,16,0,8">
+-      <Button Content="{Binding PauseResumeText}" Command="{Binding TogglePauseCommand}" Style="{StaticResource Awayra.SecondaryButton}" Margin="0,0,8,0" />
+-      <Button Content="Settings" Command="{Binding OpenSettingsCommand}" Style="{StaticResource Awayra.SecondaryButton}" Margin="8,0,0,0" />
++      <Button AutomationProperties.AutomationId="PauseResumeButton" Content="{Binding PauseResumeText}" Command="{Binding TogglePauseCommand}" Style="{StaticResource Awayra.SecondaryButton}" Margin="0,0,8,0" />
++      <Button AutomationProperties.AutomationId="SettingsButton" Content="{Binding SettingsLabel}" Command="{Binding OpenSettingsCommand}" Style="{StaticResource Awayra.SecondaryButton}" Margin="8,0,0,0" />
+     </UniformGrid>
+ 
+     <UniformGrid Grid.Row="4" Columns="2">
+-      <Button Content="Eye Reset Now" Command="{Binding EyeNowCommand}" Style="{StaticResource Awayra.PrimaryButton}" Margin="0,0,8,0" />
+-      <Button Content="Move Break Now" Command="{Binding MoveNowCommand}" Style="{StaticResource Awayra.PrimaryButton}" Margin="8,0,0,0" />
++      <Button AutomationProperties.AutomationId="EyeResetNowButton" Content="{Binding EyeResetNowLabel}" Command="{Binding EyeNowCommand}" Style="{StaticResource Awayra.PrimaryButton}" Margin="0,0,8,0" />
++      <Button AutomationProperties.AutomationId="MoveBreakNowButton" Content="{Binding MoveBreakNowLabel}" Command="{Binding MoveNowCommand}" Style="{StaticResource Awayra.PrimaryButton}" Margin="8,0,0,0" />
+     </UniformGrid>
+   </Grid>
+ </Window>
+diff --git a/src/Awayra.App/Views/SettingsWindow.xaml b/src/Awayra.App/Views/SettingsWindow.xaml
+index bb483eb..3f71388 100644
+--- a/src/Awayra.App/Views/SettingsWindow.xaml
++++ b/src/Awayra.App/Views/SettingsWindow.xaml
+@@ -1,69 +1,69 @@
+ <Window x:Class="Awayra.App.Views.SettingsWindow"
+         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+-        xmlns:models="clr-namespace:Awayra.Core.Models;assembly=Awayra.Core"
++        AutomationProperties.AutomationId="SettingsWindow"
+         Title="Settings"
+         Width="520"
+         Height="720"
+         MinWidth="480"
+         WindowStartupLocation="CenterOwner"
+-        FlowDirection="{Binding FlowDirection}">
++        Style="{StaticResource Awayra.LightChromeWindow}">
+   <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="20">
+     <StackPanel>
+       <TextBlock Text="Settings" FontSize="24" FontWeight="SemiBold" Margin="0,0,0,16" />
+ 
+-      <Border Style="{StaticResource Awayra.Card}" Margin="0,0,0,12">
+-        <StackPanel>
++      <Border Style="{StaticResource Awayra.Card}" Resources="{StaticResource Awayra.DarkSurfaceResources}" Margin="0,0,0,12">
++        <StackPanel Style="{StaticResource Awayra.CardContent}">
+           <TextBlock Text="Eye Reset" FontWeight="SemiBold" Margin="0,0,0,8" />
+           <CheckBox Content="Enabled" IsChecked="{Binding EyeResetEnabled}" Margin="0,0,0,8" />
+           <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+             <TextBlock Text="Interval (minutes)" Width="180" VerticalAlignment="Center" />
+-            <TextBox Text="{Binding EyeResetIntervalMinutes, UpdateSourceTrigger=PropertyChanged}" Width="80" />
++            <TextBox Text="{Binding EyeResetIntervalMinutes, UpdateSourceTrigger=PropertyChanged}" Width="80" Style="{StaticResource Awayra.InputTextBox}" />
+           </StackPanel>
+           <StackPanel Orientation="Horizontal">
+             <TextBlock Text="Duration (seconds)" Width="180" VerticalAlignment="Center" />
+-            <TextBox Text="{Binding EyeResetDurationSeconds, UpdateSourceTrigger=PropertyChanged}" Width="80" />
++            <TextBox Text="{Binding EyeResetDurationSeconds, UpdateSourceTrigger=PropertyChanged}" Width="80" Style="{StaticResource Awayra.InputTextBox}" />
+           </StackPanel>
+         </StackPanel>
+       </Border>
+ 
+-      <Border Style="{StaticResource Awayra.Card}" Margin="0,0,0,12">
+-        <StackPanel>
++      <Border Style="{StaticResource Awayra.Card}" Resources="{StaticResource Awayra.DarkSurfaceResources}" Margin="0,0,0,12">
++        <StackPanel Style="{StaticResource Awayra.CardContent}">
+           <TextBlock Text="Move Break" FontWeight="SemiBold" Margin="0,0,0,8" />
+           <CheckBox Content="Enabled" IsChecked="{Binding MoveBreakEnabled}" Margin="0,0,0,8" />
+           <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+             <TextBlock Text="Interval (minutes)" Width="180" VerticalAlignment="Center" />
+-            <TextBox Text="{Binding MoveBreakIntervalMinutes, UpdateSourceTrigger=PropertyChanged}" Width="80" />
++            <TextBox Text="{Binding MoveBreakIntervalMinutes, UpdateSourceTrigger=PropertyChanged}" Width="80" Style="{StaticResource Awayra.InputTextBox}" />
+           </StackPanel>
+           <StackPanel Orientation="Horizontal">
+             <TextBlock Text="Duration (seconds)" Width="180" VerticalAlignment="Center" />
+-            <TextBox Text="{Binding MoveBreakDurationSeconds, UpdateSourceTrigger=PropertyChanged}" Width="80" />
++            <TextBox Text="{Binding MoveBreakDurationSeconds, UpdateSourceTrigger=PropertyChanged}" Width="80" Style="{StaticResource Awayra.InputTextBox}" />
+           </StackPanel>
+         </StackPanel>
+       </Border>
+ 
+-      <Border Style="{StaticResource Awayra.Card}" Margin="0,0,0,12">
+-        <StackPanel>
++      <Border Style="{StaticResource Awayra.Card}" Resources="{StaticResource Awayra.DarkSurfaceResources}" Margin="0,0,0,12">
++        <StackPanel Style="{StaticResource Awayra.CardContent}">
+           <TextBlock Text="Behavior" FontWeight="SemiBold" Margin="0,0,0,8" />
+           <CheckBox Content="Allow skip" IsChecked="{Binding AllowSkip}" Margin="0,0,0,4" />
+-          <CheckBox Content="Allow snooze" IsChecked="{Binding AllowSnooze}" Margin="0,0,0,8" />
++          <CheckBox AutomationProperties.AutomationId="AllowSnoozeCheckbox" Content="Allow snooze" IsChecked="{Binding AllowSnooze}" Margin="0,0,0,8" />
+           <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+             <TextBlock Text="Snooze duration (minutes)" Width="180" VerticalAlignment="Center" />
+-            <TextBox Text="{Binding SnoozeDurationMinutes, UpdateSourceTrigger=PropertyChanged}" Width="80" />
++            <TextBox AutomationProperties.AutomationId="SnoozeDurationInput" Text="{Binding SnoozeDurationMinutes, UpdateSourceTrigger=PropertyChanged}" Width="80" Style="{StaticResource Awayra.InputTextBox}" />
+           </StackPanel>
+-          <CheckBox Content="Pause while idle" IsChecked="{Binding PauseWhileIdle}" Margin="0,0,0,8" />
++          <CheckBox AutomationProperties.AutomationId="PauseWhileIdleCheckbox" Content="Reset reminders after idle" IsChecked="{Binding PauseWhileIdle}" Margin="0,0,0,8" />
+           <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+             <TextBlock Text="Idle threshold (minutes)" Width="180" VerticalAlignment="Center" />
+-            <TextBox Text="{Binding IdleThresholdMinutes, UpdateSourceTrigger=PropertyChanged}" Width="80" />
++            <TextBox Text="{Binding IdleThresholdMinutes, UpdateSourceTrigger=PropertyChanged}" Width="80" Style="{StaticResource Awayra.InputTextBox}" />
+           </StackPanel>
+           <CheckBox Content="Enable work hours" IsChecked="{Binding WorkHoursEnabled}" Margin="0,0,0,8" />
+           <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+             <TextBlock Text="Work start" Width="180" VerticalAlignment="Center" />
+-            <TextBox Text="{Binding WorkStart, UpdateSourceTrigger=PropertyChanged}" Width="80" />
++            <TextBox Text="{Binding WorkStart, UpdateSourceTrigger=PropertyChanged}" Width="80" Style="{StaticResource Awayra.InputTextBox}" />
+           </StackPanel>
+           <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+             <TextBlock Text="Work end" Width="180" VerticalAlignment="Center" />
+-            <TextBox Text="{Binding WorkEnd, UpdateSourceTrigger=PropertyChanged}" Width="80" />
++            <TextBox Text="{Binding WorkEnd, UpdateSourceTrigger=PropertyChanged}" Width="80" Style="{StaticResource Awayra.InputTextBox}" />
+           </StackPanel>
+           <CheckBox Content="Run at Windows startup" IsChecked="{Binding RunAtStartup}" Margin="0,0,0,4" />
+           <CheckBox Content="Start minimized" IsChecked="{Binding StartMinimized}" Margin="0,0,0,4" />
+@@ -71,37 +71,29 @@
+         </StackPanel>
+       </Border>
+ 
+-      <Border Style="{StaticResource Awayra.Card}" Margin="0,0,0,12">
+-        <StackPanel>
++      <Border Style="{StaticResource Awayra.Card}" Resources="{StaticResource Awayra.DarkSurfaceResources}" Margin="0,0,0,12">
++        <StackPanel Style="{StaticResource Awayra.CardContent}">
+           <TextBlock Text="Appearance" FontWeight="SemiBold" Margin="0,0,0,8" />
+           <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+-            <TextBlock Text="Overlay opacity" Width="180" VerticalAlignment="Center" />
+-            <Slider Minimum="0.3" Maximum="1.0" Value="{Binding OverlayOpacity}" Width="180" />
+-          </StackPanel>
+-          <CheckBox Content="Reduced motion" IsChecked="{Binding ReducedMotion}" Margin="0,0,0,8" />
+-          <StackPanel Orientation="Horizontal">
+-            <TextBlock Text="Language" Width="180" VerticalAlignment="Center" />
+-            <ComboBox SelectedItem="{Binding SelectedLanguage}" Width="180">
+-              <models:AppLanguage>Auto</models:AppLanguage>
+-              <models:AppLanguage>English</models:AppLanguage>
+-              <models:AppLanguage>Persian</models:AppLanguage>
+-              <models:AppLanguage>Arabic</models:AppLanguage>
+-            </ComboBox>
++            <TextBlock Text="Glass clarity" Width="180" VerticalAlignment="Center" />
++            <Slider x:Name="GlassClaritySlider" AutomationProperties.AutomationId="GlassClarityInput" Minimum="0" Maximum="150" SmallChange="1" LargeChange="10" Value="{Binding GlassClarity}" Width="180" IsSnapToTickEnabled="True" TickFrequency="1" />
++            <TextBlock Text="{Binding GlassClarity}" Width="48" Margin="8,0,0,0" VerticalAlignment="Center" />
+           </StackPanel>
++          <CheckBox Content="Reduced motion" IsChecked="{Binding ReducedMotion}" />
+         </StackPanel>
+       </Border>
+ 
+       <ItemsControl ItemsSource="{Binding ValidationErrors}" Margin="0,0,0,12">
+         <ItemsControl.ItemTemplate>
+           <DataTemplate>
+-            <TextBlock Text="{Binding}" Foreground="#FFFF6B6B" TextWrapping="Wrap" />
++            <TextBlock Text="{Binding}" Foreground="{StaticResource ValidationBrush}" TextWrapping="Wrap" />
+           </DataTemplate>
+         </ItemsControl.ItemTemplate>
+       </ItemsControl>
+ 
+       <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+-        <Button Content="Close" Command="{Binding CancelCommand}" Style="{StaticResource Awayra.SecondaryButton}" Margin="0,0,8,0" />
+-        <Button Content="Save" Command="{Binding SaveCommand}" Style="{StaticResource Awayra.PrimaryButton}" />
++        <Button AutomationProperties.AutomationId="SettingsCloseButton" Content="Close" Command="{Binding CancelCommand}" Style="{StaticResource Awayra.SecondaryButton}" Margin="0,0,8,0" />
++        <Button AutomationProperties.AutomationId="SettingsSaveButton" Content="Save" Command="{Binding SaveCommand}" Style="{StaticResource Awayra.PrimaryButton}" />
+       </StackPanel>
+     </StackPanel>
+   </ScrollViewer>
+diff --git a/src/Awayra.App/Views/SettingsWindow.xaml.cs b/src/Awayra.App/Views/SettingsWindow.xaml.cs
+index a654ce7..dad7545 100644
+--- a/src/Awayra.App/Views/SettingsWindow.xaml.cs
++++ b/src/Awayra.App/Views/SettingsWindow.xaml.cs
+@@ -1,4 +1,5 @@
+ using System.Windows;
++using System.Windows.Automation;
+ using Awayra.App.ViewModels;
+ 
+ namespace Awayra.App.Views;
+@@ -9,5 +10,7 @@ public partial class SettingsWindow : Window
+     {
+         InitializeComponent();
+         DataContext = viewModel;
++        AutomationProperties.SetAutomationId(GlassClaritySlider, "GlassClarityInput");
++        Loaded += (_, _) => GlassClaritySlider.BringIntoView();
+     }
+ }
+diff --git a/src/Awayra.Core/Localization/Localization.cs b/src/Awayra.Core/Localization/Localization.cs
+index ccc6e7f..9bd31c5 100644
+--- a/src/Awayra.Core/Localization/Localization.cs
++++ b/src/Awayra.Core/Localization/Localization.cs
+@@ -1,5 +1,3 @@
+-using Awayra.Core.Models;
+-
+ namespace Awayra.Core.Localization;
+ 
+ public static class StringKeys
+@@ -8,6 +6,8 @@ public static class StringKeys
+     public const string StatusRunning = nameof(StatusRunning);
+     public const string StatusPaused = nameof(StatusPaused);
+     public const string StatusPausedIdle = nameof(StatusPausedIdle);
++    public const string StatusIdle = nameof(StatusIdle);
++    public const string StatusConfigurationPaused = nameof(StatusConfigurationPaused);
+     public const string StatusOutsideWorkHours = nameof(StatusOutsideWorkHours);
+     public const string StatusBreakActive = nameof(StatusBreakActive);
+     public const string StatusSnoozed = nameof(StatusSnoozed);
+@@ -61,25 +61,19 @@ public static class StringKeys
+     public const string SettingsRunAtStartup = nameof(SettingsRunAtStartup);
+     public const string SettingsStartMinimized = nameof(SettingsStartMinimized);
+     public const string SettingsCloseToTray = nameof(SettingsCloseToTray);
+-    public const string SettingsOverlayOpacity = nameof(SettingsOverlayOpacity);
++    public const string SettingsGlassClarity = nameof(SettingsGlassClarity);
+     public const string SettingsReducedMotion = nameof(SettingsReducedMotion);
+-    public const string SettingsLanguage = nameof(SettingsLanguage);
+     public const string SettingsTheme = nameof(SettingsTheme);
+     public const string SettingsSave = nameof(SettingsSave);
+     public const string SettingsClose = nameof(SettingsClose);
+ 
+-    public const string LanguageAuto = nameof(LanguageAuto);
+-    public const string LanguageEnglish = nameof(LanguageEnglish);
+-    public const string LanguagePersian = nameof(LanguagePersian);
+-    public const string LanguageArabic = nameof(LanguageArabic);
+-
+     public const string ValidationEyeResetIntervalInvalid = nameof(ValidationEyeResetIntervalInvalid);
+     public const string ValidationEyeResetDurationInvalid = nameof(ValidationEyeResetDurationInvalid);
+     public const string ValidationMoveBreakIntervalInvalid = nameof(ValidationMoveBreakIntervalInvalid);
+     public const string ValidationMoveBreakDurationInvalid = nameof(ValidationMoveBreakDurationInvalid);
+     public const string ValidationSnoozeDurationInvalid = nameof(ValidationSnoozeDurationInvalid);
+     public const string ValidationIdleThresholdInvalid = nameof(ValidationIdleThresholdInvalid);
+-    public const string ValidationOverlayOpacityInvalid = nameof(ValidationOverlayOpacityInvalid);
++    public const string ValidationGlassClarityInvalid = nameof(ValidationGlassClarityInvalid);
+     public const string ValidationWorkHoursRangeInvalid = nameof(ValidationWorkHoursRangeInvalid);
+ 
+     public const string TrayTooltipStatus = nameof(TrayTooltipStatus);
+@@ -89,7 +83,7 @@ public static class StringKeys
+ 
+     public static IReadOnlyList<string> All { get; } =
+     [
+-        AppTitle, StatusRunning, StatusPaused, StatusPausedIdle, StatusOutsideWorkHours,
++        AppTitle, StatusRunning, StatusPaused, StatusPausedIdle, StatusIdle, StatusConfigurationPaused, StatusOutsideWorkHours,
+         StatusBreakActive, StatusSnoozed, StatusDisabled, EyeReset, MoveBreak, Enabled, Disabled,
+         Pause, Resume, EyeResetNow, MoveBreakNow, Settings, Quit, OpenAwayra,
+         TodayEyeCompleted, TodayMoveCompleted, TodaySkipped, TodaySnoozed,
+@@ -99,38 +93,11 @@ public static class StringKeys
+         SettingsIntervalMinutes, SettingsDurationSeconds, SettingsAllowSkip, SettingsAllowSnooze,
+         SettingsSnoozeDuration, SettingsPauseWhileIdle, SettingsIdleThreshold, SettingsWorkHoursEnabled,
+         SettingsWorkStart, SettingsWorkEnd, SettingsRunAtStartup, SettingsStartMinimized, SettingsCloseToTray,
+-        SettingsOverlayOpacity, SettingsReducedMotion, SettingsLanguage, SettingsTheme, SettingsSave, SettingsClose,
+-        LanguageAuto, LanguageEnglish, LanguagePersian, LanguageArabic,
++        SettingsGlassClarity, SettingsReducedMotion, SettingsTheme, SettingsSave, SettingsClose,
+         ValidationEyeResetIntervalInvalid, ValidationEyeResetDurationInvalid,
+         ValidationMoveBreakIntervalInvalid, ValidationMoveBreakDurationInvalid,
+         ValidationSnoozeDurationInvalid, ValidationIdleThresholdInvalid,
+-        ValidationOverlayOpacityInvalid, ValidationWorkHoursRangeInvalid,
++        ValidationGlassClarityInvalid, ValidationWorkHoursRangeInvalid,
+         TrayTooltipStatus, TrayTooltipNextBreak, TrayPauseReminders, TrayResumeReminders
+     ];
+ }
+-
+-public static class CultureDirection
+-{
+-    public static bool IsRightToLeft(string cultureName) =>
+-        cultureName.StartsWith("fa", StringComparison.OrdinalIgnoreCase) ||
+-        cultureName.StartsWith("ar", StringComparison.OrdinalIgnoreCase);
+-}
+-
+-public static class LanguageResolver
+-{
+-    public static string ResolveCulture(AppLanguage language)
+-    {
+-        return language switch
+-        {
+-            AppLanguage.English => "en",
+-            AppLanguage.Persian => "fa",
+-            AppLanguage.Arabic => "ar",
+-            _ => System.Globalization.CultureInfo.CurrentUICulture.TwoLetterISOLanguageName switch
+-            {
+-                "fa" => "fa",
+-                "ar" => "ar",
+-                _ => "en"
+-            }
+-        };
+-    }
+-}
+diff --git a/src/Awayra.Core/Models/AppSettings.cs b/src/Awayra.Core/Models/AppSettings.cs
+index 9457f51..6955a52 100644
+--- a/src/Awayra.Core/Models/AppSettings.cs
++++ b/src/Awayra.Core/Models/AppSettings.cs
+@@ -1,5 +1,7 @@
+ namespace Awayra.Core.Models;
+ 
++using Awayra.Core.Services;
++
+ public sealed class AppSettings
+ {
+     public const int CurrentSchemaVersion = 1;
+@@ -29,9 +31,8 @@ public sealed class AppSettings
+     public bool StartMinimized { get; set; }
+     public bool CloseToTray { get; set; } = true;
+ 
+-    public double OverlayOpacity { get; set; } = 0.82;
++    public int GlassClarity { get; set; } = OverlayGlassSettings.DefaultGlassClarity;
+     public bool ReducedMotion { get; set; }
+-    public AppLanguage Language { get; set; } = AppLanguage.Auto;
+     public AppTheme Theme { get; set; } = AppTheme.Dark;
+ 
+     public static AppSettings CreateDefault() => new();
+diff --git a/src/Awayra.Core/Models/Enums.cs b/src/Awayra.Core/Models/Enums.cs
+index fab9e33..1baa384 100644
+--- a/src/Awayra.Core/Models/Enums.cs
++++ b/src/Awayra.Core/Models/Enums.cs
+@@ -14,7 +14,9 @@ public enum SchedulerStatus
+     OutsideWorkHours = 3,
+     BreakActive = 4,
+     Snoozed = 5,
+-    Disabled = 6
++    Disabled = 6,
++    ConfigurationPaused = 7,
++    Idle = 8
+ }
+ 
+ public enum AppTheme
+@@ -22,11 +24,3 @@ public enum AppTheme
+     Dark = 0,
+     Light = 1
+ }
+-
+-public enum AppLanguage
+-{
+-    Auto = 0,
+-    English = 1,
+-    Persian = 2,
+-    Arabic = 3
+-}
+diff --git a/src/Awayra.Core/Models/SchedulerState.cs b/src/Awayra.Core/Models/SchedulerState.cs
+index 616febc..2419091 100644
+--- a/src/Awayra.Core/Models/SchedulerState.cs
++++ b/src/Awayra.Core/Models/SchedulerState.cs
+@@ -15,6 +15,8 @@ public sealed class SchedulerState
+     public BreakType? QueuedBreak { get; set; }
+     public DateTimeOffset? BreakEndsAt { get; set; }
+     public DateTimeOffset? SnoozeUntil { get; set; }
++    public DateTimeOffset? EyeSnoozeUntil { get; set; }
++    public DateTimeOffset? MoveSnoozeUntil { get; set; }
+ 
+     public DateTimeOffset LastClockCheck { get; set; }
+ 
+diff --git a/src/Awayra.Core/Persistence/JsonPersistence.cs b/src/Awayra.Core/Persistence/JsonPersistence.cs
+index 5815757..8402fa5 100644
+--- a/src/Awayra.Core/Persistence/JsonPersistence.cs
++++ b/src/Awayra.Core/Persistence/JsonPersistence.cs
+@@ -99,6 +99,7 @@ public sealed class SettingsRecovery
+         {
+             using var doc = JsonDocument.Parse(json);
+             ApplyPartialProperties(doc.RootElement, settings);
++            ApplyMigrations(doc.RootElement, settings);
+         }
+         catch (Exception ex)
+         {
+@@ -108,6 +109,58 @@ public sealed class SettingsRecovery
+         return MergeWithDefaults(settings);
+     }
+ 
++    private static void ApplyMigrations(JsonElement root, AppSettings settings)
++    {
++        var hasGlassClarity = false;
++        double? legacyOpacity = null;
++
++        foreach (var property in root.EnumerateObject())
++        {
++            switch (property.Name.ToLowerInvariant())
++            {
++                case "glassclarity":
++                    if (property.Value.ValueKind == JsonValueKind.Number &&
++                        property.Value.TryGetInt32(out var clarity))
++                    {
++                        settings.GlassClarity = clarity;
++                        hasGlassClarity = true;
++                    }
++
++                    break;
++                case "glasstransparency":
++                    if (property.Value.ValueKind == JsonValueKind.Number &&
++                        property.Value.TryGetInt32(out var glass))
++                    {
++                        settings.GlassClarity = OverlayGlassSettings.MigrateFromGlassTransparency(glass);
++                        hasGlassClarity = true;
++                    }
++
++                    break;
++                case "backgroundvisibility":
++                    if (property.Value.ValueKind == JsonValueKind.Number &&
++                        property.Value.TryGetInt32(out var visibility))
++                    {
++                        settings.GlassClarity = OverlayGlassSettings.MigrateFromBackgroundVisibility(visibility);
++                        hasGlassClarity = true;
++                    }
++
++                    break;
++                case "overlayopacity":
++                    if (property.Value.ValueKind == JsonValueKind.Number)
++                    {
++                        legacyOpacity = property.Value.GetDouble();
++                    }
++
++                    break;
++            }
++        }
++
++        if (!hasGlassClarity && legacyOpacity.HasValue)
++        {
++            settings.GlassClarity = OverlayGlassSettings.MigrateFromLegacyOpacity(legacyOpacity.Value);
++        }
++    }
++
+     private static void ApplyPartialProperties(JsonElement root, AppSettings settings)
+     {
+         foreach (var property in root.EnumerateObject())
+@@ -131,29 +184,36 @@ public sealed class SettingsRecovery
+                 case "overlayopacity":
+                     if (property.Value.ValueKind == JsonValueKind.Number)
+                     {
+-                        settings.OverlayOpacity = property.Value.GetDouble();
++                        settings.GlassClarity = OverlayGlassSettings.MigrateFromLegacyOpacity(property.Value.GetDouble());
+                     }
+ 
+                     break;
+-            }
+-        }
+-    }
++                case "backgroundvisibility":
++                    if (property.Value.ValueKind == JsonValueKind.Number &&
++                        property.Value.TryGetInt32(out var visibility))
++                    {
++                        settings.GlassClarity = OverlayGlassSettings.MigrateFromBackgroundVisibility(visibility);
++                    }
+ 
+-    private static AppSettings TryPartialRecovery(string json, IAppLogger? logger)
+-    {
+-        var defaults = AppSettings.CreateDefault();
+-        try
+-        {
+-            using var doc = JsonDocument.Parse(json);
+-            ApplyPartialProperties(doc.RootElement, defaults);
+-            logger?.Info("Partial settings recovery applied.");
+-        }
+-        catch
+-        {
+-            logger?.Warning("Full settings recovery failed; using defaults.");
+-        }
++                    break;
++                case "glassclarity":
++                    if (property.Value.ValueKind == JsonValueKind.Number &&
++                        property.Value.TryGetInt32(out var clarity))
++                    {
++                        settings.GlassClarity = clarity;
++                    }
++
++                    break;
++                case "glasstransparency":
++                    if (property.Value.ValueKind == JsonValueKind.Number &&
++                        property.Value.TryGetInt32(out var glass))
++                    {
++                        settings.GlassClarity = OverlayGlassSettings.MigrateFromGlassTransparency(glass);
++                    }
+ 
+-        return defaults;
++                    break;
++            }
++        }
+     }
+ 
+     private static AppSettings MergeWithDefaults(AppSettings loaded)
+@@ -175,11 +235,16 @@ public sealed class SettingsRecovery
+             {
+                 loaded.MoveBreakIntervalMinutes = defaults.MoveBreakIntervalMinutes;
+             }
++        }
+ 
+-            if (loaded.OverlayOpacity < SettingsValidator.MinOpacity || loaded.OverlayOpacity > SettingsValidator.MaxOpacity)
+-            {
+-                loaded.OverlayOpacity = defaults.OverlayOpacity;
+-            }
++        if (loaded.GlassClarity < OverlayGlassSettings.MinGlassClarity ||
++            loaded.GlassClarity > OverlayGlassSettings.MaxGlassClarity)
++        {
++            loaded.GlassClarity = OverlayGlassSettings.DefaultGlassClarity;
++        }
++        else
++        {
++            loaded.GlassClarity = OverlayGlassSettings.NormalizeGlassClarity(loaded.GlassClarity);
+         }
+ 
+         return loaded;
+diff --git a/src/Awayra.Core/Services/BreakScheduler.cs b/src/Awayra.Core/Services/BreakScheduler.cs
+index 70fa6bd..50f2888 100644
+--- a/src/Awayra.Core/Services/BreakScheduler.cs
++++ b/src/Awayra.Core/Services/BreakScheduler.cs
+@@ -11,7 +11,20 @@ public sealed class BreakScheduler
+     private AppSettings _settings;
+     private SchedulerState _state;
+     private bool _isIdle;
++    private bool _isConfigurationPaused;
++    private TimeSpan? _configFrozenEyeRemaining;
++    private TimeSpan? _configFrozenMoveRemaining;
++    private TimeSpan? _configFrozenEyeSnoozeRemaining;
++    private TimeSpan? _configFrozenMoveSnoozeRemaining;
++    private TimeSpan? _manualFrozenEyeRemaining;
++    private TimeSpan? _manualFrozenMoveRemaining;
++    private bool _outsideWorkHours;
++    private TimeSpan? _workHoursFrozenEyeRemaining;
++    private TimeSpan? _workHoursFrozenMoveRemaining;
++    private TimeSpan? _idleFrozenEyeRemaining;
++    private TimeSpan? _idleFrozenMoveRemaining;
+     private int _moveActivityIndex;
++    private bool _snoozeInProgress;
+ 
+     public BreakScheduler(IClock clock, AppSettings settings, SchedulerState? persistedState = null)
+     {
+@@ -80,6 +93,7 @@ public sealed class BreakScheduler
+         var now = _clock.Now;
+         HandleClockJump(now);
+         _state.LastClockCheck = now;
++        UpdateWorkHoursFreeze(now);
+ 
+         if (_state.ActiveBreak is not null)
+         {
+@@ -92,18 +106,6 @@ public sealed class BreakScheduler
+             return;
+         }
+ 
+-        if (_state.SnoozeUntil is not null)
+-        {
+-            if (now >= _state.SnoozeUntil.Value)
+-            {
+-                _state.SnoozeUntil = null;
+-                TryStartDueBreak(now);
+-            }
+-
+-            PublishSnapshot();
+-            return;
+-        }
+-
+         if (!CanDeliverReminders(now))
+         {
+             PublishSnapshot();
+@@ -122,15 +124,28 @@ public sealed class BreakScheduler
+         }
+ 
+         var now = _clock.Now;
+-        var old = _settings;
++        var wasEyeEnabled = _settings.EyeResetEnabled;
++        var wasMoveEnabled = _settings.MoveBreakEnabled;
++        var oldEyeInterval = _settings.EyeResetIntervalMinutes;
++        var oldMoveInterval = _settings.MoveBreakIntervalMinutes;
+         _settings = settings;
+ 
+-        if (old.EyeResetIntervalMinutes != settings.EyeResetIntervalMinutes || !settings.EyeResetEnabled)
++        if (!wasEyeEnabled && settings.EyeResetEnabled)
++        {
++            _state.EyeNextDue = now.AddMinutes(settings.EyeResetIntervalMinutes);
++            ClearEyeFreezeState();
++        }
++        else if (oldEyeInterval != settings.EyeResetIntervalMinutes || !settings.EyeResetEnabled)
+         {
+             RescheduleOnIntervalChange(BreakType.Eye, now, settings.EyeResetIntervalMinutes, settings.EyeResetEnabled);
+         }
+ 
+-        if (old.MoveBreakIntervalMinutes != settings.MoveBreakIntervalMinutes || !settings.MoveBreakEnabled)
++        if (!wasMoveEnabled && settings.MoveBreakEnabled)
++        {
++            _state.MoveNextDue = now.AddMinutes(settings.MoveBreakIntervalMinutes);
++            ClearMoveFreezeState();
++        }
++        else if (oldMoveInterval != settings.MoveBreakIntervalMinutes || !settings.MoveBreakEnabled)
+         {
+             RescheduleOnIntervalChange(BreakType.Move, now, settings.MoveBreakIntervalMinutes, settings.MoveBreakEnabled);
+         }
+@@ -138,18 +153,203 @@ public sealed class BreakScheduler
+         PublishSnapshot();
+     }
+ 
++    public SchedulerDiagnostics GetDiagnostics(double idleSeconds = 0)
++    {
++        var now = _clock.Now;
++        return new SchedulerDiagnostics
++        {
++            Status = ComputeStatus(now),
++            EyeRemainingSeconds = (int)GetRemaining(BreakType.Eye, now).TotalSeconds,
++            MoveRemainingSeconds = (int)GetRemaining(BreakType.Move, now).TotalSeconds,
++            EyeNextDue = _state.EyeNextDue,
++            MoveNextDue = _state.MoveNextDue,
++            EyeSnoozeUntil = _state.EyeSnoozeUntil,
++            MoveSnoozeUntil = _state.MoveSnoozeUntil,
++            IsPausedManual = _state.IsPausedManual,
++            IsIdlePaused = _settings.PauseWhileIdle && _isIdle,
++            IsConfigurationPaused = _isConfigurationPaused,
++            IsOutsideWorkHours = _settings.WorkHoursEnabled && _outsideWorkHours,
++            ActiveBreak = _state.ActiveBreak,
++            QueuedBreak = _state.QueuedBreak,
++            GlassClarity = _settings.GlassClarity,
++            BackgroundTintOpacity = OverlayGlassSettings.BackgroundTintOpacityFromClarity(_settings.GlassClarity),
++            BlurRadius = OverlayGlassSettings.BlurRadiusFromClarity(_settings.GlassClarity),
++            IdleSeconds = idleSeconds
++        };
++    }
++
++    private void ClearEyeFreezeState()
++    {
++        _manualFrozenEyeRemaining = null;
++        _workHoursFrozenEyeRemaining = null;
++        _configFrozenEyeRemaining = null;
++    }
++
++    private void ClearMoveFreezeState()
++    {
++        _manualFrozenMoveRemaining = null;
++        _workHoursFrozenMoveRemaining = null;
++        _configFrozenMoveRemaining = null;
++    }
++
++    public void EnterConfigurationPause()
++    {
++        var now = _clock.Now;
++        _configFrozenEyeRemaining = GetRawRemaining(BreakType.Eye, now);
++        _configFrozenMoveRemaining = GetRawRemaining(BreakType.Move, now);
++        if (_state.EyeSnoozeUntil is not null && now < _state.EyeSnoozeUntil.Value)
++        {
++            _configFrozenEyeSnoozeRemaining = _configFrozenEyeRemaining;
++        }
++
++        if (_state.MoveSnoozeUntil is not null && now < _state.MoveSnoozeUntil.Value)
++        {
++            _configFrozenMoveSnoozeRemaining = _configFrozenMoveRemaining;
++        }
++
++        _isConfigurationPaused = true;
++        PublishSnapshot();
++    }
++
++    public void ApplyConfigurationSave(AppSettings settings, DateTimeOffset saveTime)
++    {
++        if (!SettingsValidator.IsValid(settings))
++        {
++            throw new InvalidOperationException("Invalid settings cannot be applied to scheduler.");
++        }
++
++        _settings = settings;
++        _isConfigurationPaused = false;
++        _configFrozenEyeRemaining = null;
++        _configFrozenMoveRemaining = null;
++        _configFrozenEyeSnoozeRemaining = null;
++        _configFrozenMoveSnoozeRemaining = null;
++
++        if (settings.EyeResetEnabled)
++        {
++            _state.EyeNextDue = saveTime.AddMinutes(settings.EyeResetIntervalMinutes);
++        }
++
++        _state.EyeSnoozeUntil = null;
++
++        if (settings.MoveBreakEnabled)
++        {
++            _state.MoveNextDue = saveTime.AddMinutes(settings.MoveBreakIntervalMinutes);
++        }
++
++        _state.MoveSnoozeUntil = null;
++        _state.QueuedBreak = null;
++        PublishSnapshot();
++    }
++
++    public void CancelConfigurationPause()
++    {
++        var now = _clock.Now;
++        if (_configFrozenEyeRemaining is not null && _settings.EyeResetEnabled)
++        {
++            _state.EyeNextDue = now + _configFrozenEyeRemaining.Value;
++            if (_configFrozenEyeSnoozeRemaining is not null)
++            {
++                _state.EyeSnoozeUntil = _state.EyeNextDue;
++            }
++        }
++
++        if (_configFrozenMoveRemaining is not null && _settings.MoveBreakEnabled)
++        {
++            _state.MoveNextDue = now + _configFrozenMoveRemaining.Value;
++            if (_configFrozenMoveSnoozeRemaining is not null)
++            {
++                _state.MoveSnoozeUntil = _state.MoveNextDue;
++            }
++        }
++
++        _isConfigurationPaused = false;
++        _configFrozenEyeRemaining = null;
++        _configFrozenMoveRemaining = null;
++        _configFrozenEyeSnoozeRemaining = null;
++        _configFrozenMoveSnoozeRemaining = null;
++        PublishSnapshot();
++    }
++
+     public void Pause()
+     {
++        var now = _clock.Now;
++        _manualFrozenEyeRemaining = GetRawRemaining(BreakType.Eye, now);
++        _manualFrozenMoveRemaining = GetRawRemaining(BreakType.Move, now);
+         _state.IsPausedManual = true;
+         PublishSnapshot();
+     }
+ 
+     public void Resume()
+     {
++        var now = _clock.Now;
++        if (_manualFrozenEyeRemaining is not null && _settings.EyeResetEnabled)
++        {
++            _state.EyeNextDue = now + _manualFrozenEyeRemaining.Value;
++        }
++
++        if (_manualFrozenMoveRemaining is not null && _settings.MoveBreakEnabled)
++        {
++            _state.MoveNextDue = now + _manualFrozenMoveRemaining.Value;
++        }
++
++        _manualFrozenEyeRemaining = null;
++        _manualFrozenMoveRemaining = null;
+         _state.IsPausedManual = false;
+         PublishSnapshot();
+     }
+ 
++    private void UpdateWorkHoursFreeze(DateTimeOffset now)
++    {
++        if (!_settings.WorkHoursEnabled)
++        {
++            if (_outsideWorkHours)
++            {
++                ResumeFromWorkHoursFreeze(now);
++            }
++
++            _outsideWorkHours = false;
++            return;
++        }
++
++        var inside = WorkHoursEvaluator.IsWithinWorkHours(now, true, _settings.WorkStart, _settings.WorkEnd);
++        if (!inside && !_outsideWorkHours)
++        {
++            _workHoursFrozenEyeRemaining = GetRawRemaining(BreakType.Eye, now);
++            _workHoursFrozenMoveRemaining = GetRawRemaining(BreakType.Move, now);
++            _outsideWorkHours = true;
++        }
++        else if (inside && _outsideWorkHours)
++        {
++            ResumeFromWorkHoursFreeze(now);
++            _outsideWorkHours = false;
++        }
++        else if (!inside)
++        {
++            _outsideWorkHours = true;
++        }
++        else
++        {
++            _outsideWorkHours = false;
++        }
++    }
++
++    private void ResumeFromWorkHoursFreeze(DateTimeOffset now)
++    {
++        if (_workHoursFrozenEyeRemaining is not null && _settings.EyeResetEnabled)
++        {
++            _state.EyeNextDue = now + _workHoursFrozenEyeRemaining.Value;
++        }
++
++        if (_workHoursFrozenMoveRemaining is not null && _settings.MoveBreakEnabled)
++        {
++            _state.MoveNextDue = now + _workHoursFrozenMoveRemaining.Value;
++        }
++
++        _workHoursFrozenEyeRemaining = null;
++        _workHoursFrozenMoveRemaining = null;
++    }
++
+     public void SetIdle(bool isIdle)
+     {
+         if (_isIdle == isIdle)
+@@ -157,19 +357,50 @@ public sealed class BreakScheduler
+             return;
+         }
+ 
+-        _isIdle = isIdle;
+-
+-        if (!isIdle && _state.ActiveBreak is null && _state.SnoozeUntil is null)
++        if (isIdle && !_isIdle && _settings.PauseWhileIdle)
+         {
+             var now = _clock.Now;
+-            RescheduleAfterIdleReturn(now);
++            _idleFrozenEyeRemaining = GetRawRemaining(BreakType.Eye, now);
++            _idleFrozenMoveRemaining = GetRawRemaining(BreakType.Move, now);
+         }
+ 
++        if (!isIdle && _isIdle && _settings.PauseWhileIdle)
++        {
++            ResetIntervalsAfterIdleReturn(_clock.Now);
++        }
++
++        _isIdle = isIdle;
+         PublishSnapshot();
+     }
+ 
++    private void ResetIntervalsAfterIdleReturn(DateTimeOffset now)
++    {
++        _idleFrozenEyeRemaining = null;
++        _idleFrozenMoveRemaining = null;
++
++        if (_settings.EyeResetEnabled)
++        {
++            _state.EyeNextDue = now.AddMinutes(_settings.EyeResetIntervalMinutes);
++        }
++
++        _state.EyeSnoozeUntil = null;
++
++        if (_settings.MoveBreakEnabled)
++        {
++            _state.MoveNextDue = now.AddMinutes(_settings.MoveBreakIntervalMinutes);
++        }
++
++        _state.MoveSnoozeUntil = null;
++        _state.QueuedBreak = null;
++    }
++
+     public void TriggerNow(BreakType breakType)
+     {
++        if (_isConfigurationPaused)
++        {
++            return;
++        }
++
+         if (!IsBreakEnabled(breakType))
+         {
+             return;
+@@ -218,16 +449,37 @@ public sealed class BreakScheduler
+ 
+     public void SnoozeActiveBreak()
+     {
+-        if (_state.ActiveBreak is null || !_settings.AllowSnooze)
++        if (_state.ActiveBreak is null || !_settings.AllowSnooze || _snoozeInProgress)
+         {
+             return;
+         }
+ 
+-        var breakType = _state.ActiveBreak.Value;
+-        EndBreak(breakType, completed: false, skipped: false, snoozed: true);
+-        _state.SnoozeUntil = _clock.Now.AddMinutes(_settings.SnoozeDurationMinutes);
+-        TryStartQueuedOrDue();
+-        PublishSnapshot();
++        _snoozeInProgress = true;
++        try
++        {
++            var now = _clock.Now;
++            var breakType = _state.ActiveBreak.Value;
++            var snoozeEnd = now.AddMinutes(_settings.SnoozeDurationMinutes);
++
++            if (breakType == BreakType.Eye)
++            {
++                _state.EyeNextDue = snoozeEnd;
++                _state.EyeSnoozeUntil = snoozeEnd;
++            }
++            else
++            {
++                _state.MoveNextDue = snoozeEnd;
++                _state.MoveSnoozeUntil = snoozeEnd;
++            }
++
++            _state.SnoozeUntil = null;
++            EndBreak(breakType, completed: false, skipped: false, snoozed: true);
++            PublishSnapshot();
++        }
++        finally
++        {
++            _snoozeInProgress = false;
++        }
+     }
+ 
+     public void RestoreState(SchedulerState state)
+@@ -254,8 +506,30 @@ public sealed class BreakScheduler
+         {
+             _state.LastClockCheck = now;
+         }
++
++        MigrateLegacySnoozeState();
++    }
++
++    private void MigrateLegacySnoozeState()
++    {
++        if (_state.SnoozeUntil is null)
++        {
++            return;
++        }
++
++        if (_state.EyeSnoozeUntil is null)
++        {
++            _state.EyeSnoozeUntil = _state.SnoozeUntil;
++            _state.EyeNextDue = _state.SnoozeUntil.Value;
++        }
++
++        _state.SnoozeUntil = null;
+     }
+ 
++    private bool IsAnyBreakSnoozed(DateTimeOffset now) =>
++        (_state.EyeSnoozeUntil is not null && now < _state.EyeSnoozeUntil.Value) ||
++        (_state.MoveSnoozeUntil is not null && now < _state.MoveSnoozeUntil.Value);
++
+     private void HandleClockJump(DateTimeOffset now)
+     {
+         var delta = now - _state.LastClockCheck;
+@@ -280,6 +554,11 @@ public sealed class BreakScheduler
+             return false;
+         }
+ 
++        if (_isConfigurationPaused)
++        {
++            return false;
++        }
++
+         if (_settings.PauseWhileIdle && _isIdle)
+         {
+             return false;
+@@ -300,7 +579,7 @@ public sealed class BreakScheduler
+             return SchedulerStatus.BreakActive;
+         }
+ 
+-        if (_state.SnoozeUntil is not null && now < _state.SnoozeUntil.Value)
++        if (IsAnyBreakSnoozed(now))
+         {
+             return SchedulerStatus.Snoozed;
+         }
+@@ -315,9 +594,14 @@ public sealed class BreakScheduler
+             return SchedulerStatus.PausedManual;
+         }
+ 
++        if (_isConfigurationPaused)
++        {
++            return SchedulerStatus.ConfigurationPaused;
++        }
++
+         if (_settings.PauseWhileIdle && _isIdle)
+         {
+-            return SchedulerStatus.PausedIdle;
++            return SchedulerStatus.Idle;
+         }
+ 
+         if (!WorkHoursEvaluator.IsWithinWorkHours(now, _settings.WorkHoursEnabled, _settings.WorkStart, _settings.WorkEnd))
+@@ -335,6 +619,47 @@ public sealed class BreakScheduler
+             return TimeSpan.Zero;
+         }
+ 
++        if (_state.IsPausedManual)
++        {
++            var manualFrozen = breakType == BreakType.Eye ? _manualFrozenEyeRemaining : _manualFrozenMoveRemaining;
++            if (manualFrozen is not null)
++            {
++                return manualFrozen.Value;
++            }
++        }
++
++        if (_isConfigurationPaused)
++        {
++            var configFrozen = breakType == BreakType.Eye ? _configFrozenEyeRemaining : _configFrozenMoveRemaining;
++            if (configFrozen is not null)
++            {
++                return configFrozen.Value;
++            }
++        }
++
++        if (_settings.WorkHoursEnabled && _outsideWorkHours)
++        {
++            var workFrozen = breakType == BreakType.Eye ? _workHoursFrozenEyeRemaining : _workHoursFrozenMoveRemaining;
++            if (workFrozen is not null)
++            {
++                return workFrozen.Value;
++            }
++        }
++
++        if (_settings.PauseWhileIdle && _isIdle)
++        {
++            var idleFrozen = breakType == BreakType.Eye ? _idleFrozenEyeRemaining : _idleFrozenMoveRemaining;
++            if (idleFrozen is not null)
++            {
++                return idleFrozen.Value;
++            }
++        }
++
++        return GetRawRemaining(breakType, now);
++    }
++
++    private TimeSpan GetRawRemaining(BreakType breakType, DateTimeOffset now)
++    {
+         var due = breakType == BreakType.Eye ? _state.EyeNextDue : _state.MoveNextDue;
+         var remaining = due - now;
+         return remaining < TimeSpan.Zero ? TimeSpan.Zero : remaining;
+@@ -372,7 +697,7 @@ public sealed class BreakScheduler
+ 
+     private void TryStartQueuedOrDue()
+     {
+-        if (_state.ActiveBreak is not null || _state.SnoozeUntil is not null)
++        if (_state.ActiveBreak is not null || IsAnyBreakSnoozed(_clock.Now))
+         {
+             return;
+         }
+@@ -409,6 +734,15 @@ public sealed class BreakScheduler
+         _state.BreakEndsAt = now.AddSeconds(durationSeconds);
+         _state.QueuedBreak = null;
+ 
++        if (breakType == BreakType.Eye)
++        {
++            _state.EyeSnoozeUntil = null;
++        }
++        else
++        {
++            _state.MoveSnoozeUntil = null;
++        }
++
+         if (breakType == BreakType.Move)
+         {
+             _moveActivityIndex = (_moveActivityIndex + 1) % MoveActivityCount;
+@@ -438,7 +772,7 @@ public sealed class BreakScheduler
+         }
+         else if (snoozed)
+         {
+-            // SnoozeUntil set by caller; keep current due times.
++            // Per-break snooze due times were set by the caller.
+         }
+ 
+         BreakEnded?.Invoke(this, new BreakEndedEventArgs
+@@ -493,20 +827,5 @@ public sealed class BreakScheduler
+         }
+     }
+ 
+-    private void RescheduleAfterIdleReturn(DateTimeOffset now)
+-    {
+-        if (_settings.EyeResetEnabled && now >= _state.EyeNextDue && _settings.MoveBreakEnabled && now >= _state.MoveNextDue)
+-        {
+-            if (_state.EyeNextDue <= _state.MoveNextDue)
+-            {
+-                _state.MoveNextDue = now.AddMinutes(_settings.MoveBreakIntervalMinutes);
+-            }
+-            else
+-            {
+-                _state.EyeNextDue = now.AddMinutes(_settings.EyeResetIntervalMinutes);
+-            }
+-        }
+-    }
+-
+     private void PublishSnapshot() => SnapshotChanged?.Invoke(this, GetSnapshot());
+ }
+diff --git a/src/Awayra.Core/Services/SettingsValidator.cs b/src/Awayra.Core/Services/SettingsValidator.cs
+index 946ad96..f8ba221 100644
+--- a/src/Awayra.Core/Services/SettingsValidator.cs
++++ b/src/Awayra.Core/Services/SettingsValidator.cs
+@@ -1,76 +1,76 @@
+-using Awayra.Core.Models;
+-
+-namespace Awayra.Core.Services;
+-
+-public static class SettingsValidator
+-{
+-    public const int MinIntervalMinutes = 1;
+-    public const int MaxIntervalMinutes = 480;
+-    public const int MinDurationSeconds = 5;
+-    public const int MaxDurationSeconds = 600;
+-    public const int MinSnoozeMinutes = 1;
+-    public const int MaxSnoozeMinutes = 60;
+-    public const int MinIdleMinutes = 1;
+-    public const int MaxIdleMinutes = 120;
+-    public const double MinOpacity = 0.3;
+-    public const double MaxOpacity = 1.0;
+-
+-    public static IReadOnlyList<string> Validate(AppSettings settings)
+-    {
+-        var errors = new List<string>();
+-
+-        if (settings.EyeResetIntervalMinutes < MinIntervalMinutes || settings.EyeResetIntervalMinutes > MaxIntervalMinutes)
+-        {
+-            errors.Add("EyeResetIntervalInvalid");
+-        }
+-
+-        if (settings.EyeResetDurationSeconds < MinDurationSeconds || settings.EyeResetDurationSeconds > MaxDurationSeconds)
+-        {
+-            errors.Add("EyeResetDurationInvalid");
+-        }
+-
+-        if (settings.EyeResetDurationSeconds > settings.EyeResetIntervalMinutes * 60)
+-        {
+-            errors.Add("EyeResetDurationExceedsInterval");
+-        }
+-
+-        if (settings.MoveBreakIntervalMinutes < MinIntervalMinutes || settings.MoveBreakIntervalMinutes > MaxIntervalMinutes)
+-        {
+-            errors.Add("MoveBreakIntervalInvalid");
+-        }
+-
+-        if (settings.MoveBreakDurationSeconds < MinDurationSeconds || settings.MoveBreakDurationSeconds > MaxDurationSeconds)
+-        {
+-            errors.Add("MoveBreakDurationInvalid");
+-        }
+-
+-        if (settings.MoveBreakDurationSeconds > settings.MoveBreakIntervalMinutes * 60)
+-        {
+-            errors.Add("MoveBreakDurationExceedsInterval");
+-        }
+-
+-        if (settings.SnoozeDurationMinutes < MinSnoozeMinutes || settings.SnoozeDurationMinutes > MaxSnoozeMinutes)
+-        {
+-            errors.Add("SnoozeDurationInvalid");
+-        }
+-
+-        if (settings.IdleThresholdMinutes < MinIdleMinutes || settings.IdleThresholdMinutes > MaxIdleMinutes)
+-        {
+-            errors.Add("IdleThresholdInvalid");
+-        }
+-
+-        if (settings.OverlayOpacity < MinOpacity || settings.OverlayOpacity > MaxOpacity)
+-        {
+-            errors.Add("OverlayOpacityInvalid");
+-        }
+-
+-        if (settings.WorkHoursEnabled && settings.WorkStart == settings.WorkEnd)
+-        {
+-            errors.Add("WorkHoursRangeInvalid");
+-        }
+-
+-        return errors;
+-    }
+-
+-    public static bool IsValid(AppSettings settings) => Validate(settings).Count == 0;
+-}
++using Awayra.Core.Models;
+
++
+
++namespace Awayra.Core.Services;
+
++
+
++public static class SettingsValidator
+
++{
+
++    public const int MinIntervalMinutes = 1;
+
++    public const int MaxIntervalMinutes = 480;
+
++    public const int MinDurationSeconds = 10;
+
++    public const int MaxDurationSeconds = 600;
+
++    public const int MinSnoozeMinutes = 1;
+
++    public const int MaxSnoozeMinutes = 60;
+
++    public const int MinIdleMinutes = 1;
+
++    public const int MaxIdleMinutes = 120;
+
++    public const int MinGlassClarity = OverlayGlassSettings.MinGlassClarity;
+
++    public const int MaxGlassClarity = OverlayGlassSettings.MaxGlassClarity;
+
++
+
++    public static IReadOnlyList<string> Validate(AppSettings settings)
+
++    {
+
++        var errors = new List<string>();
+
++
+
++        if (settings.EyeResetIntervalMinutes < MinIntervalMinutes || settings.EyeResetIntervalMinutes > MaxIntervalMinutes)
+
++        {
+
++            errors.Add("EyeResetIntervalInvalid");
+
++        }
+
++
+
++        if (settings.EyeResetDurationSeconds < MinDurationSeconds || settings.EyeResetDurationSeconds > MaxDurationSeconds)
+
++        {
+
++            errors.Add("EyeResetDurationInvalid");
+
++        }
+
++
+
++        if (settings.EyeResetDurationSeconds > settings.EyeResetIntervalMinutes * 60)
+
++        {
+
++            errors.Add("EyeResetDurationExceedsInterval");
+
++        }
+
++
+
++        if (settings.MoveBreakIntervalMinutes < MinIntervalMinutes || settings.MoveBreakIntervalMinutes > MaxIntervalMinutes)
+
++        {
+
++            errors.Add("MoveBreakIntervalInvalid");
+
++        }
+
++
+
++        if (settings.MoveBreakDurationSeconds < MinDurationSeconds || settings.MoveBreakDurationSeconds > MaxDurationSeconds)
+
++        {
+
++            errors.Add("MoveBreakDurationInvalid");
+
++        }
+
++
+
++        if (settings.MoveBreakDurationSeconds > settings.MoveBreakIntervalMinutes * 60)
+
++        {
+
++            errors.Add("MoveBreakDurationExceedsInterval");
+
++        }
+
++
+
++        if (settings.SnoozeDurationMinutes < MinSnoozeMinutes || settings.SnoozeDurationMinutes > MaxSnoozeMinutes)
+
++        {
+
++            errors.Add("SnoozeDurationInvalid");
+
++        }
+
++
+
++        if (settings.IdleThresholdMinutes < MinIdleMinutes || settings.IdleThresholdMinutes > MaxIdleMinutes)
+
++        {
+
++            errors.Add("IdleThresholdInvalid");
+
++        }
+
++
+
++        if (settings.GlassClarity < MinGlassClarity || settings.GlassClarity > MaxGlassClarity)
+
++        {
+
++            errors.Add("GlassClarityInvalid");
+
++        }
+
++
+
++        if (settings.WorkHoursEnabled && settings.WorkStart == settings.WorkEnd)
+
++        {
+
++            errors.Add("WorkHoursRangeInvalid");
+
++        }
+
++
+
++        return errors;
+
++    }
+
++
+
++    public static bool IsValid(AppSettings settings) => Validate(settings).Count == 0;
+
++}
+
+diff --git a/tests/Awayra.Core.Tests/BreakSchedulerTests.cs b/tests/Awayra.Core.Tests/BreakSchedulerTests.cs
+index 8417f49..e9efb2e 100644
+--- a/tests/Awayra.Core.Tests/BreakSchedulerTests.cs
++++ b/tests/Awayra.Core.Tests/BreakSchedulerTests.cs
+@@ -85,6 +85,8 @@ public sealed class BreakSchedulerTests
+ 
+         var snapshot = scheduler.GetSnapshot();
+         Assert.AreEqual(SchedulerStatus.Snoozed, snapshot.Status);
++        Assert.IsNull(snapshot.ActiveBreak);
++        Assert.AreEqual(TimeSpan.FromMinutes(5), snapshot.MoveRemaining);
+     }
+ 
+     [TestMethod]
+@@ -102,7 +104,7 @@ public sealed class BreakSchedulerTests
+     }
+ 
+     [TestMethod]
+-    public void IdlePause_SuppressesNewBreaks()
++    public void Idle_SuppressesNewBreaks()
+     {
+         var scheduler = CreateScheduler();
+         var clock = GetClock(scheduler);
+@@ -111,8 +113,93 @@ public sealed class BreakSchedulerTests
+         clock.Advance(TimeSpan.FromMinutes(30));
+         scheduler.Tick();
+ 
+-        Assert.AreEqual(SchedulerStatus.PausedIdle, scheduler.GetSnapshot().Status);
++        Assert.AreEqual(SchedulerStatus.Idle, scheduler.GetSnapshot().Status);
++        Assert.IsNull(scheduler.GetSnapshot().ActiveBreak);
++    }
++
++    [TestMethod]
++    public void Idle_DueTimesMayPassWithoutBacklog()
++    {
++        var scheduler = CreateScheduler();
++        var clock = GetClock(scheduler);
++
++        scheduler.SetIdle(true);
++        clock.Advance(TimeSpan.FromHours(2));
++        scheduler.Tick();
++
+         Assert.IsNull(scheduler.GetSnapshot().ActiveBreak);
++        Assert.IsNull(scheduler.GetSnapshot().QueuedBreak);
++    }
++
++    [TestMethod]
++    public void IdleReturn_ResetsFreshEyeInterval()
++    {
++        var settings = AppSettings.CreateDefault();
++        settings.EyeResetIntervalMinutes = 30;
++        var scheduler = CreateScheduler(settings: settings);
++        var clock = GetClock(scheduler);
++
++        clock.Advance(TimeSpan.FromMinutes(12));
++        scheduler.Tick();
++        scheduler.SetIdle(true);
++        clock.Advance(TimeSpan.FromMinutes(5));
++        scheduler.SetIdle(false);
++
++        var snapshot = scheduler.GetSnapshot();
++        Assert.AreEqual(TimeSpan.FromMinutes(30).TotalSeconds, snapshot.EyeRemaining.TotalSeconds, 2);
++        Assert.IsNull(snapshot.ActiveBreak);
++    }
++
++    [TestMethod]
++    public void IdleReturn_ResetsFreshMoveInterval()
++    {
++        var settings = AppSettings.CreateDefault();
++        settings.MoveBreakIntervalMinutes = 45;
++        var scheduler = CreateScheduler(settings: settings);
++        var clock = GetClock(scheduler);
++
++        scheduler.SetIdle(true);
++        clock.Advance(TimeSpan.FromHours(1));
++        scheduler.SetIdle(false);
++
++        var snapshot = scheduler.GetSnapshot();
++        Assert.AreEqual(TimeSpan.FromMinutes(45).TotalSeconds, snapshot.MoveRemaining.TotalSeconds, 2);
++    }
++
++    [TestMethod]
++    public void IdleReturn_ClearsSnooze()
++    {
++        var scheduler = CreateScheduler();
++        scheduler.TriggerNow(BreakType.Eye);
++        scheduler.SnoozeActiveBreak();
++        Assert.AreEqual(SchedulerStatus.Snoozed, scheduler.GetSnapshot().Status);
++
++        scheduler.SetIdle(true);
++        scheduler.SetIdle(false);
++
++        Assert.AreNotEqual(SchedulerStatus.Snoozed, scheduler.GetSnapshot().Status);
++    }
++
++    [TestMethod]
++    public void IdleReturn_SecondSessionResetsAgain()
++    {
++        var settings = AppSettings.CreateDefault();
++        settings.EyeResetIntervalMinutes = 20;
++        var scheduler = CreateScheduler(settings: settings);
++        var clock = GetClock(scheduler);
++
++        scheduler.SetIdle(true);
++        scheduler.SetIdle(false);
++        var first = scheduler.GetSnapshot().EyeRemaining;
++
++        clock.Advance(TimeSpan.FromMinutes(10));
++        scheduler.Tick();
++        scheduler.SetIdle(true);
++        scheduler.SetIdle(false);
++        var second = scheduler.GetSnapshot().EyeRemaining;
++
++        Assert.AreEqual(TimeSpan.FromMinutes(20).TotalSeconds, first.TotalSeconds, 2);
++        Assert.AreEqual(TimeSpan.FromMinutes(20).TotalSeconds, second.TotalSeconds, 2);
+     }
+ 
+     [TestMethod]
+@@ -130,6 +217,218 @@ public sealed class BreakSchedulerTests
+         Assert.IsTrue(snapshot.ActiveBreak is null || snapshot.QueuedBreak is null);
+     }
+ 
++    [TestMethod]
++    public void Idle_Enter_CapturesEyeRemaining()
++    {
++        var scheduler = CreateScheduler();
++        var clock = GetClock(scheduler);
++
++        clock.Advance(TimeSpan.FromMinutes(8));
++        scheduler.Tick();
++        var beforeIdle = scheduler.GetSnapshot().EyeRemaining;
++
++        scheduler.SetIdle(true);
++
++        Assert.AreEqual(beforeIdle.TotalSeconds, scheduler.GetSnapshot().EyeRemaining.TotalSeconds, 1);
++    }
++
++    [TestMethod]
++    public void Idle_Enter_CapturesMoveRemaining()
++    {
++        var scheduler = CreateScheduler();
++        var clock = GetClock(scheduler);
++
++        clock.Advance(TimeSpan.FromMinutes(12));
++        scheduler.Tick();
++        var beforeIdle = scheduler.GetSnapshot().MoveRemaining;
++
++        scheduler.SetIdle(true);
++
++        Assert.AreEqual(beforeIdle.TotalSeconds, scheduler.GetSnapshot().MoveRemaining.TotalSeconds, 1);
++    }
++
++    [TestMethod]
++    public void Idle_EyeDisplayRemainsFrozenThroughMultipleTicks()
++    {
++        var scheduler = CreateScheduler();
++        var clock = GetClock(scheduler);
++
++        clock.Advance(TimeSpan.FromMinutes(8));
++        scheduler.Tick();
++        scheduler.SetIdle(true);
++        var frozenEye = scheduler.GetSnapshot().EyeRemaining;
++
++        for (var i = 0; i < 5; i++)
++        {
++            clock.Advance(TimeSpan.FromSeconds(10));
++            scheduler.Tick();
++            Assert.AreEqual(frozenEye.TotalSeconds, scheduler.GetSnapshot().EyeRemaining.TotalSeconds, 1);
++        }
++    }
++
++    [TestMethod]
++    public void Idle_MoveDisplayRemainsFrozenThroughMultipleTicks()
++    {
++        var scheduler = CreateScheduler();
++        var clock = GetClock(scheduler);
++
++        clock.Advance(TimeSpan.FromMinutes(12));
++        scheduler.Tick();
++        scheduler.SetIdle(true);
++        var frozenMove = scheduler.GetSnapshot().MoveRemaining;
++
++        for (var i = 0; i < 5; i++)
++        {
++            clock.Advance(TimeSpan.FromSeconds(10));
++            scheduler.Tick();
++            Assert.AreEqual(frozenMove.TotalSeconds, scheduler.GetSnapshot().MoveRemaining.TotalSeconds, 1);
++        }
++    }
++
++    [TestMethod]
++    public void Idle_SnoozeDisplayRemainsFrozen()
++    {
++        var scheduler = CreateScheduler();
++        var clock = GetClock(scheduler);
++
++        scheduler.TriggerNow(BreakType.Eye);
++        scheduler.SnoozeActiveBreak();
++        scheduler.SetIdle(true);
++        var frozenSnooze = scheduler.GetSnapshot().EyeRemaining;
++
++        clock.Advance(TimeSpan.FromMinutes(3));
++        scheduler.Tick();
++
++        Assert.AreEqual(frozenSnooze.TotalSeconds, scheduler.GetSnapshot().EyeRemaining.TotalSeconds, 1);
++        Assert.IsNull(scheduler.GetSnapshot().ActiveBreak);
++    }
++
++    [TestMethod]
++    public void Idle_NoOverlayBecomesActive()
++    {
++        var scheduler = CreateScheduler();
++        var clock = GetClock(scheduler);
++
++        scheduler.SetIdle(true);
++        clock.Advance(TimeSpan.FromHours(2));
++
++        for (var i = 0; i < 10; i++)
++        {
++            scheduler.Tick();
++            Assert.IsNull(scheduler.GetSnapshot().ActiveBreak);
++        }
++    }
++
++    [TestMethod]
++    public void IdleReturn_DoesNotResumeFromFrozenValues()
++    {
++        var settings = AppSettings.CreateDefault();
++        settings.EyeResetIntervalMinutes = 30;
++        settings.MoveBreakIntervalMinutes = 45;
++        var scheduler = CreateScheduler(settings: settings);
++        var clock = GetClock(scheduler);
++
++        clock.Advance(TimeSpan.FromMinutes(12));
++        scheduler.Tick();
++        scheduler.SetIdle(true);
++        var frozenEye = scheduler.GetSnapshot().EyeRemaining;
++        var frozenMove = scheduler.GetSnapshot().MoveRemaining;
++
++        clock.Advance(TimeSpan.FromMinutes(20));
++        scheduler.Tick();
++        scheduler.SetIdle(false);
++
++        var snapshot = scheduler.GetSnapshot();
++        Assert.AreNotEqual(frozenEye.TotalSeconds, snapshot.EyeRemaining.TotalSeconds, 5);
++        Assert.AreNotEqual(frozenMove.TotalSeconds, snapshot.MoveRemaining.TotalSeconds, 5);
++        Assert.AreEqual(TimeSpan.FromMinutes(30).TotalSeconds, snapshot.EyeRemaining.TotalSeconds, 2);
++        Assert.AreEqual(TimeSpan.FromMinutes(45).TotalSeconds, snapshot.MoveRemaining.TotalSeconds, 2);
++    }
++
++    [TestMethod]
++    public void Idle_MultipleTicksDoNotOverwriteCapturedValues()
++    {
++        var scheduler = CreateScheduler();
++        var clock = GetClock(scheduler);
++
++        clock.Advance(TimeSpan.FromMinutes(7));
++        scheduler.Tick();
++        scheduler.SetIdle(true);
++        var firstCapture = scheduler.GetSnapshot().EyeRemaining;
++
++        clock.Advance(TimeSpan.FromMinutes(30));
++        scheduler.Tick();
++        var afterLongIdle = scheduler.GetSnapshot().EyeRemaining;
++
++        clock.Advance(TimeSpan.FromSeconds(15));
++        scheduler.Tick();
++        var afterAnotherTick = scheduler.GetSnapshot().EyeRemaining;
++
++        Assert.AreEqual(firstCapture.TotalSeconds, afterLongIdle.TotalSeconds, 1);
++        Assert.AreEqual(firstCapture.TotalSeconds, afterAnotherTick.TotalSeconds, 1);
++    }
++
++    [TestMethod]
++    public void Idle_SecondSessionCapturesNewRemainingValues()
++    {
++        var settings = AppSettings.CreateDefault();
++        settings.EyeResetIntervalMinutes = 20;
++        var scheduler = CreateScheduler(settings: settings);
++        var clock = GetClock(scheduler);
++
++        clock.Advance(TimeSpan.FromMinutes(5));
++        scheduler.Tick();
++        scheduler.SetIdle(true);
++        var firstFrozen = scheduler.GetSnapshot().EyeRemaining;
++        scheduler.SetIdle(false);
++
++        clock.Advance(TimeSpan.FromMinutes(8));
++        scheduler.Tick();
++        scheduler.SetIdle(true);
++        var secondFrozen = scheduler.GetSnapshot().EyeRemaining;
++
++        Assert.AreNotEqual(firstFrozen.TotalSeconds, secondFrozen.TotalSeconds, 5);
++        Assert.IsTrue(secondFrozen > TimeSpan.Zero);
++    }
++
++    [TestMethod]
++    public void Idle_StatisticsRemainUnchanged()
++    {
++        var clock = new FakeClock(Start);
++        var stats = new StatisticsService(clock);
++        var scheduler = new BreakScheduler(clock, AppSettings.CreateDefault());
++
++        scheduler.BreakEnded += (_, args) =>
++        {
++            if (args.Completed)
++            {
++                stats.RecordCompletion(args.BreakType);
++            }
++            else if (args.Skipped)
++            {
++                stats.RecordSkip();
++            }
++            else if (args.Snoozed)
++            {
++                stats.RecordSnooze();
++            }
++        };
++
++        var before = stats.GetToday();
++        scheduler.SetIdle(true);
++        clock.Advance(TimeSpan.FromHours(2));
++        for (var i = 0; i < 20; i++)
++        {
++            scheduler.Tick();
++        }
++
++        var after = stats.GetToday();
++        Assert.AreEqual(before.EyeCompleted, after.EyeCompleted);
++        Assert.AreEqual(before.MoveCompleted, after.MoveCompleted);
++        Assert.AreEqual(before.Skipped, after.Skipped);
++        Assert.AreEqual(before.Snoozed, after.Snoozed);
++    }
++
+     [TestMethod]
+     public void ClockForwardJump_MarksBreakDue()
+     {
+@@ -247,18 +546,139 @@ public sealed class BreakSchedulerTests
+     }
+ 
+     [TestMethod]
+-    public void WorkHours_OutsideRange_SuppressesBreaks()
++    public void ManualPause_FreezesCountdowns()
++    {
++        var scheduler = CreateScheduler();
++        var clock = GetClock(scheduler);
++        clock.Advance(TimeSpan.FromMinutes(5));
++        scheduler.Tick();
++        var beforeEye = scheduler.GetSnapshot().EyeRemaining;
++        var beforeMove = scheduler.GetSnapshot().MoveRemaining;
++
++        scheduler.Pause();
++        clock.Advance(TimeSpan.FromSeconds(30));
++        scheduler.Tick();
++
++        var paused = scheduler.GetSnapshot();
++        Assert.AreEqual(beforeEye.TotalSeconds, paused.EyeRemaining.TotalSeconds, 1);
++        Assert.AreEqual(beforeMove.TotalSeconds, paused.MoveRemaining.TotalSeconds, 1);
++        Assert.AreEqual(SchedulerStatus.PausedManual, paused.Status);
++
++        scheduler.Resume();
++        clock.Advance(TimeSpan.FromSeconds(2));
++        scheduler.Tick();
++        var resumed = scheduler.GetSnapshot();
++        Assert.IsTrue(resumed.EyeRemaining < beforeEye);
++        Assert.IsTrue(resumed.EyeRemaining > beforeEye - TimeSpan.FromSeconds(35));
++    }
++
++    [TestMethod]
++    public void WorkHoursOutside_FreezesDisplayedCountdown()
+     {
+         var settings = AppSettings.CreateDefault();
+         settings.WorkHoursEnabled = true;
+         settings.WorkStart = new TimeOnly(9, 0);
+         settings.WorkEnd = new TimeOnly(18, 0);
+-        var scheduler = CreateScheduler(new DateTimeOffset(2026, 7, 17, 20, 0, 0, TimeSpan.FromHours(4)), settings);
++        var start = new DateTimeOffset(2026, 7, 17, 17, 30, 0, TimeSpan.FromHours(4));
++        var scheduler = CreateScheduler(start, settings);
+         var clock = GetClock(scheduler);
+ 
+-        clock.Advance(TimeSpan.FromHours(2));
++        clock.Advance(TimeSpan.FromMinutes(5));
++        scheduler.Tick();
++        clock.Advance(TimeSpan.FromMinutes(45));
++        scheduler.Tick();
++
++        var outside = scheduler.GetSnapshot();
++        Assert.AreEqual(SchedulerStatus.OutsideWorkHours, outside.Status);
++        var frozenEye = outside.EyeRemaining;
++
++        clock.Advance(TimeSpan.FromMinutes(10));
++        scheduler.Tick();
++        var stillOutside = scheduler.GetSnapshot();
++        Assert.AreEqual(frozenEye.TotalSeconds, stillOutside.EyeRemaining.TotalSeconds, 1);
++    }
++
++    [TestMethod]
++    public void ConfigurationPause_FreezesCountdowns()
++    {
++        var scheduler = CreateScheduler();
++        var clock = GetClock(scheduler);
++        clock.Advance(TimeSpan.FromMinutes(5));
++        scheduler.Tick();
++        var before = scheduler.GetSnapshot();
++
++        scheduler.EnterConfigurationPause();
++        clock.Advance(TimeSpan.FromSeconds(40));
++        scheduler.Tick();
++
++        var paused = scheduler.GetSnapshot();
++        Assert.AreEqual(SchedulerStatus.ConfigurationPaused, paused.Status);
++        Assert.AreEqual(before.EyeRemaining.TotalSeconds, paused.EyeRemaining.TotalSeconds, 1);
++        Assert.AreEqual(before.MoveRemaining.TotalSeconds, paused.MoveRemaining.TotalSeconds, 1);
++    }
++
++    [TestMethod]
++    public void ConfigurationSave_ResetsFullIntervalsFromSaveTime()
++    {
++        var settings = AppSettings.CreateDefault();
++        settings.EyeResetIntervalMinutes = 1;
++        settings.MoveBreakIntervalMinutes = 1;
++        var scheduler = CreateScheduler(settings: settings);
++        var clock = GetClock(scheduler);
++
++        scheduler.EnterConfigurationPause();
++        clock.Advance(TimeSpan.FromSeconds(40));
++        var saveTime = clock.Now;
++        scheduler.ApplyConfigurationSave(settings, saveTime);
++
++        var snapshot = scheduler.GetSnapshot();
++        Assert.AreEqual(TimeSpan.FromMinutes(1).TotalSeconds, snapshot.EyeRemaining.TotalSeconds, 2);
++        Assert.AreEqual(TimeSpan.FromMinutes(1).TotalSeconds, snapshot.MoveRemaining.TotalSeconds, 2);
++        Assert.AreEqual(SchedulerStatus.Running, snapshot.Status);
++    }
++
++    [TestMethod]
++    public void ConfigurationCancel_ResumesFrozenCountdowns()
++    {
++        var scheduler = CreateScheduler();
++        var clock = GetClock(scheduler);
++        clock.Advance(TimeSpan.FromMinutes(5));
+         scheduler.Tick();
++        var before = scheduler.GetSnapshot();
++
++        scheduler.EnterConfigurationPause();
++        clock.Advance(TimeSpan.FromSeconds(40));
++        scheduler.CancelConfigurationPause();
++
++        var resumed = scheduler.GetSnapshot();
++        Assert.IsTrue(resumed.EyeRemaining <= before.EyeRemaining);
++        Assert.IsTrue(resumed.EyeRemaining >= before.EyeRemaining - TimeSpan.FromSeconds(5));
++    }
++
++    [TestMethod]
++    public void ConfigurationPause_BlocksTriggerNow()
++    {
++        var scheduler = CreateScheduler();
++        scheduler.EnterConfigurationPause();
++        scheduler.TriggerNow(BreakType.Eye);
++        Assert.IsNull(scheduler.GetSnapshot().ActiveBreak);
++    }
++
++    [TestMethod]
++    public void ReEnableEye_StartsFreshInterval()
++    {
++        var scheduler = CreateScheduler();
++        var clock = GetClock(scheduler);
++        var disabled = AppSettings.CreateDefault();
++        disabled.EyeResetEnabled = false;
++        scheduler.UpdateSettings(disabled);
++        clock.Advance(TimeSpan.FromMinutes(30));
++        scheduler.Tick();
++
++        var enabled = AppSettings.CreateDefault();
++        enabled.EyeResetEnabled = true;
++        scheduler.UpdateSettings(enabled);
+ 
+-        Assert.AreEqual(SchedulerStatus.OutsideWorkHours, scheduler.GetSnapshot().Status);
++        Assert.AreEqual(TimeSpan.FromMinutes(20), scheduler.GetSnapshot().EyeRemaining);
+     }
+ }
+diff --git a/tests/Awayra.Core.Tests/LocalizationTests.cs b/tests/Awayra.Core.Tests/LocalizationTests.cs
+index 00ddd9a..5d83812 100644
+--- a/tests/Awayra.Core.Tests/LocalizationTests.cs
++++ b/tests/Awayra.Core.Tests/LocalizationTests.cs
+@@ -1,6 +1,7 @@
+ using System.Xml.Linq;
+ using Awayra.Core.Localization;
+ using Awayra.Core.Models;
++using Awayra.Core.Services;
+ 
+ namespace Awayra.Core.Tests;
+ 
+@@ -17,31 +18,25 @@ public sealed class LocalizationTests
+     }
+ 
+     [TestMethod]
+-    public void AllKeys_ExistInPersianResources()
++    public void PersianResourceFile_IsNotPresent()
+     {
+-        AssertAllKeysPresent("Strings.fa.resx");
++        Assert.IsFalse(File.Exists(Path.Combine(ResourcesPath, "Strings.fa.resx")));
+     }
+ 
+     [TestMethod]
+-    public void AllKeys_ExistInArabicResources()
++    public void ArabicResourceFile_IsNotPresent()
+     {
+-        AssertAllKeysPresent("Strings.ar.resx");
++        Assert.IsFalse(File.Exists(Path.Combine(ResourcesPath, "Strings.ar.resx")));
+     }
+ 
+     [TestMethod]
+-    public void RtlSelection_PersianAndArabic()
++    public void EnglishOnly_NoRtlHelpersRemain()
+     {
+-        Assert.IsTrue(CultureDirection.IsRightToLeft("fa-IR"));
+-        Assert.IsTrue(CultureDirection.IsRightToLeft("ar-SA"));
+-        Assert.IsFalse(CultureDirection.IsRightToLeft("en-US"));
+-    }
++        var localizationSource = File.ReadAllText(Path.GetFullPath(Path.Combine(
++            AppContext.BaseDirectory, "..", "..", "..", "..", "..", "src", "Awayra.Core", "Localization", "Localization.cs")));
+ 
+-    [TestMethod]
+-    public void LanguageResolver_ReturnsExpectedCultures()
+-    {
+-        Assert.AreEqual("en", LanguageResolver.ResolveCulture(AppLanguage.English));
+-        Assert.AreEqual("fa", LanguageResolver.ResolveCulture(AppLanguage.Persian));
+-        Assert.AreEqual("ar", LanguageResolver.ResolveCulture(AppLanguage.Arabic));
++        Assert.IsFalse(localizationSource.Contains("CultureDirection", StringComparison.Ordinal));
++        Assert.IsFalse(localizationSource.Contains("LanguageResolver", StringComparison.Ordinal));
+     }
+ 
+     private static void AssertAllKeysPresent(string fileName)
+@@ -64,3 +59,73 @@ public sealed class LocalizationTests
+         }
+     }
+ }
++
++[TestClass]
++public sealed class OverlayGlassSettingsTests
++{
++    [DataTestMethod]
++    [DataRow(0, 1.0, 30.0)]
++    [DataRow(25, 0.75, 27.0)]
++    [DataRow(50, 0.50, 24.0)]
++    [DataRow(75, 0.25, 21.0)]
++    [DataRow(100, 0.0, 18.0)]
++    [DataRow(125, 0.0, 13.0)]
++    [DataRow(150, 0.0, 8.0)]
++    public void GlassClarity_MapsTintAndBlur(int clarity, double tint, double blur)
++    {
++        Assert.AreEqual(tint, OverlayGlassSettings.BackgroundTintOpacityFromClarity(clarity), 0.001);
++        Assert.AreEqual(blur, OverlayGlassSettings.BlurRadiusFromClarity(clarity), 0.001);
++    }
++
++    [TestMethod]
++    public void DefaultGlassClarity_IsOneHundred()
++    {
++        Assert.AreEqual(100, OverlayGlassSettings.DefaultGlassClarity);
++        Assert.AreEqual(100, AppSettings.CreateDefault().GlassClarity);
++    }
++
++    [TestMethod]
++    public void MinimumGlassClarity_IsZero()
++    {
++        Assert.AreEqual(0, OverlayGlassSettings.MinGlassClarity);
++        Assert.AreEqual(0, OverlayGlassSettings.NormalizeGlassClarity(-5));
++        Assert.AreEqual(1.0, OverlayGlassSettings.BackgroundTintOpacityFromClarity(0), 0.001);
++    }
++
++    [TestMethod]
++    public void MaximumGlassClarity_IsOneHundredFifty()
++    {
++        Assert.AreEqual(150, OverlayGlassSettings.MaxGlassClarity);
++        Assert.AreEqual(150, OverlayGlassSettings.NormalizeGlassClarity(200));
++        Assert.AreEqual(0.0, OverlayGlassSettings.BackgroundTintOpacityFromClarity(150), 0.001);
++    }
++
++    [TestMethod]
++    public void BackgroundVisibilityMigration_MapsLegacyRange()
++    {
++        Assert.AreEqual(0, OverlayGlassSettings.MigrateFromBackgroundVisibility(10));
++        Assert.AreEqual(50, OverlayGlassSettings.MigrateFromBackgroundVisibility(20));
++        Assert.AreEqual(100, OverlayGlassSettings.MigrateFromBackgroundVisibility(30));
++        Assert.AreEqual(25, OverlayGlassSettings.MigrateFromBackgroundVisibility(15));
++        Assert.AreEqual(75, OverlayGlassSettings.MigrateFromBackgroundVisibility(25));
++    }
++
++    [TestMethod]
++    public void GlassTransparencyMigration_PreservesClosestValue()
++    {
++        Assert.AreEqual(75, OverlayGlassSettings.MigrateFromGlassTransparency(75));
++    }
++
++    [TestMethod]
++    public void MalformedLegacyOpacity_FallsBackSafely()
++    {
++        Assert.AreEqual(100, OverlayGlassSettings.MigrateFromLegacyOpacity(double.NaN));
++        Assert.AreEqual(100, OverlayGlassSettings.MigrateFromLegacyOpacity(double.PositiveInfinity));
++    }
++
++    [TestMethod]
++    public void ContentOpacity_RemainsFullyOpaque()
++    {
++        Assert.AreEqual(1.0, OverlayGlassSettings.ContentOpacity, 0.001);
++    }
++}
+diff --git a/tests/Awayra.Core.Tests/SettingsTests.cs b/tests/Awayra.Core.Tests/SettingsTests.cs
+index 8c42294..22a6850 100644
+--- a/tests/Awayra.Core.Tests/SettingsTests.cs
++++ b/tests/Awayra.Core.Tests/SettingsTests.cs
+@@ -28,9 +28,8 @@ public sealed class SettingsTests
+         Assert.IsFalse(settings.RunAtStartup);
+         Assert.IsFalse(settings.StartMinimized);
+         Assert.IsTrue(settings.CloseToTray);
+-        Assert.AreEqual(0.82, settings.OverlayOpacity, 0.001);
++        Assert.AreEqual(OverlayGlassSettings.DefaultGlassClarity, settings.GlassClarity);
+         Assert.IsFalse(settings.ReducedMotion);
+-        Assert.AreEqual(AppLanguage.Auto, settings.Language);
+         Assert.AreEqual(AppTheme.Dark, settings.Theme);
+     }
+ 
+@@ -44,38 +43,105 @@ public sealed class SettingsTests
+         Assert.IsTrue(SettingsValidator.Validate(settings).Contains("EyeResetIntervalInvalid"));
+     }
+ 
++    [TestMethod]
++    public void Validation_RejectsInvalidGlassClarity()
++    {
++        var settings = AppSettings.CreateDefault();
++        settings.GlassClarity = 151;
++
++        Assert.IsFalse(SettingsValidator.IsValid(settings));
++        Assert.IsTrue(SettingsValidator.Validate(settings).Contains("GlassClarityInvalid"));
++    }
++
++    [TestMethod]
++    public void Validation_AllowsTenSecondDuration()
++    {
++        var settings = AppSettings.CreateDefault();
++        settings.EyeResetDurationSeconds = 10;
++        settings.MoveBreakDurationSeconds = 10;
++
++        Assert.IsTrue(SettingsValidator.IsValid(settings));
++    }
++
+     [TestMethod]
+     public void SaveAndLoad_RoundTrips()
+     {
+         var settings = AppSettings.CreateDefault();
+         settings.EyeResetIntervalMinutes = 15;
++        settings.GlassClarity = 125;
++
+         var json = JsonSerializer.Serialize(settings, JsonOptions.Create());
+         var loaded = JsonSerializer.Deserialize<AppSettings>(json, JsonOptions.Create());
+ 
+         Assert.IsNotNull(loaded);
+         Assert.AreEqual(15, loaded.EyeResetIntervalMinutes);
++        Assert.AreEqual(125, loaded.GlassClarity);
+     }
+ 
+     [TestMethod]
+-    public void PartialMalformedJson_ApplyDocumentPropertiesDirectly()
++    public void PartialMalformedJson_MigratesLegacyOverlayOpacity()
+     {
+-        const string json = "{ \"eyeResetEnabled\": false, \"eyeResetIntervalMinutes\": \"bad\", \"overlayOpacity\": 0.5 }";
+-        using var doc = JsonDocument.Parse(json);
+-        var settings = AppSettings.CreateDefault();
+-        SettingsRecovery.ApplyDocumentProperties(doc.RootElement, settings);
++        const string json = "{ \"eyeResetEnabled\": false, \"eyeResetIntervalMinutes\": \"bad\", \"overlayOpacity\": 0.82 }";
++        var recovered = SettingsRecovery.LoadWithRecovery(json);
+ 
+-        Assert.IsFalse(settings.EyeResetEnabled);
+-        Assert.AreEqual(0.5, settings.OverlayOpacity, 0.001);
++        Assert.IsFalse(recovered.EyeResetEnabled);
++        Assert.AreEqual(40, recovered.GlassClarity);
+     }
+ 
+     [TestMethod]
+-    public void PartialMalformedJson_RecoversKnownFields()
++    public void LegacyOverlayOpacity_MigratesToGlassClarity()
+     {
+-        const string json = "{ \"eyeResetEnabled\": false, \"eyeResetIntervalMinutes\": \"bad\", \"overlayOpacity\": 0.5 }";
++        const string json = "{ \"overlayOpacity\": 0.5 }";
+         var recovered = SettingsRecovery.LoadWithRecovery(json);
+ 
+-        Assert.IsFalse(recovered.EyeResetEnabled);
+-        Assert.AreEqual(0.5, recovered.OverlayOpacity, 0.001);
++        Assert.AreEqual(100, recovered.GlassClarity);
++    }
++
++    [TestMethod]
++    public void MalformedGlassClarity_FallsBackToDefault()
++    {
++        const string json = "{ \"glassClarity\": \"bad\" }";
++        var recovered = SettingsRecovery.LoadWithRecovery(json);
++
++        Assert.AreEqual(OverlayGlassSettings.DefaultGlassClarity, recovered.GlassClarity);
++    }
++
++    [TestMethod]
++    public void OutOfRangeGlassClarity_FallsBackToDefault()
++    {
++        const string json = "{ \"glassClarity\": 200 }";
++        var recovered = SettingsRecovery.LoadWithRecovery(json);
++
++        Assert.AreEqual(OverlayGlassSettings.DefaultGlassClarity, recovered.GlassClarity);
++    }
++
++    [TestMethod]
++    public void LegacyGlassTransparency_MigratesToGlassClarity()
++    {
++        const string json = "{ \"glassTransparency\": 75 }";
++        var recovered = SettingsRecovery.LoadWithRecovery(json);
++
++        Assert.AreEqual(75, recovered.GlassClarity);
++    }
++
++    [TestMethod]
++    public void LegacyBackgroundVisibility_MigratesToGlassClarity()
++    {
++        const string json = "{ \"language\": \"Persian\", \"backgroundVisibility\": 22 }";
++        var recovered = SettingsRecovery.LoadWithRecovery(json);
++
++        Assert.AreEqual(60, recovered.GlassClarity);
++    }
++
++    [TestMethod]
++    public void Save_RemovesObsoleteLanguageProperty()
++    {
++        var settings = AppSettings.CreateDefault();
++        var json = JsonSerializer.Serialize(settings, JsonOptions.Create());
++
++        Assert.IsFalse(json.Contains("language", StringComparison.OrdinalIgnoreCase));
++        Assert.IsFalse(json.Contains("backgroundVisibility", StringComparison.OrdinalIgnoreCase));
++        Assert.IsFalse(json.Contains("glassTransparency", StringComparison.OrdinalIgnoreCase));
+     }
+ 
+     [TestMethod]
+@@ -85,6 +151,44 @@ public sealed class SettingsTests
+         Assert.AreEqual(AppSettings.CreateDefault().EyeResetIntervalMinutes, recovered.EyeResetIntervalMinutes);
+     }
+ 
++    [TestMethod]
++    public void StartMinimizedAndCloseToTray_RemainIndependent()
++    {
++        var settings = AppSettings.CreateDefault();
++        settings.StartMinimized = true;
++        settings.CloseToTray = false;
++
++        Assert.IsTrue(settings.StartMinimized);
++        Assert.IsFalse(settings.CloseToTray);
++
++        settings.StartMinimized = false;
++        settings.CloseToTray = true;
++        Assert.IsFalse(settings.StartMinimized);
++        Assert.IsTrue(settings.CloseToTray);
++    }
++
++    [TestMethod]
++    public void PartialMalformedJson_PreservesUnrelatedSettings()
++    {
++        const string json = "{ \"eyeResetEnabled\": false, \"eyeResetIntervalMinutes\": \"bad\", \"overlayOpacity\": 0.82 }";
++        var recovered = SettingsRecovery.LoadWithRecovery(json);
++
++        Assert.IsFalse(recovered.EyeResetEnabled);
++        Assert.AreEqual(40, recovered.GlassClarity);
++        Assert.AreEqual(AppSettings.CreateDefault().EyeResetIntervalMinutes, recovered.EyeResetIntervalMinutes);
++        Assert.AreEqual(AppSettings.CreateDefault().MoveBreakIntervalMinutes, recovered.MoveBreakIntervalMinutes);
++    }
++
++    [TestMethod]
++    public void MissingStartMinimized_DefaultsFalse()
++    {
++        const string json = "{ \"closeToTray\": true }";
++        var recovered = SettingsRecovery.LoadWithRecovery(json);
++
++        Assert.IsFalse(recovered.StartMinimized);
++        Assert.IsTrue(recovered.CloseToTray);
++    }
++
+     [TestMethod]
+     public void SchemaVersion_Preserved()
+     {

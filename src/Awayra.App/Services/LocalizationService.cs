@@ -1,5 +1,4 @@
 using System.Globalization;
-using System.Windows;
 using Awayra.Core.Localization;
 using Awayra.Core.Models;
 using Awayra.Core.Services;
@@ -9,22 +8,15 @@ namespace Awayra.App.Services;
 
 public sealed class LocalizationService
 {
-    public event EventHandler? CultureChanged;
-
     public string CurrentCultureName { get; private set; } = "en";
 
-    public System.Windows.FlowDirection CurrentFlowDirection =>
-        CultureDirection.IsRightToLeft(CurrentCultureName) ? System.Windows.FlowDirection.RightToLeft : System.Windows.FlowDirection.LeftToRight;
-
-    public void Apply(AppLanguage language)
+    public void Apply()
     {
-        var cultureName = LanguageResolver.ResolveCulture(language);
-        var culture = CultureInfo.GetCultureInfo(cultureName);
+        var culture = CultureInfo.GetCultureInfo("en");
         CultureInfo.CurrentUICulture = culture;
         CultureInfo.CurrentCulture = culture;
         Strings.Culture = culture;
-        CurrentCultureName = cultureName;
-        CultureChanged?.Invoke(this, EventArgs.Empty);
+        CurrentCultureName = "en";
     }
 
     public string Get(string key) => Strings.Get(key);
@@ -34,6 +26,8 @@ public sealed class LocalizationService
         SchedulerStatus.Running => Get(StringKeys.StatusRunning),
         SchedulerStatus.PausedManual => Get(StringKeys.StatusPaused),
         SchedulerStatus.PausedIdle => Get(StringKeys.StatusPausedIdle),
+        SchedulerStatus.Idle => Get(StringKeys.StatusIdle),
+        SchedulerStatus.ConfigurationPaused => Get(StringKeys.StatusConfigurationPaused),
         SchedulerStatus.OutsideWorkHours => Get(StringKeys.StatusOutsideWorkHours),
         SchedulerStatus.BreakActive => Get(StringKeys.StatusBreakActive),
         SchedulerStatus.Snoozed => Get(StringKeys.StatusSnoozed),
@@ -58,7 +52,7 @@ public sealed class LocalizationService
         "MoveBreakDurationInvalid" => Get(StringKeys.ValidationMoveBreakDurationInvalid),
         "SnoozeDurationInvalid" => Get(StringKeys.ValidationSnoozeDurationInvalid),
         "IdleThresholdInvalid" => Get(StringKeys.ValidationIdleThresholdInvalid),
-        "OverlayOpacityInvalid" => Get(StringKeys.ValidationOverlayOpacityInvalid),
+        "GlassClarityInvalid" => Get(StringKeys.ValidationGlassClarityInvalid),
         "WorkHoursRangeInvalid" => Get(StringKeys.ValidationWorkHoursRangeInvalid),
         _ => errorKey
     };

@@ -1,4 +1,5 @@
 using System.Windows;
+using System.Windows.Automation;
 using System.Windows.Input;
 using System.Windows.Media.Animation;
 using Awayra.App.Interop;
@@ -12,12 +13,17 @@ public partial class BreakOverlayWindow : Window
 {
     private readonly ApplicationHost _host;
     private readonly OverlayViewModel _viewModel;
+    private readonly IMonitorSnapshotService _snapshotService;
     private Storyboard? _pulseStoryboard;
 
-    public BreakOverlayWindow(ApplicationHost host, OverlayViewModel viewModel)
+    public BreakOverlayWindow(
+        ApplicationHost host,
+        OverlayViewModel viewModel,
+        IMonitorSnapshotService snapshotService)
     {
         _host = host;
         _viewModel = viewModel;
+        _snapshotService = snapshotService;
         InitializeComponent();
         DataContext = viewModel;
         viewModel.SkipCommand = new CommunityToolkit.Mvvm.Input.RelayCommand(OnSkip, () => _viewModel.ShowSkip);
@@ -28,13 +34,21 @@ public partial class BreakOverlayWindow : Window
 
     public void Configure(BreakStartedEventArgs args, AppSettings settings, LocalizationService localization, bool isEye)
     {
+        var prefix = isEye ? "Eye" : "Move";
+        AutomationProperties.SetAutomationId(this, $"{prefix}OverlayWindow");
+        AutomationProperties.SetAutomationId(OverlayCountdown, $"{prefix}OverlayCountdown");
+        AutomationProperties.SetAutomationId(SkipButton, $"{prefix}SkipButton");
+        AutomationProperties.SetAutomationId(SnoozeButton, $"{prefix}SnoozeButton");
+        AutomationProperties.SetAutomationId(CompleteButton, $"{prefix}CompleteButton");
+
+        var snapshot = _snapshotService.CaptureMonitorAtCursor();
         if (isEye)
         {
-            _viewModel.ConfigureEye(args, settings, localization);
+            _viewModel.ConfigureEye(args, settings, localization, snapshot);
         }
         else
         {
-            _viewModel.ConfigureMove(args, settings, localization);
+            _viewModel.ConfigureMove(args, settings, localization, snapshot);
         }
     }
 
@@ -55,6 +69,9 @@ public partial class BreakOverlayWindow : Window
         }
     }
 
+    public void ApplyGlassClarity(int glassClarity) =>
+        _viewModel.ApplyGlassClarity(glassClarity);
+
     public void CloseSafely()
     {
         _pulseStoryboard?.Stop();
@@ -63,7 +80,6 @@ public partial class BreakOverlayWindow : Window
 
     private void OnLoaded(object sender, RoutedEventArgs e)
     {
-        DwmHelper.TryApplyBackdrop(this, true);
         if (!_viewModel.ReducedMotion)
         {
             _pulseStoryboard = new Storyboard { RepeatBehavior = RepeatBehavior.Forever };

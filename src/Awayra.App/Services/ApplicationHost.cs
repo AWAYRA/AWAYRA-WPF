@@ -1,3 +1,4 @@
+using Awayra.App;
 using Awayra.Core.Abstractions;
 using Awayra.Core.Models;
 using Awayra.Core.Persistence;
@@ -21,7 +22,10 @@ public sealed class ApplicationHost : IDisposable
     private StatisticsService _statistics = null!;
     private System.Timers.Timer? _tickTimer;
     private System.Timers.Timer? _idleTimer;
+    private System.Timers.Timer? _diagnosticsTimer;
     private bool _isShuttingDown;
+    private bool _configurationSessionActive;
+    private bool _wasIdle;
 
     public ApplicationHost(
         IAppLogger logger,
@@ -48,8 +52,10 @@ public sealed class ApplicationHost : IDisposable
     public AppSettings Settings => _settings;
     public LocalizationService Localization => _localization;
     public IAppLogger Logger => _logger;
+    public IIdleMonitor IdleMonitor => _idleMonitor;
 
     public event EventHandler? StateChanged;
+    public event EventHandler<int>? GlassClarityPreviewChanged;
 
     public async Task InitializeAsync()
     {
@@ -60,7 +66,13 @@ public sealed class ApplicationHost : IDisposable
             _settings = AppSettings.CreateDefault();
         }
 
-        _localization.Apply(_settings.Language);
+        if (UiTestMode.IsEnabled)
+        {
+            _settings = UiTestMode.ApplyDefaults(_settings);
+            await _settingsStore.SaveAsync(_settings).ConfigureAwait(false);
+        }
+
+        _localization.Apply();
         var state = await _stateStore.LoadAsync().ConfigureAwait(false);
         _scheduler = new BreakScheduler(_clock, _settings, state);
         var statsData = await _statisticsStore.LoadAsync().ConfigureAwait(false);
@@ -74,15 +86,69 @@ public sealed class ApplicationHost : IDisposable
         _tickTimer.AutoReset = true;
         _tickTimer.Start();
 
-        _idleTimer = new System.Timers.Timer(30_000);
+        _idleTimer = new System.Timers.Timer(UiTestMode.IsEnabled ? 1_000 : 5_000);
         _idleTimer.Elapsed += (_, _) => UpdateIdleState();
         _idleTimer.AutoReset = true;
         _idleTimer.Start();
         UpdateIdleState();
 
+        if (UiTestMode.IsEnabled && UiTestMode.DataRoot is not null)
+        {
+            UiTestDiagnosticsWriter.Initialize(UiTestMode.DataRoot);
+            _diagnosticsTimer = new System.Timers.Timer(1_000);
+            _diagnosticsTimer.Elapsed += (_, _) => PublishUiTestDiagnostics();
+            _diagnosticsTimer.AutoReset = true;
+            _diagnosticsTimer.Start();
+            PublishUiTestDiagnostics();
+        }
+
         _logger.Info("Awayra initialized.");
         await PersistStateAsync().ConfigureAwait(false);
     }
+
+    public void BeginConfigurationSession()
+    {
+        _scheduler.EnterConfigurationPause();
+        _configurationSessionActive = true;
+        StateChanged?.Invoke(this, EventArgs.Empty);
+    }
+
+    public async Task SaveConfigurationAsync(AppSettings settings)
+    {
+        if (!SettingsValidator.IsValid(settings))
+        {
+            throw new InvalidOperationException("Invalid settings.");
+        }
+
+        var saveTime = _clock.Now;
+        _settings = settings;
+        _scheduler.ApplyConfigurationSave(settings, saveTime);
+        _configurationSessionActive = false;
+        _localization.Apply();
+        await _settingsStore.SaveAsync(settings).ConfigureAwait(false);
+        await PersistStateAsync().ConfigureAwait(false);
+        ApplyAutostartSetting();
+        StateChanged?.Invoke(this, EventArgs.Empty);
+    }
+
+    public void EndConfigurationSession(bool saved)
+    {
+        if (!_configurationSessionActive)
+        {
+            return;
+        }
+
+        if (!saved)
+        {
+            _scheduler.CancelConfigurationPause();
+        }
+
+        _configurationSessionActive = false;
+        StateChanged?.Invoke(this, EventArgs.Empty);
+    }
+
+    public void PreviewGlassClarity(int glassClarity) =>
+        GlassClarityPreviewChanged?.Invoke(this, OverlayGlassSettings.NormalizeGlassClarity(glassClarity));
 
     public async Task UpdateSettingsAsync(AppSettings settings)
     {
@@ -93,7 +159,7 @@ public sealed class ApplicationHost : IDisposable
 
         _settings = settings;
         _scheduler.UpdateSettings(settings);
-        _localization.Apply(settings.Language);
+        _localization.Apply();
         await _settingsStore.SaveAsync(settings).ConfigureAwait(false);
         await PersistStateAsync().ConfigureAwait(false);
         ApplyAutostartSetting();
@@ -150,21 +216,54 @@ public sealed class ApplicationHost : IDisposable
         _idleTimer?.Stop();
         _tickTimer?.Dispose();
         _idleTimer?.Dispose();
+        _diagnosticsTimer?.Dispose();
         _logger.Info("Awayra shutting down.");
     }
 
     public void Dispose() => Shutdown();
 
-    private void UpdateIdleState()
+    private async void UpdateIdleState()
     {
         if (!_settings.PauseWhileIdle)
         {
+            if (_wasIdle)
+            {
+                _wasIdle = false;
+            }
+
             _scheduler.SetIdle(false);
             return;
         }
 
         var threshold = TimeSpan.FromMinutes(_settings.IdleThresholdMinutes);
-        _scheduler.SetIdle(_idleMonitor.IsIdle(threshold));
+        var isIdle = _idleMonitor.IsIdle(threshold);
+        var wasIdle = _wasIdle;
+        _wasIdle = isIdle;
+        _scheduler.SetIdle(isIdle);
+
+        if (wasIdle && !isIdle)
+        {
+            try
+            {
+                await PersistStateAsync().ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                _logger.Error("Failed to persist after idle return", ex);
+            }
+        }
+    }
+
+    private void PublishUiTestDiagnostics()
+    {
+        var diagnostics = _scheduler.GetDiagnostics(_idleMonitor.GetIdleTime().TotalSeconds);
+        diagnostics.SnapshotCaptured = false;
+        var today = _statistics.GetToday();
+        diagnostics.EyeCompleted = today.EyeCompleted;
+        diagnostics.MoveCompleted = today.MoveCompleted;
+        diagnostics.Skipped = today.Skipped;
+        diagnostics.Snoozed = today.Snoozed;
+        UiTestDiagnosticsWriter.Write(diagnostics);
     }
 
     private async void OnBreakEnded(object? sender, BreakEndedEventArgs e)

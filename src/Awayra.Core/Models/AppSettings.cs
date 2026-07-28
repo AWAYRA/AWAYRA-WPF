@@ -1,5 +1,7 @@
 namespace Awayra.Core.Models;
 
+using Awayra.Core.Services;
+
 public sealed class AppSettings
 {
     public const int CurrentSchemaVersion = 1;
@@ -29,9 +31,8 @@ public sealed class AppSettings
     public bool StartMinimized { get; set; }
     public bool CloseToTray { get; set; } = true;
 
-    public double OverlayOpacity { get; set; } = 0.82;
+    public int GlassClarity { get; set; } = OverlayGlassSettings.DefaultGlassClarity;
     public bool ReducedMotion { get; set; }
-    public AppLanguage Language { get; set; } = AppLanguage.Auto;
     public AppTheme Theme { get; set; } = AppTheme.Dark;
 
     public static AppSettings CreateDefault() => new();
