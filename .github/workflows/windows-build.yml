@@ -23,8 +23,16 @@ jobs:
         with:
           dotnet-version: 10.0.x
 
+      - name: Validate repository files
+        shell: pwsh
+        run: |
+          if (-not (Test-Path LICENSE)) { throw "LICENSE is missing." }
+          if (-not (Test-Path SECURITY.md)) { throw "SECURITY.md is missing." }
+          if (-not (Test-Path CONTRIBUTING.md)) { throw "CONTRIBUTING.md is missing." }
+          if (Test-Path release) { throw "Generated release files must not be committed." }
+
       - name: Restore
-        run: dotnet restore src/Awayra.App/Awayra.App.csproj
+        run: dotnet restore Awayra.sln
 
       - name: Build
-        run: dotnet build src/Awayra.App/Awayra.App.csproj -c Release --no-restore
+        run: dotnet build Awayra.sln -c Release --no-restore
