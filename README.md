@@ -42,7 +42,31 @@ Focused example:
 powershell -ExecutionPolicy Bypass -File .\scripts\test.ps1 -Filter "FullyQualifiedName~BreakScheduler"
 ```
 
-## Release publish
+## Windows installer (compiled release)
+
+The latest **compiled, self-contained Windows build** is published on GitHub Releases. You do **not** need the .NET SDK or any development tools to install or run it.
+
+**Download:** [GitHub Releases](https://github.com/AAA-It-uae/AWAYRA-WPF/releases/latest)
+
+| Asset | Purpose |
+|---|---|
+| `Awayra-Setup-1.0.0-x64.exe` | Per-user Windows installer (recommended) |
+| `Awayra-Setup-1.0.0-x64.sha256.txt` | SHA-256 checksum for the installer |
+| `BUILD-INFO.txt` | Build metadata (commit, SDK, signing status) |
+
+This installer is built from the source code in this repository (`scripts/build-installer.ps1`). It packages a **self-contained** `win-x64` single-file `Awayra.exe` with the .NET runtime embedded, so recipients do not need to install .NET separately.
+
+- **Default install location:** `%LocalAppData%\Programs\Awayra`
+- **Architecture:** Windows 10/11 x64
+- **User data** (`%LocalAppData%\Awayra\`) is preserved across upgrade and uninstall
+
+Build the same installer locally:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\build-installer.ps1
+```
+
+## Release publish (developer)
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\publish.ps1
@@ -50,9 +74,9 @@ powershell -ExecutionPolicy Bypass -File .\scripts\publish.ps1
 
 Output executable:
 
-`D:\curser\AWAYRA-WPF\artifacts\publish\win-x64\Awayra.exe`
+`artifacts\publish\win-x64\Awayra.exe`
 
-Self-contained single-file `win-x64` build. No installer is produced.
+Self-contained single-file `win-x64` build. Use `scripts/build-installer.ps1` to wrap it in a Windows installer.
 
 ## Local data
 
