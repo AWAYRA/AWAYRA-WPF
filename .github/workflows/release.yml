@@ -34,7 +34,8 @@ jobs:
         shell: pwsh
         run: |
           [xml]$project = Get-Content "src/Awayra.App/Awayra.App.csproj"
-          $version = @($project.Project.PropertyGroup.Version | Where-Object { $_ })[0].Trim()
+          $version = [string](@($project.Project.PropertyGroup.Version | Where-Object { $_ })[0])
+          $version = $version.Trim()
 
           if ($version -notmatch '^\d+\.\d+\.\d+$') {
             throw "Awayra.App.csproj Version must use semantic version format x.y.z. Found: $version"
@@ -111,10 +112,13 @@ jobs:
         env:
           RELEASE_TAG: ${{ steps.version.outputs.tag }}
         run: |
-          $remote = git ls-remote --tags origin "refs/tags/$env:RELEASE_TAG"
+          $headSha = (git rev-parse HEAD).Trim()
+          $peeled = git ls-remote --tags origin "refs/tags/$env:RELEASE_TAG^{}"
+          $direct = git ls-remote --tags origin "refs/tags/$env:RELEASE_TAG"
+          $remote = if ($peeled) { $peeled } else { $direct }
+
           if ($remote) {
-            $remoteSha = ($remote -split '\s+')[0]
-            $headSha = git rev-parse HEAD
+            $remoteSha = (($remote | Select-Object -First 1) -split '\s+')[0]
             if ($remoteSha -ne $headSha) {
               throw "Tag $env:RELEASE_TAG already points to $remoteSha instead of current commit $headSha."
             }
