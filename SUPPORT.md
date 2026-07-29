@@ -1,27 +1,37 @@
-# Support Awayra
+# Awayra support and community
 
-Awayra is free and open-source software.
+Use the right GitHub area so questions and actionable work do not become mixed together.
 
-## Product support
+## GitHub Discussions
 
-Use GitHub Issues for reproducible bugs and focused feature requests:
+Use [GitHub Discussions](https://github.com/AAA-It-uae/AWAYRA-WPF/discussions) for:
 
-https://github.com/AAA-It-uae/AWAYRA-WPF/issues
+- usage questions and setup help
+- ideas that are not yet scoped as development work
+- feedback about reminder behaviour or user experience
+- sharing workflows, configurations, and adaptations
+- general project conversation
 
-Before opening an issue:
+Search existing discussions before opening a new one. For questions, include the Awayra version, Windows version, and a clear description of what you are trying to do.
 
-- Install or test the latest release
-- Search for an existing report
-- Include the Awayra and Windows versions
-- Add clear reproduction steps
-- Remove personal information from logs and screenshots
+## GitHub Issues
 
-Security vulnerabilities must follow `SECURITY.md` and must not be disclosed in a public issue.
+Use [GitHub Issues](https://github.com/AAA-It-uae/AWAYRA-WPF/issues) only for:
+
+- reproducible software defects
+- confirmed documentation errors
+- focused implementation work that has a clear expected result
+
+Do not use Issues for general questions or broad brainstorming. A discussion can be converted into an issue after the work is clearly defined.
+
+## Security reports
+
+Do not disclose vulnerabilities in a public issue or discussion. Follow [SECURITY.md](SECURITY.md).
+
+## Forks and unofficial builds
+
+Forks are allowed under the GPL-3.0-only license when the repository is public. Modified distributions must preserve the license requirements and must not present themselves as the official Awayra application. See [TRADEMARKS.md](TRADEMARKS.md).
 
 ## Financial support
 
 No official donation or payment link is configured. Awayra does not process payments and no feature is unlocked through financial support.
-
-## Source code
-
-https://github.com/AAA-It-uae/AWAYRA-WPF
