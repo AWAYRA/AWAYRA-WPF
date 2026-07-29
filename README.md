@@ -9,9 +9,21 @@
 ![License](https://img.shields.io/badge/License-GPL--3.0--only-blue)
 ![Privacy](https://img.shields.io/badge/Privacy-Local--only-2ea44f)
 
-[Download Awayra for Windows](https://github.com/AAA-It-uae/AWAYRA-WPF/releases/latest) · [Report a bug](https://github.com/AAA-It-uae/AWAYRA-WPF/issues) · [Contribute](CONTRIBUTING.md)
+[Download Awayra for Windows](https://github.com/AAA-It-uae/AWAYRA-WPF/releases/latest/download/Awayra-Setup-x64.exe) · [Release notes](https://github.com/AAA-It-uae/AWAYRA-WPF/releases/latest) · [Report a bug](https://github.com/AAA-It-uae/AWAYRA-WPF/issues)
 
 </div>
+
+## Download
+
+| What you need | System | Direct download |
+|---|---|---|
+| **Awayra installer — recommended** | Windows 10 or 11, x64 | **[Download `Awayra-Setup-x64.exe`](https://github.com/AAA-It-uae/AWAYRA-WPF/releases/latest/download/Awayra-Setup-x64.exe)** |
+| SHA-256 checksum | Installer verification | [Download checksum](https://github.com/AAA-It-uae/AWAYRA-WPF/releases/latest/download/Awayra-Setup-x64.sha256.txt) |
+| Release notes and older versions | All published releases | [Open GitHub Releases](https://github.com/AAA-It-uae/AWAYRA-WPF/releases) |
+
+The installer is self-contained, so users do not need to install .NET separately. Official executable files are published only through **GitHub Releases**. Do not download installer files from source branches, forks, or third-party websites.
+
+Unsigned releases may show a Windows SmartScreen **Unknown Publisher** warning until the project establishes signing reputation. Verify the SHA-256 checksum before installation.
 
 ## What is Awayra?
 
@@ -72,19 +84,20 @@ Awayra is designed for:
 - gamers and streamers
 - anyone searching for a free Windows stretch reminder, posture reminder, work break timer, or eye-care timer
 
-## Download and install
+## Installation
 
-Download the latest compiled installer from [Awayra GitHub Releases](https://github.com/AAA-It-uae/AWAYRA-WPF/releases/latest).
+1. Download [`Awayra-Setup-x64.exe`](https://github.com/AAA-It-uae/AWAYRA-WPF/releases/latest/download/Awayra-Setup-x64.exe).
+2. Run the installer.
+3. Open Awayra once and leave it running in the Windows system tray.
+4. Use the dashboard or tray menu to adjust schedules, start a break, pause reminders, or quit.
 
-- **Supported systems:** Windows 10 and Windows 11 x64
-- **Installer type:** Per-user Windows installer
-- **Default location:** `%LocalAppData%\Programs\Awayra`
-- **Runtime:** Self-contained; .NET does not need to be installed separately
-- **Distribution:** Direct download from GitHub Releases
-
-After installation, open Awayra once and leave it running in the system tray. Use the dashboard or tray menu to adjust the schedule, start a break immediately, pause reminders, or quit the application.
-
-Official releases may display a Windows SmartScreen warning until the project establishes signing reputation. Verify the SHA-256 checksum published with release assets before installation.
+| Setting | Value |
+|---|---|
+| Supported systems | Windows 10 and Windows 11 x64 |
+| Installer type | Per-user Windows installer |
+| Default location | `%LocalAppData%\Programs\Awayra` |
+| Runtime | Self-contained; .NET is included |
+| Distribution | GitHub Releases only |
 
 ## Privacy-first by design
 
@@ -150,23 +163,31 @@ powershell -ExecutionPolicy Bypass -File .\scripts\dev.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\verify-change.ps1
 ```
 
-The verification script builds the solution, runs any test projects present in `tests/`, and performs a Windows launch and single-instance check.
+The verification script builds the solution, runs test projects under `tests/`, and performs a Windows launch and single-instance check.
 
-### Publish the application
-
-```powershell
-powershell -ExecutionPolicy Bypass -File .\scripts\publish.ps1
-```
-
-### Build the installer
+### Build the installer locally
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\build-installer.ps1
 ```
 
-Output: `artifacts\installer\Awayra-Setup-{VERSION}-x64.exe`
+Local output: `artifacts\installer\Awayra-Setup-{VERSION}-x64.exe`
 
-Generated executables, installers, certificates, and release folders must not be committed to the source tree. Publish distributable files through GitHub Releases.
+Generated executables, installers, certificates, and release folders must not be committed to the source tree. The `Publish Windows release` workflow builds and publishes distributable files automatically when a new application version reaches `main`.
+
+## Release process
+
+The application version is defined in `src/Awayra.App/Awayra.App.csproj`.
+
+When a commit reaches `main`:
+
+1. GitHub Actions reads the application version.
+2. If a Release for that version already exists, the workflow exits without changing it.
+3. Otherwise, the workflow builds a self-contained x64 installer.
+4. It creates the matching version tag and GitHub Release.
+5. It uploads versioned files and the permanent `Awayra-Setup-x64.exe` download alias.
+
+A new public release therefore requires an intentional version bump before merging.
 
 ## Architecture
 

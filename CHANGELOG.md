@@ -13,12 +13,17 @@ The project follows semantic versioning where practical.
 - Trademark policy
 - Structured issue and pull request templates
 - Windows build validation workflow
+- Automatic GitHub Release publishing from the application version on `main`
+- Permanent latest-release filenames for the Windows installer and SHA-256 checksum
+- Direct installer download table on the repository home page
 
 ### Changed
 
 - Official repository and issue links now point to `AAA-It-uae/AWAYRA-WPF`
 - Generated installers and local build metadata are excluded from the source tree
 - Public source history starts from a clean open-source baseline
+- Windows CI now runs core and application automated tests after the Release build
+- The GitHub Pages landing page links directly to the official installer and checksum
 
 ## [1.0.2] - 2026-07-28
 
