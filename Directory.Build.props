@@ -6,8 +6,8 @@
     <Company>Awayra</Company>
     <Product>Awayra</Product>
     <Copyright>Copyright © Awayra</Copyright>
-    <Version>1.0.2</Version>
-    <FileVersion>1.0.2.0</FileVersion>
+    <Version>1.0.3</Version>
+    <FileVersion>1.0.3.0</FileVersion>
     <AssemblyVersion>1.0.0.0</AssemblyVersion>
   </PropertyGroup>
 
