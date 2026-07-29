@@ -60,7 +60,32 @@ jobs:
             "release_exists=false" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
           }
 
-      - name: Install Inno Setup 7
+      - name: Validate version tag
+        id: tag
+        if: steps.existing.outputs.release_exists != 'true'
+        shell: pwsh
+        env:
+          RELEASE_TAG: ${{ steps.version.outputs.tag }}
+        run: |
+          $headSha = (git rev-parse HEAD).Trim()
+          $peeled = git ls-remote --tags origin "refs/tags/$env:RELEASE_TAG^{}"
+          $direct = git ls-remote --tags origin "refs/tags/$env:RELEASE_TAG"
+          $remote = if ($peeled) { $peeled } else { $direct }
+
+          if ($remote) {
+            $remoteSha = (($remote | Select-Object -First 1) -split '\s+')[0]
+            if ($remoteSha -ne $headSha) {
+              throw "Tag $env:RELEASE_TAG already points to $remoteSha instead of current commit $headSha. Bump the application version; never move a published version tag."
+            }
+
+            "tag_exists=true" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+            Write-Host "Tag $env:RELEASE_TAG already points to the current commit."
+          }
+          else {
+            "tag_exists=false" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+          }
+
+      - name: Install verified Inno Setup 7
         if: steps.existing.outputs.release_exists != 'true'
         shell: pwsh
         run: |
@@ -70,17 +95,37 @@ jobs:
             "C:\Program Files (x86)\Inno Setup 7\ISCC.exe"
           )
 
-          if (-not ($candidates | Where-Object { Test-Path $_ } | Select-Object -First 1)) {
-            winget install --id JRSoftware.InnoSetup.7 --exact --silent `
-              --accept-package-agreements --accept-source-agreements --disable-interactivity
-            if ($LASTEXITCODE -ne 0) {
-              throw "Inno Setup 7 installation failed with exit code $LASTEXITCODE."
+          $compiler = $candidates | Where-Object { Test-Path $_ } | Select-Object -First 1
+          if (-not $compiler) {
+            $innoVersion = "7.0.2"
+            $installerPath = Join-Path $env:RUNNER_TEMP "innosetup-$innoVersion-x64.exe"
+            $downloadUrl = "https://github.com/jrsoftware/issrc/releases/download/is-7_0_2/innosetup-$innoVersion-x64.exe"
+
+            Invoke-WebRequest -Uri $downloadUrl -OutFile $installerPath
+
+            $signature = Get-AuthenticodeSignature -FilePath $installerPath
+            if ($signature.Status -ne "Valid") {
+              throw "Inno Setup Authenticode verification failed: $($signature.Status)"
             }
+
+            if ($signature.SignerCertificate.Subject -notmatch 'Pyrsys B\.V\.') {
+              throw "Unexpected Inno Setup signer: $($signature.SignerCertificate.Subject)"
+            }
+
+            $arguments = "/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /SP-"
+            $process = Start-Process -FilePath $installerPath -ArgumentList $arguments -Wait -PassThru
+            if ($process.ExitCode -ne 0) {
+              throw "Inno Setup installation failed with exit code $($process.ExitCode)."
+            }
+
+            $compiler = $candidates | Where-Object { Test-Path $_ } | Select-Object -First 1
           }
 
-          if (-not ($candidates | Where-Object { Test-Path $_ } | Select-Object -First 1)) {
-            throw "Inno Setup 7 compiler was not found after installation."
+          if (-not $compiler) {
+            throw "Inno Setup 7 compiler was not found after verified installation."
           }
+
+          Write-Host "Using Inno Setup compiler: $compiler"
 
       - name: Build installer and checksums
         if: steps.existing.outputs.release_exists != 'true'
@@ -106,30 +151,16 @@ jobs:
           $hash = (Get-FileHash $stableInstaller -Algorithm SHA256).Hash.ToLowerInvariant()
           "$hash  Awayra-Setup-x64.exe" | Set-Content $stableChecksum -Encoding ascii
 
-      - name: Create or verify version tag
-        if: steps.existing.outputs.release_exists != 'true'
+      - name: Create version tag
+        if: steps.existing.outputs.release_exists != 'true' && steps.tag.outputs.tag_exists != 'true'
         shell: pwsh
         env:
           RELEASE_TAG: ${{ steps.version.outputs.tag }}
         run: |
-          $headSha = (git rev-parse HEAD).Trim()
-          $peeled = git ls-remote --tags origin "refs/tags/$env:RELEASE_TAG^{}"
-          $direct = git ls-remote --tags origin "refs/tags/$env:RELEASE_TAG"
-          $remote = if ($peeled) { $peeled } else { $direct }
-
-          if ($remote) {
-            $remoteSha = (($remote | Select-Object -First 1) -split '\s+')[0]
-            if ($remoteSha -ne $headSha) {
-              throw "Tag $env:RELEASE_TAG already points to $remoteSha instead of current commit $headSha."
-            }
-            Write-Host "Tag $env:RELEASE_TAG already points to the current commit."
-          }
-          else {
-            git config user.name "github-actions[bot]"
-            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git tag -a $env:RELEASE_TAG -m "Awayra $env:RELEASE_TAG"
-            git push origin $env:RELEASE_TAG
-          }
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -a $env:RELEASE_TAG -m "Awayra $env:RELEASE_TAG"
+          git push origin $env:RELEASE_TAG
 
       - name: Publish GitHub Release
         if: steps.existing.outputs.release_exists != 'true'
