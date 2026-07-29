@@ -73,10 +73,28 @@ jobs:
           if-no-files-found: error
           retention-days: 7
 
-      - name: Publish to GitHub Packages
+      - name: Configure authenticated GitHub Packages source
         if: github.event_name != 'pull_request'
         run: >-
-          dotnet nuget push 'artifacts/nuget/*.nupkg'
-          --api-key '${{ secrets.GITHUB_TOKEN }}'
-          --source 'https://nuget.pkg.github.com/AAA-It-uae/index.json'
-          --skip-duplicate
+          dotnet nuget add source
+          --username '${{ github.actor }}'
+          --password '${{ secrets.GITHUB_TOKEN }}'
+          --store-password-in-clear-text
+          --name github
+          'https://nuget.pkg.github.com/AAA-It-uae/index.json'
+
+      - name: Publish to GitHub Packages
+        if: github.event_name != 'pull_request'
+        shell: bash
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          packages=(artifacts/nuget/AAAItUae.Awayra.Core.*.nupkg)
+          if [ "${#packages[@]}" -ne 1 ]; then
+            echo "Expected exactly one package before publishing."
+            exit 1
+          fi
+          dotnet nuget push "${packages[0]}" \
+            --api-key '${{ secrets.GITHUB_TOKEN }}' \
+            --source github \
+            --skip-duplicate
