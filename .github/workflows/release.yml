@@ -1,0 +1,155 @@
+name: Publish Windows release
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: awayra-windows-release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: release
+    runs-on: windows-latest
+    timeout-minutes: 40
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Read and validate version
+        id: version
+        shell: pwsh
+        run: |
+          [xml]$project = Get-Content "src/Awayra.App/Awayra.App.csproj"
+          $version = @($project.Project.PropertyGroup.Version | Where-Object { $_ })[0].Trim()
+
+          if ($version -notmatch '^\d+\.\d+\.\d+$') {
+            throw "Awayra.App.csproj Version must use semantic version format x.y.z. Found: $version"
+          }
+
+          "version=$version" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+          "tag=v$version" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+
+      - name: Check whether release already exists
+        id: existing
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ steps.version.outputs.tag }}
+        run: |
+          gh release view $env:RELEASE_TAG --repo $env:GITHUB_REPOSITORY *> $null
+          if ($LASTEXITCODE -eq 0) {
+            "release_exists=true" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+            Write-Host "Release $env:RELEASE_TAG already exists. Nothing to publish."
+          }
+          else {
+            "release_exists=false" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+          }
+
+      - name: Install Inno Setup 7
+        if: steps.existing.outputs.release_exists != 'true'
+        shell: pwsh
+        run: |
+          $candidates = @(
+            "$env:LOCALAPPDATA\Programs\Inno Setup 7\ISCC.exe",
+            "C:\Program Files\Inno Setup 7\ISCC.exe",
+            "C:\Program Files (x86)\Inno Setup 7\ISCC.exe"
+          )
+
+          if (-not ($candidates | Where-Object { Test-Path $_ } | Select-Object -First 1)) {
+            winget install --id JRSoftware.InnoSetup.7 --exact --silent `
+              --accept-package-agreements --accept-source-agreements --disable-interactivity
+            if ($LASTEXITCODE -ne 0) {
+              throw "Inno Setup 7 installation failed with exit code $LASTEXITCODE."
+            }
+          }
+
+          if (-not ($candidates | Where-Object { Test-Path $_ } | Select-Object -First 1)) {
+            throw "Inno Setup 7 compiler was not found after installation."
+          }
+
+      - name: Build installer and checksums
+        if: steps.existing.outputs.release_exists != 'true'
+        shell: pwsh
+        run: powershell -ExecutionPolicy Bypass -File .\scripts\build-installer.ps1
+
+      - name: Prepare permanent download filenames
+        if: steps.existing.outputs.release_exists != 'true'
+        shell: pwsh
+        env:
+          APP_VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          $artifactDir = Join-Path $PWD "artifacts\installer"
+          $versionedInstaller = Join-Path $artifactDir "Awayra-Setup-$env:APP_VERSION-x64.exe"
+          $stableInstaller = Join-Path $artifactDir "Awayra-Setup-x64.exe"
+          $stableChecksum = Join-Path $artifactDir "Awayra-Setup-x64.sha256.txt"
+
+          if (-not (Test-Path $versionedInstaller)) {
+            throw "Expected installer not found: $versionedInstaller"
+          }
+
+          Copy-Item $versionedInstaller $stableInstaller -Force
+          $hash = (Get-FileHash $stableInstaller -Algorithm SHA256).Hash.ToLowerInvariant()
+          "$hash  Awayra-Setup-x64.exe" | Set-Content $stableChecksum -Encoding ascii
+
+      - name: Create or verify version tag
+        if: steps.existing.outputs.release_exists != 'true'
+        shell: pwsh
+        env:
+          RELEASE_TAG: ${{ steps.version.outputs.tag }}
+        run: |
+          $remote = git ls-remote --tags origin "refs/tags/$env:RELEASE_TAG"
+          if ($remote) {
+            $remoteSha = ($remote -split '\s+')[0]
+            $headSha = git rev-parse HEAD
+            if ($remoteSha -ne $headSha) {
+              throw "Tag $env:RELEASE_TAG already points to $remoteSha instead of current commit $headSha."
+            }
+            Write-Host "Tag $env:RELEASE_TAG already points to the current commit."
+          }
+          else {
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git tag -a $env:RELEASE_TAG -m "Awayra $env:RELEASE_TAG"
+            git push origin $env:RELEASE_TAG
+          }
+
+      - name: Publish GitHub Release
+        if: steps.existing.outputs.release_exists != 'true'
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ steps.version.outputs.tag }}
+          APP_VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          $artifactDir = Join-Path $PWD "artifacts\installer"
+          $assets = @(
+            (Join-Path $artifactDir "Awayra-Setup-$env:APP_VERSION-x64.exe"),
+            (Join-Path $artifactDir "Awayra-Setup-$env:APP_VERSION-x64.sha256.txt"),
+            (Join-Path $artifactDir "Awayra-Setup-x64.exe"),
+            (Join-Path $artifactDir "Awayra-Setup-x64.sha256.txt"),
+            (Join-Path $artifactDir "BUILD-INFO.txt")
+          )
+
+          foreach ($asset in $assets) {
+            if (-not (Test-Path $asset)) { throw "Release asset missing: $asset" }
+          }
+
+          gh release create $env:RELEASE_TAG @assets `
+            --repo $env:GITHUB_REPOSITORY `
+            --title "Awayra $env:APP_VERSION" `
+            --generate-notes `
+            --verify-tag
