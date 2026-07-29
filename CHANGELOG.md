@@ -6,6 +6,10 @@ The project follows semantic versioning where practical.
 
 ## [Unreleased]
 
+No unreleased changes yet.
+
+## [1.0.3] - 2026-07-29
+
 ### Added
 
 - GPL-3.0-only licensing notice
@@ -24,6 +28,7 @@ The project follows semantic versioning where practical.
 - Public source history starts from a clean open-source baseline
 - Windows CI now runs core and application automated tests after the Release build
 - The GitHub Pages landing page links directly to the official installer and checksum
+- Application and installer version metadata now use `1.0.3` to avoid reusing the existing `v1.0.2` tag
 
 ## [1.0.2] - 2026-07-28
 
