@@ -109,7 +109,7 @@ if ($PSCmdlet.ShouldProcess($Repository, "Protect the main branch")) {
     $protectionPayload = @{
         required_status_checks = @{
             strict = $true
-            contexts = @("build")
+            contexts = @("build", "installer")
         }
         enforce_admins = $false
         required_pull_request_reviews = @{
