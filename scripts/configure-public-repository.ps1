@@ -55,6 +55,7 @@ if ($PSCmdlet.ShouldProcess($Repository, "Change visibility to public and update
         "-f", "description=$description",
         "-f", "homepage=$homepage",
         "-F", "has_issues=true",
+        "-F", "has_discussions=true",
         "-F", "has_projects=false",
         "-F", "has_wiki=false",
         "-F", "allow_squash_merge=true",
@@ -153,6 +154,8 @@ Write-Host "Public launch configuration complete." -ForegroundColor Green
     Visibility = $final.visibility
     Description = $final.description
     Homepage = $final.homepage
+    DiscussionsEnabled = $final.has_discussions
+    Forking = if ($final.visibility -eq "public") { "Public repositories can be forked by design" } else { $final.allow_forking }
     PagesUrl = $pages.html_url
     DefaultBranch = $final.default_branch
 } | Format-List
