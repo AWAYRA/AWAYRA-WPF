@@ -12,9 +12,9 @@
     <AssemblyName>Awayra</AssemblyName>
     <ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>
     <RootNamespace>Awayra.App</RootNamespace>
-    <Version>1.0.2</Version>
+    <Version>1.0.3</Version>
     <AssemblyVersion>1.0.0.0</AssemblyVersion>
-    <FileVersion>1.0.2.0</FileVersion>
+    <FileVersion>1.0.3.0</FileVersion>
     <Product>Awayra</Product>
     <Authors>Farzin Alavi</Authors>
     <Company>Farzin Alavi</Company>
