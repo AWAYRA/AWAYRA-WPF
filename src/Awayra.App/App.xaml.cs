@@ -1,4 +1,4 @@
-﻿using System.Windows;
+using System.Windows;
 using System.Windows.Threading;
 using Awayra.App.Interop;
 using Awayra.App.Services;
@@ -60,9 +60,13 @@ public partial class App : System.Windows.Application
             if (args.Exception is System.Windows.Markup.XamlParseException && _mainWindow is null)
             {
                 _logger?.Error("Dashboard XAML failed to load; tray remains available. Use Open Awayra after fixing resources.");
+                args.Handled = true;
+                return;
             }
 
-            args.Handled = true;
+            // Unknown dispatcher exceptions are not recoverable. Let WPF terminate
+            // instead of continuing with partially mutated scheduler or UI state.
+            args.Handled = false;
         };
         AppDomain.CurrentDomain.UnhandledException += (_, args) =>
             _logger?.Error("AppDomain unhandled exception", args.ExceptionObject as Exception);
@@ -471,7 +475,7 @@ public partial class App : System.Windows.Application
             AppPaths.SettingsPath,
             _logger!,
             AppSettings.CreateDefault,
-            json => SettingsRecovery.LoadWithRecovery(json));
+            json => SettingsRecovery.LoadWithRecovery(json, _logger));
         return new SettingsFileStore(store);
     }
 
@@ -519,20 +523,42 @@ public partial class App : System.Windows.Application
         _isQuitting = true;
         _logger?.Info("Quit requested from tray.");
 
-        _overlays?.CloseAll();
-        _tray?.Dispose();
-        _host?.Shutdown();
-
-        if (_host is not null)
+        try
         {
-            await _host.PersistAllAsync().ConfigureAwait(true);
-        }
+            _overlays?.CloseAll();
+            _tray?.Dispose();
+            _tray = null;
+            _host?.Shutdown();
 
-        await (_logger?.FlushAsync() ?? Task.CompletedTask).ConfigureAwait(true);
-        _uiTestPipe?.Dispose();
-        _uiTestDiagnosticsPipe?.Dispose();
-        _singleInstance?.Release();
-        Shutdown(0);
+            if (_host is not null)
+            {
+                await _host.PersistAllAsync().ConfigureAwait(true);
+            }
+
+            await (_logger?.FlushAsync() ?? Task.CompletedTask).ConfigureAwait(true);
+        }
+        catch (Exception ex)
+        {
+            _logger?.Error("Graceful shutdown failed; forcing process shutdown", ex);
+            try
+            {
+                await (_logger?.FlushAsync() ?? Task.CompletedTask).ConfigureAwait(true);
+            }
+            catch
+            {
+                // Process shutdown must not be blocked by a secondary logging failure.
+            }
+        }
+        finally
+        {
+            SystemEvents.SessionSwitch -= OnSessionSwitch;
+            SystemEvents.PowerModeChanged -= OnPowerModeChanged;
+            SystemEvents.DisplaySettingsChanged -= OnDisplaySettingsChanged;
+            _uiTestPipe?.Dispose();
+            _uiTestDiagnosticsPipe?.Dispose();
+            _singleInstance?.Release();
+            Shutdown(0);
+        }
     }
 
     private string BuildTrayTooltip()
@@ -575,7 +601,7 @@ public partial class App : System.Windows.Application
     {
         if (e.Reason is SessionSwitchReason.SessionLock or SessionSwitchReason.SessionUnlock)
         {
-            _host?.Scheduler.Tick();
+            Dispatcher.BeginInvoke(() => _host?.Scheduler.Tick());
         }
     }
 
@@ -583,7 +609,7 @@ public partial class App : System.Windows.Application
     {
         if (e.Mode is PowerModes.Resume)
         {
-            _host?.Scheduler.Tick();
+            Dispatcher.BeginInvoke(() => _host?.Scheduler.Tick());
         }
     }
 
