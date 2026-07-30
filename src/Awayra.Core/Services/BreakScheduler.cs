@@ -179,6 +179,38 @@ public sealed class BreakScheduler
         };
     }
 
+    public void ResetForFreshStart()
+    {
+        var now = _clock.Now;
+        _state.EyeNextDue = now.AddMinutes(_settings.EyeResetIntervalMinutes);
+        _state.MoveNextDue = now.AddMinutes(_settings.MoveBreakIntervalMinutes);
+        _state.IsPausedManual = false;
+        _state.ActiveBreak = null;
+        _state.QueuedBreak = null;
+        _state.BreakEndsAt = null;
+        _state.SnoozeUntil = null;
+        _state.EyeSnoozeUntil = null;
+        _state.MoveSnoozeUntil = null;
+        _state.LastClockCheck = now;
+
+        _isIdle = false;
+        _isConfigurationPaused = false;
+        _outsideWorkHours = false;
+        _snoozeInProgress = false;
+        _configFrozenEyeRemaining = null;
+        _configFrozenMoveRemaining = null;
+        _configFrozenEyeSnoozeRemaining = null;
+        _configFrozenMoveSnoozeRemaining = null;
+        _manualFrozenEyeRemaining = null;
+        _manualFrozenMoveRemaining = null;
+        _workHoursFrozenEyeRemaining = null;
+        _workHoursFrozenMoveRemaining = null;
+        _idleFrozenEyeRemaining = null;
+        _idleFrozenMoveRemaining = null;
+
+        PublishSnapshot();
+    }
+
     private void ClearEyeFreezeState()
     {
         _manualFrozenEyeRemaining = null;

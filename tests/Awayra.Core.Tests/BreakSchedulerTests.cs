@@ -32,6 +32,37 @@ public sealed class BreakSchedulerTests
     }
 
     [TestMethod]
+    public void FreshStart_ResetsConfiguredTimersAndClearsTransientState()
+    {
+        var settings = AppSettings.CreateDefault();
+        settings.EyeResetIntervalMinutes = 30;
+        settings.MoveBreakIntervalMinutes = 55;
+        var completedAt = Start.AddHours(-2);
+        var state = SchedulerState.CreateDefault(Start.AddHours(-1));
+        state.IsPausedManual = true;
+        state.ActiveBreak = BreakType.Move;
+        state.QueuedBreak = BreakType.Eye;
+        state.BreakEndsAt = Start.AddMinutes(1);
+        state.EyeSnoozeUntil = Start.AddMinutes(4);
+        state.MoveSnoozeUntil = Start.AddMinutes(5);
+        state.EyeLastCompleted = completedAt;
+        var scheduler = CreateScheduler(Start, settings, state);
+
+        scheduler.ResetForFreshStart();
+
+        var snapshot = scheduler.GetSnapshot();
+        Assert.AreEqual(TimeSpan.FromMinutes(30), snapshot.EyeRemaining);
+        Assert.AreEqual(TimeSpan.FromMinutes(55), snapshot.MoveRemaining);
+        Assert.IsFalse(snapshot.IsPausedManual);
+        Assert.IsNull(snapshot.ActiveBreak);
+        Assert.IsNull(snapshot.QueuedBreak);
+        Assert.IsNull(scheduler.State.BreakEndsAt);
+        Assert.IsNull(scheduler.State.EyeSnoozeUntil);
+        Assert.IsNull(scheduler.State.MoveSnoozeUntil);
+        Assert.AreEqual(completedAt, scheduler.State.EyeLastCompleted);
+    }
+
+    [TestMethod]
     public void IndependentTimers_DecrementSeparately()
     {
         var scheduler = CreateScheduler();

@@ -25,6 +25,8 @@
   <data name="Settings" xml:space="preserve"><value>Settings</value></data>
   <data name="Quit" xml:space="preserve"><value>Quit</value></data>
   <data name="OpenAwayra" xml:space="preserve"><value>Open Awayra</value></data>
+  <data name="OnboardingTitle" xml:space="preserve"><value>Welcome to Awayra</value></data>
+  <data name="OnboardingMessage" xml:space="preserve"><value>Choose your Eye Reset and Move Break intervals in Settings. Enable “Run at Windows startup” if you want Awayra to start automatically, then select Save. Reminder timers start fresh after every Windows restart.</value></data>
   <data name="TodayEyeCompleted" xml:space="preserve"><value>Eye resets today</value></data>
   <data name="TodayMoveCompleted" xml:space="preserve"><value>Move breaks today</value></data>
   <data name="TodaySkipped" xml:space="preserve"><value>Skipped today</value></data>

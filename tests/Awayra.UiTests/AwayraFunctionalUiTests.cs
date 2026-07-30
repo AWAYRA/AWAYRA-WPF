@@ -281,7 +281,9 @@ public sealed class AwayraFunctionalUiTests
         S.FindElement("SettingsSaveButton")!.AsButton().Invoke();
         UiPoll.UntilTrue(() => S.FindByAutomationId("SettingsWindow") is null, TimeSpan.FromSeconds(10), "settings save");
 
-        var afterSave = UiTestDiagnosticsClient.WaitUntil(d => !d.IsConfigurationPaused, TimeSpan.FromSeconds(10));
+        var afterSave = UiTestDiagnosticsClient.WaitUntil(
+            d => !d.IsConfigurationPaused && d.EyeRemainingSeconds is >= 115 and <= 125,
+            TimeSpan.FromSeconds(10));
         Assert.IsTrue(afterSave.EyeRemainingSeconds is >= 115 and <= 125,
             $"Expected ~120s after Eye interval save, got {afterSave.EyeRemainingSeconds}");
         S.CaptureScreenshot("after-settings-save.png");

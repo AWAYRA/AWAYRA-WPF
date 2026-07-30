@@ -24,6 +24,8 @@ public static class StringKeys
     public const string Settings = nameof(Settings);
     public const string Quit = nameof(Quit);
     public const string OpenAwayra = nameof(OpenAwayra);
+    public const string OnboardingTitle = nameof(OnboardingTitle);
+    public const string OnboardingMessage = nameof(OnboardingMessage);
 
     public const string TodayEyeCompleted = nameof(TodayEyeCompleted);
     public const string TodayMoveCompleted = nameof(TodayMoveCompleted);
@@ -85,7 +87,7 @@ public static class StringKeys
     [
         AppTitle, StatusRunning, StatusPaused, StatusPausedIdle, StatusIdle, StatusConfigurationPaused, StatusOutsideWorkHours,
         StatusBreakActive, StatusSnoozed, StatusDisabled, EyeReset, MoveBreak, Enabled, Disabled,
-        Pause, Resume, EyeResetNow, MoveBreakNow, Settings, Quit, OpenAwayra,
+        Pause, Resume, EyeResetNow, MoveBreakNow, Settings, Quit, OpenAwayra, OnboardingTitle, OnboardingMessage,
         TodayEyeCompleted, TodayMoveCompleted, TodaySkipped, TodaySnoozed,
         EyeResetInstructionDistance, EyeResetInstructionBlink, Skip, Snooze, Complete, SecondsRemaining,
         MoveActivityStand, MoveActivityWalk, MoveActivityShoulders, MoveActivityNeck, MoveActivityStretch,

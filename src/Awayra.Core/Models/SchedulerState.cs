@@ -19,6 +19,7 @@ public sealed class SchedulerState
     public DateTimeOffset? MoveSnoozeUntil { get; set; }
 
     public DateTimeOffset LastClockCheck { get; set; }
+    public DateTimeOffset? SystemBootStartedAtUtc { get; set; }
 
     public DateTimeOffset? EyeLastCompleted { get; set; }
     public DateTimeOffset? MoveLastCompleted { get; set; }

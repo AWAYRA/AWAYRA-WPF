@@ -80,6 +80,18 @@ begin
   Result := FileExists(ExpandConstant('{app}\awayra.ico'));
 end;
 
+procedure CurStepChanged(CurStep: TSetupStep);
+var
+  DataDir: String;
+begin
+  if CurStep = ssPostInstall then
+  begin
+    DataDir := ExpandConstant('{localappdata}\Awayra');
+    ForceDirectories(DataDir);
+    SaveStringToFile(AddBackslash(DataDir) + 'onboarding.pending', '{#MyAppVersion}', False);
+  end;
+end;
+
 procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
 begin
   if CurUninstallStep = usPostUninstall then

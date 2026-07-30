@@ -1,5 +1,6 @@
 using Awayra.App;
 using Awayra.Core.Abstractions;
+using Awayra.Core.Coordination;
 using Awayra.Core.Models;
 using Awayra.Core.Persistence;
 using Awayra.Core.Services;
@@ -57,7 +58,7 @@ public sealed class ApplicationHost : IDisposable
     public event EventHandler? StateChanged;
     public event EventHandler<int>? GlassClarityPreviewChanged;
 
-    public async Task InitializeAsync()
+    public async Task InitializeAsync(DateTimeOffset? currentBootStartedAtUtc = null)
     {
         AppPaths.EnsureDataRoot();
         _settings = await _settingsStore.LoadAsync().ConfigureAwait(false);
@@ -74,7 +75,20 @@ public sealed class ApplicationHost : IDisposable
 
         _localization.Apply();
         var state = await _stateStore.LoadAsync().ConfigureAwait(false);
+        var shouldResetForNewBoot = currentBootStartedAtUtc is { } currentBoot &&
+            SystemBootSessionPolicy.ShouldResetTimers(state, currentBoot);
         _scheduler = new BreakScheduler(_clock, _settings, state);
+        if (currentBootStartedAtUtc is { } bootStartedAtUtc)
+        {
+            if (shouldResetForNewBoot)
+            {
+                _scheduler.ResetForFreshStart();
+                _logger.Info("Reminder timers reset for a new Windows boot.");
+            }
+
+            _scheduler.State.SystemBootStartedAtUtc = bootStartedAtUtc;
+        }
+
         var statsData = await _statisticsStore.LoadAsync().ConfigureAwait(false);
         _statistics = new StatisticsService(_clock, statsData);
 
@@ -104,6 +118,13 @@ public sealed class ApplicationHost : IDisposable
 
         _logger.Info("Awayra initialized.");
         await PersistStateAsync().ConfigureAwait(false);
+    }
+
+    public async Task ResetReminderTimersAsync()
+    {
+        _scheduler.ResetForFreshStart();
+        await PersistStateAsync().ConfigureAwait(false);
+        StateChanged?.Invoke(this, EventArgs.Empty);
     }
 
     public void BeginConfigurationSession()

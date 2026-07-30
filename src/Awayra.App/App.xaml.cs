@@ -35,6 +35,10 @@ public partial class App : System.Windows.Application
         BuildIdentity.Initialize();
         System.Windows.Forms.Application.SetHighDpiMode(System.Windows.Forms.HighDpiMode.PerMonitorV2);
         AppPaths.EnsureDataRoot();
+        var shouldShowOnboarding = OnboardingPolicy.ShouldShow(
+            UiTestMode.IsEnabled,
+            File.Exists(AppPaths.SettingsPath),
+            File.Exists(AppPaths.OnboardingMarkerPath));
         _logger = new FileLogger(AppPaths.LogFilePath);
         _logger.Info("Awayra starting.");
         BuildIdentity.Log(_logger);
@@ -90,7 +94,16 @@ public partial class App : System.Windows.Application
             new RegistryAutostartService(),
             localization);
 
-        await _host.InitializeAsync().ConfigureAwait(true);
+        var bootStartedAtUtc = UiTestMode.IsEnabled
+            ? (DateTimeOffset?)null
+            : SystemBootTimeProvider.GetBootStartedAtUtc();
+        await _host.InitializeAsync(bootStartedAtUtc).ConfigureAwait(true);
+        if (shouldShowOnboarding)
+        {
+            await _host.ResetReminderTimersAsync().ConfigureAwait(true);
+            _logger.Info("Reminder timers reset for onboarding.");
+        }
+
         if (!UiTestMode.IsEnabled)
         {
             _host.ApplyAutostartSetting();
@@ -174,6 +187,11 @@ public partial class App : System.Windows.Application
         UpdateTray();
         _logger.Info("Awayra started.");
 
+        if (shouldShowOnboarding)
+        {
+            ShowOnboarding();
+        }
+
         if (UiTestMode.IsEnabled)
         {
             UiTestBridge.Register(new UiTestBridge
@@ -204,6 +222,49 @@ public partial class App : System.Windows.Application
             }, _logger);
             _uiTestDiagnosticsPipe.Start();
         }
+    }
+
+    private void ShowOnboarding()
+    {
+        if (_host is null)
+        {
+            return;
+        }
+
+        ShowDashboard();
+        var title = _host.Localization.Get(StringKeys.OnboardingTitle);
+        var message = _host.Localization.Get(StringKeys.OnboardingMessage);
+        if (_mainWindow is not null)
+        {
+            System.Windows.MessageBox.Show(
+                _mainWindow,
+                message,
+                title,
+                MessageBoxButton.OK,
+                MessageBoxImage.Information);
+        }
+        else
+        {
+            System.Windows.MessageBox.Show(
+                message,
+                title,
+                MessageBoxButton.OK,
+                MessageBoxImage.Information);
+        }
+
+        try
+        {
+            if (File.Exists(AppPaths.OnboardingMarkerPath))
+            {
+                File.Delete(AppPaths.OnboardingMarkerPath);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger?.Error("Failed to clear onboarding marker", ex);
+        }
+
+        ShowSettings();
     }
 
     private void DispatchUiTestCommand(string command)
