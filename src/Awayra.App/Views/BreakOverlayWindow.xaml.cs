@@ -15,6 +15,7 @@ public partial class BreakOverlayWindow : Window
     private readonly OverlayViewModel _viewModel;
     private readonly IMonitorSnapshotService _snapshotService;
     private Storyboard? _pulseStoryboard;
+    private bool _isClosed;
 
     public BreakOverlayWindow(
         ApplicationHost host,
@@ -30,7 +31,10 @@ public partial class BreakOverlayWindow : Window
         viewModel.SnoozeCommand = new CommunityToolkit.Mvvm.Input.RelayCommand(OnSnooze, () => _viewModel.ShowSnooze);
         viewModel.CompleteCommand = new CommunityToolkit.Mvvm.Input.RelayCommand(OnComplete);
         Loaded += OnLoaded;
+        Closed += OnClosed;
     }
+
+    public bool HasSnapshot => _viewModel.SnapshotSource is not null;
 
     public void Configure(BreakStartedEventArgs args, AppSettings settings, LocalizationService localization, bool isEye)
     {
@@ -54,10 +58,48 @@ public partial class BreakOverlayWindow : Window
 
     public void ShowOnActiveMonitor()
     {
+        if (_isClosed)
+        {
+            throw new InvalidOperationException("A closed break overlay cannot be shown again.");
+        }
+
         MonitorLocator.PositionWindowOnCursorMonitor(this);
-        Show();
-        Activate();
-        Focus();
+        if (!IsVisible)
+        {
+            Show();
+        }
+
+        MonitorLocator.PositionWindowOnCursorMonitor(this);
+        RestoreForegroundState();
+    }
+
+    public bool TryRecoverOnActiveMonitor()
+    {
+        if (_isClosed)
+        {
+            return false;
+        }
+
+        try
+        {
+            WindowState = WindowState.Normal;
+            if (!IsVisible)
+            {
+                Show();
+            }
+
+            MonitorLocator.PositionWindowOnCursorMonitor(this);
+            RefreshSnapshot();
+            RestoreForegroundState();
+            InvalidateMeasure();
+            InvalidateVisual();
+            UpdateLayout();
+            return IsVisible;
+        }
+        catch (InvalidOperationException)
+        {
+            return false;
+        }
     }
 
     public void UpdateRemaining(TimeSpan? remaining, LocalizationService? localization = null, int activityIndex = 0)
@@ -74,8 +116,23 @@ public partial class BreakOverlayWindow : Window
 
     public void CloseSafely()
     {
+        if (_isClosed)
+        {
+            return;
+        }
+
         _pulseStoryboard?.Stop();
         Close();
+    }
+
+    private void RefreshSnapshot() =>
+        _viewModel.SnapshotSource = _snapshotService.CaptureMonitorAtCursor();
+
+    private void RestoreForegroundState()
+    {
+        Topmost = true;
+        Activate();
+        Focus();
     }
 
     private void OnLoaded(object sender, RoutedEventArgs e)
@@ -98,6 +155,14 @@ public partial class BreakOverlayWindow : Window
             _pulseStoryboard.Children.Add(animationY);
             _pulseStoryboard.Begin();
         }
+    }
+
+    private void OnClosed(object? sender, EventArgs e)
+    {
+        _isClosed = true;
+        _pulseStoryboard?.Stop();
+        Loaded -= OnLoaded;
+        Closed -= OnClosed;
     }
 
     private void Window_OnKeyDown(object sender, System.Windows.Input.KeyEventArgs e)
