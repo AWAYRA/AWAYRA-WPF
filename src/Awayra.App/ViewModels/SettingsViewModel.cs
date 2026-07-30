@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.Globalization;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Awayra.App.Services;
@@ -9,6 +10,7 @@ namespace Awayra.App.ViewModels;
 
 public partial class SettingsViewModel : ObservableObject
 {
+    private static readonly string[] WorkTimeFormats = ["H:mm", "HH:mm"];
     private readonly ApplicationHost _host;
     private readonly Action<bool> _close;
 
@@ -46,9 +48,15 @@ public partial class SettingsViewModel : ObservableObject
     [RelayCommand]
     private async Task SaveAsync()
     {
-        var settings = BuildSettings();
-        var errors = SettingsValidator.Validate(settings);
         ValidationErrors.Clear();
+
+        if (!TryBuildSettings(out var settings))
+        {
+            ValidationErrors.Add(_host.Localization.GetValidationMessage("WorkHoursTimeInvalid"));
+            return;
+        }
+
+        var errors = SettingsValidator.Validate(settings);
         foreach (var error in errors)
         {
             ValidationErrors.Add(_host.Localization.GetValidationMessage(error));
@@ -80,8 +88,8 @@ public partial class SettingsViewModel : ObservableObject
         PauseWhileIdle = settings.PauseWhileIdle;
         IdleThresholdMinutes = settings.IdleThresholdMinutes;
         WorkHoursEnabled = settings.WorkHoursEnabled;
-        WorkStart = settings.WorkStart.ToString("HH:mm");
-        WorkEnd = settings.WorkEnd.ToString("HH:mm");
+        WorkStart = settings.WorkStart.ToString("HH:mm", CultureInfo.InvariantCulture);
+        WorkEnd = settings.WorkEnd.ToString("HH:mm", CultureInfo.InvariantCulture);
         RunAtStartup = settings.RunAtStartup;
         StartMinimized = settings.StartMinimized;
         CloseToTray = settings.CloseToTray;
@@ -89,12 +97,28 @@ public partial class SettingsViewModel : ObservableObject
         ReducedMotion = settings.ReducedMotion;
     }
 
-    private AppSettings BuildSettings()
+    private bool TryBuildSettings(out AppSettings settings)
     {
-        TimeOnly.TryParse(WorkStart, out var workStart);
-        TimeOnly.TryParse(WorkEnd, out var workEnd);
+        var startValid = TimeOnly.TryParseExact(
+            WorkStart?.Trim(),
+            WorkTimeFormats,
+            CultureInfo.InvariantCulture,
+            DateTimeStyles.None,
+            out var workStart);
+        var endValid = TimeOnly.TryParseExact(
+            WorkEnd?.Trim(),
+            WorkTimeFormats,
+            CultureInfo.InvariantCulture,
+            DateTimeStyles.None,
+            out var workEnd);
 
-        return new AppSettings
+        if (!startValid || !endValid)
+        {
+            settings = null!;
+            return false;
+        }
+
+        settings = new AppSettings
         {
             SchemaVersion = AppSettings.CurrentSchemaVersion,
             EyeResetEnabled = EyeResetEnabled,
@@ -118,5 +142,6 @@ public partial class SettingsViewModel : ObservableObject
             ReducedMotion = ReducedMotion,
             Theme = AppTheme.Dark
         };
+        return true;
     }
 }
