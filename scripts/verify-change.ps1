@@ -22,6 +22,29 @@ function Fail {
     exit 1
 }
 
+function Assert-TestEvidence {
+    param(
+        [Parameter(Mandatory)] [string]$ResultPath,
+        [Parameter(Mandatory)] [string]$ProjectName
+    )
+
+    if (-not (Test-Path $ResultPath)) {
+        Fail "Test result was not created for $ProjectName: $ResultPath"
+    }
+
+    [xml]$trx = Get-Content $ResultPath
+    $counters = $trx.TestRun.ResultSummary.Counters
+    if ($null -eq $counters -or [int]$counters.total -le 0) {
+        Fail "No tests were executed for $ProjectName."
+    }
+
+    if ([int]$counters.failed -ne 0) {
+        Fail "$ProjectName recorded $($counters.failed) failed tests."
+    }
+
+    Write-Host "$ProjectName: total=$($counters.total), passed=$($counters.passed), failed=$($counters.failed), skipped=$($counters.notExecuted)"
+}
+
 $repoRoot = (Get-RepoRoot).Path
 Push-Location $repoRoot
 
@@ -39,13 +62,26 @@ try {
             Select-Object -ExpandProperty FullName)
     }
 
-    foreach ($project in $testProjects) {
-        dotnet test $project -c Debug --no-build
-        if ($LASTEXITCODE -ne 0) { Fail "Debug tests failed: $project" }
+    if ($testProjects.Count -eq 0) {
+        Fail "No automated test projects were found."
     }
 
-    if ($testProjects.Count -eq 0) {
-        Write-Warning "No automated test projects are currently included; launch verification will continue."
+    $resultsRoot = Join-Path $repoRoot "artifacts\verification-tests"
+    if (Test-Path $resultsRoot) {
+        Remove-Item $resultsRoot -Recurse -Force
+    }
+    New-Item -ItemType Directory -Path $resultsRoot -Force | Out-Null
+
+    foreach ($project in $testProjects) {
+        $projectName = [System.IO.Path]::GetFileNameWithoutExtension($project)
+        $resultDirectory = Join-Path $resultsRoot $projectName
+        New-Item -ItemType Directory -Path $resultDirectory -Force | Out-Null
+        $resultFile = "$projectName.trx"
+
+        dotnet test $project -c Debug --no-build --logger "trx;LogFileName=$resultFile" --results-directory $resultDirectory
+        if ($LASTEXITCODE -ne 0) { Fail "Debug tests failed: $project" }
+
+        Assert-TestEvidence -ResultPath (Join-Path $resultDirectory $resultFile) -ProjectName $projectName
     }
 
     $exe = Join-Path $repoRoot "src\Awayra.App\bin\Debug\net10.0-windows\Awayra.exe"
@@ -72,5 +108,6 @@ try {
     exit 0
 }
 finally {
+    Stop-RepoAwayraProcesses -RepoRoot $repoRoot
     Pop-Location
 }
