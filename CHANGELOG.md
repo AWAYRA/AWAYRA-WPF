@@ -8,6 +8,17 @@ The project follows semantic versioning where practical.
 
 No unreleased changes yet.
 
+## [1.0.4] - 2026-07-30
+
+### Added
+
+- One-time setup guidance after installation
+
+### Fixed
+
+- Reminder timers now restart from the configured intervals after a new Windows boot
+- UI schedule-transition tests now wait for the updated diagnostics snapshot
+
 ## [1.0.3] - 2026-07-29
 
 ### Added

@@ -95,9 +95,9 @@ public sealed class DashboardAboutSupportTests
     }
 
     [TestMethod]
-    public void AboutViewModel_SupportUrlConstantMatchesConfiguredValue()
+    public void AboutViewModel_SupportUrlRemainsEmptyUntilConfigured()
     {
-        Assert.AreEqual("https://www.buymeacoffee.com/YOUR_USERNAME", AppLinkUrls.Support);
+        Assert.AreEqual(string.Empty, AppLinkUrls.Support);
     }
 
     [TestMethod]
