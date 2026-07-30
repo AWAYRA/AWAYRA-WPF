@@ -53,6 +53,7 @@ public sealed class LocalizationService
         "SnoozeDurationInvalid" => Get(StringKeys.ValidationSnoozeDurationInvalid),
         "IdleThresholdInvalid" => Get(StringKeys.ValidationIdleThresholdInvalid),
         "GlassClarityInvalid" => Get(StringKeys.ValidationGlassClarityInvalid),
+        "WorkHoursTimeInvalid" => Get(StringKeys.ValidationWorkHoursTimeInvalid),
         "WorkHoursRangeInvalid" => Get(StringKeys.ValidationWorkHoursRangeInvalid),
         _ => errorKey
     };
