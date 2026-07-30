@@ -30,6 +30,7 @@ public sealed class ApplicationHost : IDisposable
     private bool _wasIdle;
     private int _tickPending;
     private int _idleUpdatePending;
+    private int _diagnosticsPending;
 
     public ApplicationHost(
         IAppLogger logger,
@@ -63,17 +64,13 @@ public sealed class ApplicationHost : IDisposable
 
     public async Task InitializeAsync(DateTimeOffset? currentBootStartedAtUtc = null)
     {
-        // Capture the UI synchronization context before any ConfigureAwait(false).
-        // Runtime scheduler mutations are posted back to this context so timer,
-        // idle, tray, and window actions cannot mutate scheduler state concurrently.
+        // Capture the UI context before any ConfigureAwait(false). Timer callbacks
+        // are posted back to this context so scheduler state has one runtime writer.
         _schedulerContext ??= SynchronizationContext.Current;
 
         AppPaths.EnsureDataRoot();
-        _settings = await _settingsStore.LoadAsync().ConfigureAwait(false);
-        if (!SettingsValidator.IsValid(_settings))
-        {
-            _settings = AppSettings.CreateDefault();
-        }
+        _settings = SettingsRecovery.Normalize(
+            await _settingsStore.LoadAsync().ConfigureAwait(false));
 
         if (UiTestMode.IsEnabled)
         {
@@ -103,7 +100,17 @@ public sealed class ApplicationHost : IDisposable
         _scheduler.SnapshotChanged += (_, _) => StateChanged?.Invoke(this, EventArgs.Empty);
         _scheduler.BreakEnded += OnBreakEnded;
 
-        _tickTimer = new System.Timers.Timer(1000);
+        // Initialize deterministic state before any periodic callback can run.
+        UpdateIdleState();
+        if (UiTestMode.IsEnabled && UiTestMode.DataRoot is not null)
+        {
+            UiTestDiagnosticsWriter.Initialize(UiTestMode.DataRoot);
+            PublishUiTestDiagnostics();
+        }
+
+        await PersistStateAsync().ConfigureAwait(false);
+
+        _tickTimer = new System.Timers.Timer(1_000);
         _tickTimer.Elapsed += (_, _) => QueueTick();
         _tickTimer.AutoReset = true;
         _tickTimer.Start();
@@ -112,20 +119,16 @@ public sealed class ApplicationHost : IDisposable
         _idleTimer.Elapsed += (_, _) => QueueIdleUpdate();
         _idleTimer.AutoReset = true;
         _idleTimer.Start();
-        QueueIdleUpdate();
 
         if (UiTestMode.IsEnabled && UiTestMode.DataRoot is not null)
         {
-            UiTestDiagnosticsWriter.Initialize(UiTestMode.DataRoot);
             _diagnosticsTimer = new System.Timers.Timer(1_000);
             _diagnosticsTimer.Elapsed += (_, _) => QueueDiagnosticsPublish();
             _diagnosticsTimer.AutoReset = true;
             _diagnosticsTimer.Start();
-            QueueDiagnosticsPublish();
         }
 
         _logger.Info("Awayra initialized.");
-        await PersistStateAsync().ConfigureAwait(false);
     }
 
     public async Task ResetReminderTimersAsync()
@@ -309,23 +312,32 @@ public sealed class ApplicationHost : IDisposable
         });
     }
 
-    private void QueueDiagnosticsPublish() =>
+    private void QueueDiagnosticsPublish()
+    {
+        if (Interlocked.Exchange(ref _diagnosticsPending, 1) != 0)
+        {
+            return;
+        }
+
         PostSchedulerAction(() =>
         {
-            if (_isShuttingDown)
-            {
-                return;
-            }
-
             try
             {
-                PublishUiTestDiagnostics();
+                if (!_isShuttingDown)
+                {
+                    PublishUiTestDiagnostics();
+                }
             }
             catch (Exception ex)
             {
                 _logger.Error("UI test diagnostics publication failed", ex);
             }
+            finally
+            {
+                Volatile.Write(ref _diagnosticsPending, 0);
+            }
         });
+    }
 
     private void PostSchedulerAction(Action action)
     {
