@@ -1,12 +1,13 @@
 using System.Drawing;
 using System.Windows;
-using Awayra.App.ViewModels;
+using System.Windows.Threading;
 using Awayra.Core.Abstractions;
 using Awayra.Core.Localization;
 using Awayra.App.Views;
 using Awayra.Core.Coordination;
 using Awayra.Core.Models;
 using Awayra.Core.Services;
+using Microsoft.Win32;
 
 namespace Awayra.App.Services;
 
@@ -15,11 +16,20 @@ public sealed class OverlayCoordinator
     private readonly Func<BreakOverlayWindow> _eyeOverlayFactory;
     private readonly Func<BreakOverlayWindow> _moveOverlayFactory;
     private readonly IAppLogger _logger;
+    private readonly Dispatcher _dispatcher;
+    private readonly DispatcherTimer _recoveryTimer;
 
     private BreakOverlayWindow? _eyeOverlay;
     private BreakOverlayWindow? _moveOverlay;
     private OverlaySessionState _session = OverlaySessionState.Empty;
-    public bool LastSnapshotCaptured { get; private set; }
+    private BreakStartedEventArgs? _activeBreakArgs;
+    private AppSettings? _activeSettings;
+    private LocalizationService? _activeLocalization;
+    private TimeSpan? _activeRemaining;
+    private int _activeActivityIndex;
+    private int _activeGlassClarity;
+    private bool _systemRecoveryEventsSubscribed;
+    private string _pendingRecoveryReason = "display topology change";
 
     public OverlayCoordinator(
         Func<BreakOverlayWindow> eyeOverlayFactory,
@@ -29,57 +39,154 @@ public sealed class OverlayCoordinator
         _eyeOverlayFactory = eyeOverlayFactory;
         _moveOverlayFactory = moveOverlayFactory;
         _logger = logger;
+        _dispatcher = System.Windows.Application.Current?.Dispatcher ?? Dispatcher.CurrentDispatcher;
+        _recoveryTimer = new DispatcherTimer(DispatcherPriority.Background, _dispatcher)
+        {
+            Interval = TimeSpan.FromMilliseconds(750)
+        };
+        _recoveryTimer.Tick += OnRecoveryTimerTick;
     }
+
+    public bool LastSnapshotCaptured { get; private set; }
+
+    public OverlaySessionState SessionState => _session;
 
     public void ShowBreak(BreakStartedEventArgs args, AppSettings settings, LocalizationService localization)
     {
+        ArgumentNullException.ThrowIfNull(args);
+        ArgumentNullException.ThrowIfNull(settings);
+        ArgumentNullException.ThrowIfNull(localization);
+
+        UnsubscribeSystemRecoveryEvents();
+        _recoveryTimer.Stop();
+        CloseWindows();
+
+        _session = OverlaySessionPolicy.AfterCloseAll();
+        _activeBreakArgs = args;
+        _activeSettings = settings;
+        _activeLocalization = localization;
+        _activeRemaining = TimeSpan.FromSeconds(args.DurationSeconds);
+        _activeActivityIndex = args.ActivityIndex;
+        _activeGlassClarity = settings.GlassClarity;
+
         try
         {
-            CloseAll();
-            _session = OverlaySessionPolicy.AfterCloseAll();
-            if (args.BreakType == BreakType.Eye)
-            {
-                _eyeOverlay = _eyeOverlayFactory();
-                _eyeOverlay.Configure(args, settings, localization, isEye: true);
-                LastSnapshotCaptured = _eyeOverlay.DataContext is OverlayViewModel eyeVm && eyeVm.SnapshotSource is not null;
-                _eyeOverlay.ShowOnActiveMonitor();
-            }
-            else
-            {
-                _moveOverlay = _moveOverlayFactory();
-                _moveOverlay.Configure(args, settings, localization, isEye: false);
-                LastSnapshotCaptured = _moveOverlay.DataContext is OverlayViewModel moveVm && moveVm.SnapshotSource is not null;
-                _moveOverlay.ShowOnActiveMonitor();
-            }
-
+            CreateAndShowActiveOverlay(args, settings, localization);
             _session = OverlaySessionPolicy.AfterShow(args.BreakType, _session);
+            SubscribeSystemRecoveryEvents();
         }
         catch (Exception ex)
         {
             _logger.Error("Failed to show overlay", ex);
+            CloseWindows();
+            _session = OverlaySessionPolicy.AfterCloseAll();
+            SubscribeSystemRecoveryEvents();
+            ScheduleRecovery("initial overlay creation failure");
         }
     }
 
     public void UpdateActiveBreak(TimeSpan? remaining, LocalizationService localization, int activityIndex)
     {
-        if (_eyeOverlay is not null && _eyeOverlay.IsVisible)
-        {
-            _eyeOverlay.UpdateRemaining(remaining);
-        }
-
-        if (_moveOverlay is not null && _moveOverlay.IsVisible)
-        {
-            _moveOverlay.UpdateRemaining(remaining, localization, activityIndex);
-        }
+        _activeRemaining = remaining;
+        _activeLocalization = localization;
+        _activeActivityIndex = activityIndex;
+        ApplyRemainingToActiveWindow();
     }
 
     public void UpdateGlassClarity(int glassClarity)
     {
-        _eyeOverlay?.ApplyGlassClarity(glassClarity);
-        _moveOverlay?.ApplyGlassClarity(glassClarity);
+        _activeGlassClarity = OverlayGlassSettings.NormalizeGlassClarity(glassClarity);
+        _eyeOverlay?.ApplyGlassClarity(_activeGlassClarity);
+        _moveOverlay?.ApplyGlassClarity(_activeGlassClarity);
+    }
+
+    public bool RecoverActiveOverlay()
+    {
+        if (_activeBreakArgs is null || _activeSettings is null || _activeLocalization is null)
+        {
+            return false;
+        }
+
+        try
+        {
+            var activeWindow = _activeBreakArgs.BreakType == BreakType.Eye
+                ? _eyeOverlay
+                : _moveOverlay;
+
+            if (activeWindow?.TryRecoverOnActiveMonitor() == true)
+            {
+                activeWindow.ApplyGlassClarity(_activeGlassClarity);
+                LastSnapshotCaptured = activeWindow.HasSnapshot;
+                ApplyRemainingToActiveWindow();
+                _session = OverlaySessionPolicy.AfterShow(
+                    _activeBreakArgs.BreakType,
+                    OverlaySessionPolicy.AfterCloseAll());
+                return true;
+            }
+
+            _logger.Warning("Active overlay window was unavailable after a display change; recreating it.");
+            CloseWindows();
+            _session = OverlaySessionPolicy.AfterCloseAll();
+            CreateAndShowActiveOverlay(_activeBreakArgs, _activeSettings, _activeLocalization);
+            _session = OverlaySessionPolicy.AfterShow(_activeBreakArgs.BreakType, _session);
+            ApplyRemainingToActiveWindow();
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger.Error("Failed to recover active overlay after a display change", ex);
+            CloseWindows();
+            _session = OverlaySessionPolicy.AfterCloseAll();
+            return false;
+        }
     }
 
     public void CloseAll()
+    {
+        _recoveryTimer.Stop();
+        UnsubscribeSystemRecoveryEvents();
+        CloseWindows();
+        ClearActiveContext();
+        _session = OverlaySessionPolicy.AfterCloseAll();
+    }
+
+    private void CreateAndShowActiveOverlay(
+        BreakStartedEventArgs args,
+        AppSettings settings,
+        LocalizationService localization)
+    {
+        if (args.BreakType == BreakType.Eye)
+        {
+            _eyeOverlay = _eyeOverlayFactory();
+            _eyeOverlay.Configure(args, settings, localization, isEye: true);
+            _eyeOverlay.ApplyGlassClarity(_activeGlassClarity);
+            _eyeOverlay.ShowOnActiveMonitor();
+            LastSnapshotCaptured = _eyeOverlay.HasSnapshot;
+            return;
+        }
+
+        _moveOverlay = _moveOverlayFactory();
+        _moveOverlay.Configure(args, settings, localization, isEye: false);
+        _moveOverlay.ApplyGlassClarity(_activeGlassClarity);
+        _moveOverlay.ShowOnActiveMonitor();
+        LastSnapshotCaptured = _moveOverlay.HasSnapshot;
+    }
+
+    private void ApplyRemainingToActiveWindow()
+    {
+        if (_activeBreakArgs?.BreakType == BreakType.Eye)
+        {
+            _eyeOverlay?.UpdateRemaining(_activeRemaining);
+            return;
+        }
+
+        if (_activeBreakArgs?.BreakType == BreakType.Move && _activeLocalization is not null)
+        {
+            _moveOverlay?.UpdateRemaining(_activeRemaining, _activeLocalization, _activeActivityIndex);
+        }
+    }
+
+    private void CloseWindows()
     {
         if (_eyeOverlay is not null)
         {
@@ -93,10 +200,122 @@ public sealed class OverlayCoordinator
             _moveOverlay = null;
         }
 
-        _session = OverlaySessionPolicy.AfterCloseAll();
+        LastSnapshotCaptured = false;
     }
 
-    public OverlaySessionState SessionState => _session;
+    private void ClearActiveContext()
+    {
+        _activeBreakArgs = null;
+        _activeSettings = null;
+        _activeLocalization = null;
+        _activeRemaining = null;
+        _activeActivityIndex = 0;
+        _activeGlassClarity = OverlayGlassSettings.DefaultGlassClarity;
+    }
+
+    private void SubscribeSystemRecoveryEvents()
+    {
+        if (_systemRecoveryEventsSubscribed)
+        {
+            return;
+        }
+
+        try
+        {
+            SystemEvents.DisplaySettingsChanged += OnDisplaySettingsChanged;
+            SystemEvents.PowerModeChanged += OnPowerModeChanged;
+            SystemEvents.SessionSwitch += OnSessionSwitch;
+            _systemRecoveryEventsSubscribed = true;
+        }
+        catch (Exception ex)
+        {
+            TryRemoveSystemRecoveryEvents();
+            _logger.Warning($"System display recovery events could not be registered: {ex.Message}");
+        }
+    }
+
+    private void UnsubscribeSystemRecoveryEvents()
+    {
+        if (!_systemRecoveryEventsSubscribed)
+        {
+            return;
+        }
+
+        TryRemoveSystemRecoveryEvents();
+        _systemRecoveryEventsSubscribed = false;
+    }
+
+    private static void TryRemoveSystemRecoveryEvents()
+    {
+        try
+        {
+            SystemEvents.DisplaySettingsChanged -= OnDisplaySettingsChanged;
+            SystemEvents.PowerModeChanged -= OnPowerModeChanged;
+            SystemEvents.SessionSwitch -= OnSessionSwitch;
+        }
+        catch
+        {
+            // Process shutdown and desktop teardown can invalidate the SystemEvents window.
+        }
+    }
+
+    private static void OnDisplaySettingsChanged(object? sender, EventArgs e)
+    {
+    }
+
+    private static void OnPowerModeChanged(object sender, PowerModeChangedEventArgs e)
+    {
+    }
+
+    private static void OnSessionSwitch(object sender, SessionSwitchEventArgs e)
+    {
+    }
+
+    private void QueueRecovery(string reason)
+    {
+        if (_activeBreakArgs is null || _dispatcher.HasShutdownStarted || _dispatcher.HasShutdownFinished)
+        {
+            return;
+        }
+
+        if (_dispatcher.CheckAccess())
+        {
+            ScheduleRecovery(reason);
+            return;
+        }
+
+        _dispatcher.BeginInvoke(new Action(() => ScheduleRecovery(reason)));
+    }
+
+    private void ScheduleRecovery(string reason)
+    {
+        if (_activeBreakArgs is null)
+        {
+            return;
+        }
+
+        _pendingRecoveryReason = reason;
+        _recoveryTimer.Stop();
+        _recoveryTimer.Start();
+    }
+
+    private void OnRecoveryTimerTick(object? sender, EventArgs e)
+    {
+        _recoveryTimer.Stop();
+        if (_activeBreakArgs is null)
+        {
+            return;
+        }
+
+        if (RecoverActiveOverlay())
+        {
+            _logger.Info($"Active overlay recovered after {_pendingRecoveryReason}.");
+        }
+        else
+        {
+            _logger.Warning($"Active overlay recovery failed after {_pendingRecoveryReason}.");
+        }
+    }
 }
 
 public sealed class TrayService : IDisposable
