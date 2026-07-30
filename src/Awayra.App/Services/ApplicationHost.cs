@@ -24,9 +24,12 @@ public sealed class ApplicationHost : IDisposable
     private System.Timers.Timer? _tickTimer;
     private System.Timers.Timer? _idleTimer;
     private System.Timers.Timer? _diagnosticsTimer;
+    private SynchronizationContext? _schedulerContext;
     private bool _isShuttingDown;
     private bool _configurationSessionActive;
     private bool _wasIdle;
+    private int _tickPending;
+    private int _idleUpdatePending;
 
     public ApplicationHost(
         IAppLogger logger,
@@ -60,6 +63,11 @@ public sealed class ApplicationHost : IDisposable
 
     public async Task InitializeAsync(DateTimeOffset? currentBootStartedAtUtc = null)
     {
+        // Capture the UI synchronization context before any ConfigureAwait(false).
+        // Runtime scheduler mutations are posted back to this context so timer,
+        // idle, tray, and window actions cannot mutate scheduler state concurrently.
+        _schedulerContext ??= SynchronizationContext.Current;
+
         AppPaths.EnsureDataRoot();
         _settings = await _settingsStore.LoadAsync().ConfigureAwait(false);
         if (!SettingsValidator.IsValid(_settings))
@@ -96,24 +104,24 @@ public sealed class ApplicationHost : IDisposable
         _scheduler.BreakEnded += OnBreakEnded;
 
         _tickTimer = new System.Timers.Timer(1000);
-        _tickTimer.Elapsed += (_, _) => _scheduler.Tick();
+        _tickTimer.Elapsed += (_, _) => QueueTick();
         _tickTimer.AutoReset = true;
         _tickTimer.Start();
 
         _idleTimer = new System.Timers.Timer(UiTestMode.IsEnabled ? 1_000 : 5_000);
-        _idleTimer.Elapsed += (_, _) => UpdateIdleState();
+        _idleTimer.Elapsed += (_, _) => QueueIdleUpdate();
         _idleTimer.AutoReset = true;
         _idleTimer.Start();
-        UpdateIdleState();
+        QueueIdleUpdate();
 
         if (UiTestMode.IsEnabled && UiTestMode.DataRoot is not null)
         {
             UiTestDiagnosticsWriter.Initialize(UiTestMode.DataRoot);
             _diagnosticsTimer = new System.Timers.Timer(1_000);
-            _diagnosticsTimer.Elapsed += (_, _) => PublishUiTestDiagnostics();
+            _diagnosticsTimer.Elapsed += (_, _) => QueueDiagnosticsPublish();
             _diagnosticsTimer.AutoReset = true;
             _diagnosticsTimer.Start();
-            PublishUiTestDiagnostics();
+            QueueDiagnosticsPublish();
         }
 
         _logger.Info("Awayra initialized.");
@@ -191,12 +199,15 @@ public sealed class ApplicationHost : IDisposable
     {
         await _settingsStore.SaveAsync(_settings).ConfigureAwait(false);
         await PersistStateAsync().ConfigureAwait(false);
-        await _statisticsStore.SaveAsync(_statistics.Data).ConfigureAwait(false);
+        await _statisticsStore.SaveAsync(CloneStatistics(_statistics.Data)).ConfigureAwait(false);
         await _logger.FlushAsync().ConfigureAwait(false);
     }
 
-    public async Task PersistStateAsync() =>
-        await _stateStore.SaveAsync(_scheduler.State).ConfigureAwait(false);
+    public async Task PersistStateAsync()
+    {
+        var snapshot = CloneState(_scheduler.State);
+        await _stateStore.SaveAsync(snapshot).ConfigureAwait(false);
+    }
 
     public void ApplyAutostartSetting(string? executablePath = null)
     {
@@ -235,6 +246,7 @@ public sealed class ApplicationHost : IDisposable
         _isShuttingDown = true;
         _tickTimer?.Stop();
         _idleTimer?.Stop();
+        _diagnosticsTimer?.Stop();
         _tickTimer?.Dispose();
         _idleTimer?.Dispose();
         _diagnosticsTimer?.Dispose();
@@ -243,15 +255,95 @@ public sealed class ApplicationHost : IDisposable
 
     public void Dispose() => Shutdown();
 
-    private async void UpdateIdleState()
+    private void QueueTick()
+    {
+        if (Interlocked.Exchange(ref _tickPending, 1) != 0)
+        {
+            return;
+        }
+
+        PostSchedulerAction(() =>
+        {
+            try
+            {
+                if (!_isShuttingDown)
+                {
+                    _scheduler.Tick();
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.Error("Scheduler tick failed", ex);
+            }
+            finally
+            {
+                Volatile.Write(ref _tickPending, 0);
+            }
+        });
+    }
+
+    private void QueueIdleUpdate()
+    {
+        if (Interlocked.Exchange(ref _idleUpdatePending, 1) != 0)
+        {
+            return;
+        }
+
+        PostSchedulerAction(() =>
+        {
+            try
+            {
+                if (!_isShuttingDown)
+                {
+                    UpdateIdleState();
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.Error("Idle-state update failed", ex);
+            }
+            finally
+            {
+                Volatile.Write(ref _idleUpdatePending, 0);
+            }
+        });
+    }
+
+    private void QueueDiagnosticsPublish() =>
+        PostSchedulerAction(() =>
+        {
+            if (_isShuttingDown)
+            {
+                return;
+            }
+
+            try
+            {
+                PublishUiTestDiagnostics();
+            }
+            catch (Exception ex)
+            {
+                _logger.Error("UI test diagnostics publication failed", ex);
+            }
+        });
+
+    private void PostSchedulerAction(Action action)
+    {
+        var context = _schedulerContext;
+        if (context is null || ReferenceEquals(SynchronizationContext.Current, context))
+        {
+            action();
+            return;
+        }
+
+        context.Post(static state => ((Action)state!).Invoke(), action);
+    }
+
+    private void UpdateIdleState()
     {
         if (!_settings.PauseWhileIdle)
         {
-            if (_wasIdle)
-            {
-                _wasIdle = false;
-            }
-
+            _wasIdle = false;
             _scheduler.SetIdle(false);
             return;
         }
@@ -264,14 +356,19 @@ public sealed class ApplicationHost : IDisposable
 
         if (wasIdle && !isIdle)
         {
-            try
-            {
-                await PersistStateAsync().ConfigureAwait(false);
-            }
-            catch (Exception ex)
-            {
-                _logger.Error("Failed to persist after idle return", ex);
-            }
+            _ = PersistAfterIdleReturnAsync();
+        }
+    }
+
+    private async Task PersistAfterIdleReturnAsync()
+    {
+        try
+        {
+            await PersistStateAsync().ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            _logger.Error("Failed to persist after idle return", ex);
         }
     }
 
@@ -305,7 +402,7 @@ public sealed class ApplicationHost : IDisposable
         try
         {
             await PersistStateAsync().ConfigureAwait(false);
-            await _statisticsStore.SaveAsync(_statistics.Data).ConfigureAwait(false);
+            await _statisticsStore.SaveAsync(CloneStatistics(_statistics.Data)).ConfigureAwait(false);
         }
         catch (Exception ex)
         {
@@ -314,4 +411,37 @@ public sealed class ApplicationHost : IDisposable
 
         StateChanged?.Invoke(this, EventArgs.Empty);
     }
+
+    private static SchedulerState CloneState(SchedulerState state) => new()
+    {
+        SchemaVersion = state.SchemaVersion,
+        EyeNextDue = state.EyeNextDue,
+        MoveNextDue = state.MoveNextDue,
+        IsPausedManual = state.IsPausedManual,
+        ActiveBreak = state.ActiveBreak,
+        QueuedBreak = state.QueuedBreak,
+        BreakEndsAt = state.BreakEndsAt,
+        SnoozeUntil = state.SnoozeUntil,
+        EyeSnoozeUntil = state.EyeSnoozeUntil,
+        MoveSnoozeUntil = state.MoveSnoozeUntil,
+        LastClockCheck = state.LastClockCheck,
+        SystemBootStartedAtUtc = state.SystemBootStartedAtUtc,
+        EyeLastCompleted = state.EyeLastCompleted,
+        MoveLastCompleted = state.MoveLastCompleted
+    };
+
+    private static StatisticsData CloneStatistics(StatisticsData data) => new()
+    {
+        SchemaVersion = data.SchemaVersion,
+        Days = data.Days.ToDictionary(
+            pair => pair.Key,
+            pair => new DailyStatistics
+            {
+                EyeCompleted = pair.Value.EyeCompleted,
+                MoveCompleted = pair.Value.MoveCompleted,
+                Skipped = pair.Value.Skipped,
+                Snoozed = pair.Value.Snoozed
+            },
+            StringComparer.Ordinal)
+    };
 }
