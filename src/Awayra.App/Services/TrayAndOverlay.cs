@@ -245,7 +245,7 @@ public sealed class OverlayCoordinator
         _systemRecoveryEventsSubscribed = false;
     }
 
-    private static void TryRemoveSystemRecoveryEvents()
+    private void TryRemoveSystemRecoveryEvents()
     {
         try
         {
@@ -259,16 +259,23 @@ public sealed class OverlayCoordinator
         }
     }
 
-    private static void OnDisplaySettingsChanged(object? sender, EventArgs e)
+    private void OnDisplaySettingsChanged(object? sender, EventArgs e) =>
+        QueueRecovery("display settings changed");
+
+    private void OnPowerModeChanged(object sender, PowerModeChangedEventArgs e)
     {
+        if (e.Mode == PowerModes.Resume)
+        {
+            QueueRecovery("system resumed");
+        }
     }
 
-    private static void OnPowerModeChanged(object sender, PowerModeChangedEventArgs e)
+    private void OnSessionSwitch(object sender, SessionSwitchEventArgs e)
     {
-    }
-
-    private static void OnSessionSwitch(object sender, SessionSwitchEventArgs e)
-    {
+        if (e.Reason == SessionSwitchReason.SessionUnlock)
+        {
+            QueueRecovery("session unlocked");
+        }
     }
 
     private void QueueRecovery(string reason)
