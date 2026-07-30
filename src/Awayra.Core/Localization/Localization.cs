@@ -76,6 +76,7 @@ public static class StringKeys
     public const string ValidationSnoozeDurationInvalid = nameof(ValidationSnoozeDurationInvalid);
     public const string ValidationIdleThresholdInvalid = nameof(ValidationIdleThresholdInvalid);
     public const string ValidationGlassClarityInvalid = nameof(ValidationGlassClarityInvalid);
+    public const string ValidationWorkHoursTimeInvalid = nameof(ValidationWorkHoursTimeInvalid);
     public const string ValidationWorkHoursRangeInvalid = nameof(ValidationWorkHoursRangeInvalid);
 
     public const string TrayTooltipStatus = nameof(TrayTooltipStatus);
@@ -99,7 +100,7 @@ public static class StringKeys
         ValidationEyeResetIntervalInvalid, ValidationEyeResetDurationInvalid,
         ValidationMoveBreakIntervalInvalid, ValidationMoveBreakDurationInvalid,
         ValidationSnoozeDurationInvalid, ValidationIdleThresholdInvalid,
-        ValidationGlassClarityInvalid, ValidationWorkHoursRangeInvalid,
+        ValidationGlassClarityInvalid, ValidationWorkHoursTimeInvalid, ValidationWorkHoursRangeInvalid,
         TrayTooltipStatus, TrayTooltipNextBreak, TrayPauseReminders, TrayResumeReminders
     ];
 }
