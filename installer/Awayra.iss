@@ -83,12 +83,21 @@ end;
 procedure CurStepChanged(CurStep: TSetupStep);
 var
   DataDir: String;
+  SettingsPath: String;
+  MarkerPath: String;
 begin
   if CurStep = ssPostInstall then
   begin
     DataDir := ExpandConstant('{localappdata}\Awayra');
-    ForceDirectories(DataDir);
-    SaveStringToFile(AddBackslash(DataDir) + 'onboarding.pending', '{#MyAppVersion}', False);
+    SettingsPath := AddBackslash(DataDir) + 'settings.json';
+    MarkerPath := AddBackslash(DataDir) + 'onboarding.pending';
+
+    { Only a genuinely fresh install needs the one-time setup guide. }
+    if (not FileExists(SettingsPath)) and (not FileExists(MarkerPath)) then
+    begin
+      ForceDirectories(DataDir);
+      SaveStringToFile(MarkerPath, '{#MyAppVersion}', False);
+    end;
   end;
 end;
 
