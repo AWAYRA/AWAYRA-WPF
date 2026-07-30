@@ -7,6 +7,10 @@
     <IsPackable>false</IsPackable>
     <UseWPF>false</UseWPF>
     <RootNamespace>Awayra.UiTests</RootNamespace>
+    <!-- These UI tests intentionally use diagnostic assertion messages and
+         hard timeouts around external desktop processes. Keep all other
+         compiler and MSTest analyzer warnings enabled. -->
+    <NoWarn>$(NoWarn);MSTEST0037;MSTEST0045</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
