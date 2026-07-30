@@ -343,8 +343,16 @@ public sealed class SettingsRecovery
         return false;
     }
 
-    private static bool TryGetInt(JsonElement value, out int result) =>
-        value.ValueKind == JsonValueKind.Number && value.TryGetInt32(out result);
+    private static bool TryGetInt(JsonElement value, out int result)
+    {
+        if (value.ValueKind == JsonValueKind.Number && value.TryGetInt32(out result))
+        {
+            return true;
+        }
+
+        result = default;
+        return false;
+    }
 
     private static bool TryGetTime(JsonElement value, out TimeOnly result)
     {
