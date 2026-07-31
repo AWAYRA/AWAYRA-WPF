@@ -138,6 +138,17 @@ jobs:
         shell: pwsh
         run: powershell -ExecutionPolicy Bypass -File .\scripts\build-installer.ps1
 
+      - name: Test clean upgrade and uninstall
+        if: steps.existing.outputs.release_exists != 'true'
+        shell: pwsh
+        env:
+          APP_VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          $installer = Join-Path $PWD "artifacts\installer\Awayra-Setup-$env:APP_VERSION-x64.exe"
+          powershell -ExecutionPolicy Bypass -File .\scripts\test-clean-upgrade.ps1 `
+            -InstallerPath $installer `
+            -ExpectedVersion $env:APP_VERSION
+
       - name: Prepare permanent download filenames
         if: steps.existing.outputs.release_exists != 'true'
         shell: pwsh
