@@ -25,6 +25,8 @@ The installer is self-contained, so users do not need to install .NET separately
 
 Unsigned releases may show a Windows SmartScreen **Unknown Publisher** warning until the project establishes signing reputation. Verify the SHA-256 checksum before installation.
 
+> **Upgrade behavior in Awayra 1.0.5:** installing or reinstalling Awayra performs a clean reset. Previous Awayra settings, scheduler state, statistics, logs, startup registration, shortcuts, and stale program files are removed before the new version is installed. This is intentional while the application is under active stabilization.
+
 ## What is Awayra?
 
 Awayra is a lightweight, native **Windows break reminder** for people who spend long hours working, studying, gaming, designing, or programming at a computer.
@@ -112,6 +114,8 @@ Local files are stored under `%LocalAppData%\Awayra\`:
 | `stats.json` | Daily break statistics |
 | `Logs\awayra.log` | Local diagnostic log |
 
+These files are removed by the 1.0.5 clean-upgrade installer and by uninstall.
+
 ## Frequently asked questions
 
 ### Does Awayra support the 20-20-20 rule?
@@ -133,6 +137,10 @@ No. Awayra does not upload telemetry, browsing history, screenshots, application
 ### Can I change the break intervals?
 
 Yes. Eye breaks, movement breaks, durations, snooze timing, working hours, startup behavior, and other reminder settings are configurable.
+
+### Will an upgrade keep my current settings?
+
+Not in version 1.0.5. The installer intentionally removes previous Awayra settings and runtime data so testing starts from a clean, known state.
 
 ### Is Awayra available for macOS or Linux?
 
@@ -184,8 +192,9 @@ When a commit reaches `main`:
 1. GitHub Actions reads the application version.
 2. If a Release for that version already exists, the workflow exits without changing it.
 3. Otherwise, the workflow builds a self-contained x64 installer.
-4. It creates the matching version tag and GitHub Release.
-5. It uploads versioned files and the permanent `Awayra-Setup-x64.exe` download alias.
+4. It executes the clean-upgrade and uninstall E2E test.
+5. It creates the matching version tag and GitHub Release.
+6. It uploads versioned files and the permanent `Awayra-Setup-x64.exe` download alias.
 
 A new public release therefore requires an intentional version bump before merging.
 
