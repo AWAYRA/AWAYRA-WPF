@@ -2,11 +2,11 @@
 ; Build with: powershell -ExecutionPolicy Bypass -File .\scripts\build-installer.ps1
 
 #ifndef MyAppVersion
-  #define MyAppVersion "1.0.4"
+  #define MyAppVersion "1.0.5"
 #endif
 
 #ifndef MyAppVersionInfo
-  #define MyAppVersionInfo "1.0.4.0"
+  #define MyAppVersionInfo "1.0.5.0"
 #endif
 
 #ifndef PublishDir
@@ -44,12 +44,18 @@ ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
 MinVersion=10.0
 PrivilegesRequired=lowest
+DisableDirPage=yes
 DisableProgramGroupPage=yes
-CloseApplications=yes
+UsePreviousAppDir=no
+UsePreviousTasks=no
+CloseApplications=force
+CloseApplicationsFilter=Awayra.exe
 RestartApplications=no
 RestartIfNeededByRun=no
 Uninstallable=yes
 CreateUninstallRegKey=yes
+UninstallLogMode=new
+SetupLogging=yes
 VersionInfoCompany={#MyAppPublisher}
 VersionInfoDescription=Awayra Installer
 VersionInfoProductName={#MyAppName}
@@ -74,37 +80,119 @@ Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: de
 [Run]
 Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; Flags: nowait postinstall skipifsilent
 
+[UninstallDelete]
+Type: filesandordirs; Name: "{localappdata}\Awayra"
+Type: filesandordirs; Name: "{userappdata}\Awayra"
+Type: files; Name: "{autodesktop}\Awayra.lnk"
+Type: files; Name: "{userstartup}\Awayra.lnk"
+
 [Code]
+const
+  RunKeyPath = 'Software\Microsoft\Windows\CurrentVersion\Run';
+  RunValueName = 'Awayra';
+
 function IconFileExists(): Boolean;
 begin
   Result := FileExists(ExpandConstant('{app}\awayra.ico'));
 end;
 
-procedure CurStepChanged(CurStep: TSetupStep);
+procedure StopRunningAwayra();
 var
-  DataDir: String;
-  SettingsPath: String;
-  MarkerPath: String;
+  ResultCode: Integer;
 begin
-  if CurStep = ssPostInstall then
-  begin
-    DataDir := ExpandConstant('{localappdata}\Awayra');
-    SettingsPath := AddBackslash(DataDir) + 'settings.json';
-    MarkerPath := AddBackslash(DataDir) + 'onboarding.pending';
+  { Restart Manager handles the normal path. taskkill also covers legacy copies
+    running from a different old install directory. }
+  Exec(
+    ExpandConstant('{sys}\taskkill.exe'),
+    '/F /T /IM {#MyAppExeName}',
+    '',
+    SW_HIDE,
+    ewWaitUntilTerminated,
+    ResultCode);
+end;
 
-    { Only a genuinely fresh install needs the one-time setup guide. }
-    if (not FileExists(SettingsPath)) and (not FileExists(MarkerPath)) then
+procedure DeleteDirectoryOrAbort(const DirectoryPath: String; const Description: String);
+begin
+  if not DirExists(DirectoryPath) then
+    Exit;
+
+  Log('Clean upgrade: deleting ' + Description + ': ' + DirectoryPath);
+  if not DelTree(DirectoryPath, True, True, True) then
+  begin
+    MsgBox(
+      'Awayra could not remove old ' + Description + '.' + #13#10 +
+      'Close any remaining Awayra process and run the installer again.' + #13#10#13#10 +
+      DirectoryPath,
+      mbError,
+      MB_OK);
+    Abort;
+  end;
+end;
+
+procedure DeleteFileIfPresent(const FilePath: String);
+begin
+  if FileExists(FilePath) then
+  begin
+    Log('Clean upgrade: deleting legacy file: ' + FilePath);
+    if not DeleteFile(FilePath) then
     begin
-      ForceDirectories(DataDir);
-      SaveStringToFile(MarkerPath, '{#MyAppVersion}', False);
+      MsgBox('Awayra could not remove a legacy shortcut:' + #13#10 + FilePath, mbError, MB_OK);
+      Abort;
     end;
   end;
 end;
 
+procedure CleanPreviousInstallation();
+begin
+  StopRunningAwayra();
+
+  { These are fixed Awayra-owned locations. No user-selected path is accepted. }
+  DeleteDirectoryOrAbort(ExpandConstant('{localappdata}\Programs\Awayra'), 'program files');
+  DeleteDirectoryOrAbort(ExpandConstant('{localappdata}\Awayra'), 'settings and runtime data');
+  DeleteDirectoryOrAbort(ExpandConstant('{userappdata}\Awayra'), 'legacy roaming data');
+  DeleteDirectoryOrAbort(ExpandConstant('{group}'), 'Start menu shortcuts');
+
+  DeleteFileIfPresent(ExpandConstant('{autodesktop}\Awayra.lnk'));
+  DeleteFileIfPresent(ExpandConstant('{userstartup}\Awayra.lnk'));
+
+  RegDeleteValue(HKCU, RunKeyPath, RunValueName);
+end;
+
+procedure CreateFreshOnboardingMarker();
+var
+  DataDir: String;
+  MarkerPath: String;
+begin
+  DataDir := ExpandConstant('{localappdata}\Awayra');
+  MarkerPath := AddBackslash(DataDir) + 'onboarding.pending';
+  ForceDirectories(DataDir);
+
+  if not SaveStringToFile(MarkerPath, '{#MyAppVersion}', False) then
+  begin
+    MsgBox('Awayra could not initialize its clean settings directory.', mbError, MB_OK);
+    Abort;
+  end;
+end;
+
+procedure CurStepChanged(CurStep: TSetupStep);
+begin
+  if CurStep = ssInstall then
+    CleanPreviousInstallation()
+  else if CurStep = ssPostInstall then
+    CreateFreshOnboardingMarker();
+end;
+
 procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
 begin
-  if CurUninstallStep = usPostUninstall then
+  if CurUninstallStep = usUninstall then
   begin
-    { Preserve user data under %LocalAppData%\Awayra on uninstall. }
+    StopRunningAwayra();
+    RegDeleteValue(HKCU, RunKeyPath, RunValueName);
+  end
+  else if CurUninstallStep = usPostUninstall then
+  begin
+    { Exact application-owned data roots only. }
+    DelTree(ExpandConstant('{localappdata}\Awayra'), True, True, True);
+    DelTree(ExpandConstant('{userappdata}\Awayra'), True, True, True);
   end;
 end;
