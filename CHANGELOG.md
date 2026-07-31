@@ -6,11 +6,22 @@ The project follows semantic versioning where practical.
 
 ## [Unreleased]
 
+No unreleased changes yet.
+
+## [1.0.5] - 2026-07-31
+
+### Changed
+
+- Installing or reinstalling Awayra now performs a clean replacement instead of carrying forward files, settings, scheduler state, statistics, logs, shortcuts, or startup registration from an older version
+- The install directory is fixed to the per-user Awayra location so cleanup cannot target an arbitrary user-selected folder
+- Uninstall now removes Awayra-owned local and roaming application data
+
 ### Fixed
 
 - Active break overlays now recover after monitor disconnect/reconnect, display-topology changes, sleep/resume, and session unlock
 - Fullscreen overlay placement now uses physical monitor bounds correctly across mixed-DPI displays
 - Closed or invalid overlay windows are recreated while preserving the active break countdown and session state
+- Clean-upgrade behavior is now validated by installing twice over simulated legacy files and settings on the Windows installer runner
 
 ## [1.0.4] - 2026-07-30
 
