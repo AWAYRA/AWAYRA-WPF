@@ -78,7 +78,12 @@ public sealed class AboutWindowTests
         {
             WpfTestHost.EnsureApplicationResources();
             var host = WpfTestHost.CreateHost();
-            var before = host.Scheduler.GetSnapshot();
+            var beforeEyeNextDue = host.Scheduler.State.EyeNextDue;
+            var beforeMoveNextDue = host.Scheduler.State.MoveNextDue;
+            var beforeActiveBreak = host.Scheduler.State.ActiveBreak;
+            var beforeQueuedBreak = host.Scheduler.State.QueuedBreak;
+            var beforeBreakEndsAt = host.Scheduler.State.BreakEndsAt;
+            var beforePaused = host.Scheduler.State.IsPausedManual;
 
             AboutWindow? window = null;
             window = new AboutWindow(new AboutViewModel(new FakeExternalLinkLauncher(), () => window?.Close()));
@@ -86,11 +91,12 @@ public sealed class AboutWindowTests
             window.UpdateLayout();
             window.Close();
 
-            var after = host.Scheduler.GetSnapshot();
-            Assert.AreEqual(before.Status, after.Status);
-            Assert.IsTrue(Math.Abs((before.EyeRemaining - after.EyeRemaining).TotalSeconds) <= 2);
-            Assert.IsTrue(Math.Abs((before.MoveRemaining - after.MoveRemaining).TotalSeconds) <= 2);
-            Assert.AreEqual(before.IsPausedManual, after.IsPausedManual);
+            Assert.AreEqual(beforeEyeNextDue, host.Scheduler.State.EyeNextDue);
+            Assert.AreEqual(beforeMoveNextDue, host.Scheduler.State.MoveNextDue);
+            Assert.AreEqual(beforeActiveBreak, host.Scheduler.State.ActiveBreak);
+            Assert.AreEqual(beforeQueuedBreak, host.Scheduler.State.QueuedBreak);
+            Assert.AreEqual(beforeBreakEndsAt, host.Scheduler.State.BreakEndsAt);
+            Assert.AreEqual(beforePaused, host.Scheduler.State.IsPausedManual);
             host.Dispose();
         });
     }
