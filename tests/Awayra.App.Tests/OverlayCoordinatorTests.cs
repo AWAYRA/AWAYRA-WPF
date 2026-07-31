@@ -52,4 +52,56 @@ public sealed class OverlayCoordinatorTests
             host.Dispose();
         });
     }
+
+    [TestMethod]
+    public void RecoverActiveOverlay_RecreatesClosedWindowAndPreservesBreakSession()
+    {
+        StaTestContext.Run(() =>
+        {
+            WpfTestHost.EnsureApplicationResources();
+            var host = WpfTestHost.CreateHost();
+            BreakOverlayWindow? firstEyeWindow = null;
+            BreakOverlayWindow? latestEyeWindow = null;
+            var eyeWindowCount = 0;
+
+            var coordinator = new OverlayCoordinator(
+                () =>
+                {
+                    var window = new BreakOverlayWindow(host, new OverlayViewModel(), new NullMonitorSnapshotService());
+                    eyeWindowCount++;
+                    firstEyeWindow ??= window;
+                    latestEyeWindow = window;
+                    return window;
+                },
+                () => new BreakOverlayWindow(host, new OverlayViewModel(), new NullMonitorSnapshotService()),
+                new NullLogger());
+
+            coordinator.ShowBreak(
+                new BreakStartedEventArgs
+                {
+                    BreakType = BreakType.Eye,
+                    DurationSeconds = 20,
+                    ActivityIndex = 0
+                },
+                AppSettings.CreateDefault(),
+                new LocalizationService());
+
+            Assert.AreEqual(1, eyeWindowCount);
+            Assert.IsNotNull(firstEyeWindow);
+            firstEyeWindow!.CloseSafely();
+
+            var recovered = coordinator.RecoverActiveOverlay();
+
+            Assert.IsTrue(recovered);
+            Assert.AreEqual(2, eyeWindowCount);
+            Assert.IsNotNull(latestEyeWindow);
+            Assert.AreNotSame(firstEyeWindow, latestEyeWindow);
+            Assert.IsTrue(latestEyeWindow!.IsVisible);
+            Assert.IsTrue(coordinator.SessionState.EyeVisible);
+            Assert.IsFalse(coordinator.SessionState.MoveVisible);
+
+            coordinator.CloseAll();
+            host.Dispose();
+        });
+    }
 }
