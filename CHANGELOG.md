@@ -6,7 +6,11 @@ The project follows semantic versioning where practical.
 
 ## [Unreleased]
 
-No unreleased changes yet.
+### Fixed
+
+- Active break overlays now recover after monitor disconnect/reconnect, display-topology changes, sleep/resume, and session unlock
+- Fullscreen overlay placement now uses physical monitor bounds correctly across mixed-DPI displays
+- Closed or invalid overlay windows are recreated while preserving the active break countdown and session state
 
 ## [1.0.4] - 2026-07-30
 
