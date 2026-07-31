@@ -80,9 +80,16 @@ function Assert-CleanInstallState {
         throw "Expected fresh onboarding marker version $ExpectedVersion, found '$marker'."
     }
 
-    $runValue = Get-ItemPropertyValue -Path $script:RunKey -Name "Awayra" -ErrorAction SilentlyContinue
-    if ($null -ne $runValue) {
-        throw "Legacy Awayra startup registry value was not removed: $runValue"
+    $runKeyProperties = Get-ItemProperty -Path $script:RunKey -ErrorAction SilentlyContinue
+    $runValueProperty = if ($null -ne $runKeyProperties) {
+        $runKeyProperties.PSObject.Properties["Awayra"]
+    }
+    else {
+        $null
+    }
+
+    if ($null -ne $runValueProperty) {
+        throw "Legacy Awayra startup registry value was not removed: $($runValueProperty.Value)"
     }
 }
 
