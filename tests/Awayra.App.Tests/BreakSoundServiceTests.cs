@@ -1,0 +1,136 @@
+using System.Text;
+using System.Windows.Threading;
+using Awayra.App.Services;
+using Awayra.App.Tests.Support;
+using Awayra.Core.Models;
+
+namespace Awayra.App.Tests;
+
+[TestClass]
+public sealed class BreakSoundServiceTests
+{
+    [TestMethod]
+    public void ActiveBreak_PlaysMutesUnmutesAndStops()
+    {
+        StaTestContext.Run(() =>
+        {
+            var player = new RecordingTonePlayer();
+            using var service = new BreakSoundService(
+                Dispatcher.CurrentDispatcher,
+                new NullLogger(),
+                player);
+            var settings = AppSettings.CreateDefault();
+            settings.EyeBreakSoundEnabled = true;
+            settings.BreakSoundTheme = BreakSoundTheme.GentleChime;
+            settings.BreakSoundVolume = 23;
+            settings.BreakSoundRepeatSeconds = 1;
+
+            service.StartBreak(BreakType.Eye, settings);
+
+            Assert.IsTrue(service.IsSessionActive);
+            Assert.IsFalse(service.IsMuted);
+            Assert.AreEqual(BreakType.Eye, service.ActiveBreakType);
+            Assert.AreEqual(1, player.PlayCount);
+            Assert.AreEqual(BreakSoundTheme.GentleChime, player.LastTheme);
+            Assert.AreEqual(23, player.LastVolume);
+
+            Assert.IsTrue(service.ToggleMute());
+            Assert.IsTrue(service.IsMuted);
+            Assert.IsTrue(player.StopCount >= 1);
+
+            Assert.IsFalse(service.ToggleMute());
+            Assert.IsFalse(service.IsMuted);
+            Assert.AreEqual(2, player.PlayCount);
+
+            service.StopBreak();
+            Assert.IsFalse(service.IsSessionActive);
+            Assert.IsTrue(service.IsMuted);
+            Assert.IsNull(service.ActiveBreakType);
+        });
+    }
+
+    [TestMethod]
+    public void DisabledSound_StartsMutedButCanBeEnabledForCurrentBreak()
+    {
+        StaTestContext.Run(() =>
+        {
+            var player = new RecordingTonePlayer();
+            using var service = new BreakSoundService(
+                Dispatcher.CurrentDispatcher,
+                new NullLogger(),
+                player);
+            var settings = AppSettings.CreateDefault();
+            settings.MoveBreakSoundEnabled = false;
+
+            service.StartBreak(BreakType.Move, settings);
+
+            Assert.IsTrue(service.IsMuted);
+            Assert.AreEqual(0, player.PlayCount);
+
+            service.ToggleMute();
+            Assert.IsFalse(service.IsMuted);
+            Assert.AreEqual(1, player.PlayCount);
+        });
+    }
+
+    [TestMethod]
+    public void SystemTransition_PausesAndResumesActiveSound()
+    {
+        StaTestContext.Run(() =>
+        {
+            var player = new RecordingTonePlayer();
+            using var service = new BreakSoundService(
+                Dispatcher.CurrentDispatcher,
+                new NullLogger(),
+                player);
+            var settings = AppSettings.CreateDefault();
+            settings.EyeBreakSoundEnabled = true;
+
+            service.StartBreak(BreakType.Eye, settings);
+            service.PauseForSystemTransition();
+            var stopsAfterPause = player.StopCount;
+            service.ResumeAfterSystemTransition(settings);
+
+            Assert.IsTrue(stopsAfterPause >= 1);
+            Assert.AreEqual(2, player.PlayCount);
+        });
+    }
+
+    [TestMethod]
+    public void ToneGenerator_ProducesThreeDistinctValidWaveFiles()
+    {
+        var generated = Enum.GetValues<BreakSoundTheme>()
+            .Select(BreakToneGenerator.GenerateWaveBytes)
+            .ToArray();
+
+        Assert.AreEqual(3, generated.Length);
+        foreach (var wave in generated)
+        {
+            Assert.IsTrue(wave.Length > 44);
+            Assert.AreEqual("RIFF", Encoding.ASCII.GetString(wave, 0, 4));
+            Assert.AreEqual("WAVE", Encoding.ASCII.GetString(wave, 8, 4));
+        }
+
+        Assert.IsFalse(generated[0].SequenceEqual(generated[1]));
+        Assert.IsFalse(generated[1].SequenceEqual(generated[2]));
+        Assert.IsFalse(generated[0].SequenceEqual(generated[2]));
+    }
+
+    private sealed class RecordingTonePlayer : IBreakTonePlayer
+    {
+        public int PlayCount { get; private set; }
+        public int StopCount { get; private set; }
+        public BreakSoundTheme? LastTheme { get; private set; }
+        public int LastVolume { get; private set; }
+
+        public void Play(BreakSoundTheme theme, int volumePercent)
+        {
+            PlayCount++;
+            LastTheme = theme;
+            LastVolume = volumePercent;
+        }
+
+        public void Stop() => StopCount++;
+        public void Dispose() { }
+    }
+}
