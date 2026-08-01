@@ -16,6 +16,47 @@
       <ResourceDictionary.MergedDictionaries>
         <ResourceDictionary Source="../Resources/SettingsStyles.xaml" />
       </ResourceDictionary.MergedDictionaries>
+
+      <Style x:Key="Settings.SoundRadio" TargetType="RadioButton">
+        <Setter Property="Foreground" Value="{StaticResource Settings.PrimaryTextBrush}" />
+        <Setter Property="FontFamily" Value="{StaticResource Settings.Font}" />
+        <Setter Property="FontSize" Value="13" />
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="Margin" Value="0,0,0,7" />
+        <Setter Property="Template">
+          <Setter.Value>
+            <ControlTemplate TargetType="RadioButton">
+              <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                <Grid Width="18" Height="18" Margin="0,0,10,0">
+                  <Ellipse x:Name="Outer"
+                           Fill="{StaticResource Settings.InputBackgroundBrush}"
+                           Stroke="{StaticResource Settings.BorderBrush}"
+                           StrokeThickness="1.5" />
+                  <Ellipse x:Name="Dot"
+                           Width="8"
+                           Height="8"
+                           Fill="{StaticResource Settings.AccentBrush}"
+                           Visibility="Collapsed" />
+                </Grid>
+                <ContentPresenter VerticalAlignment="Center" RecognizesAccessKey="True" />
+              </StackPanel>
+              <ControlTemplate.Triggers>
+                <Trigger Property="IsChecked" Value="True">
+                  <Setter TargetName="Dot" Property="Visibility" Value="Visible" />
+                  <Setter TargetName="Outer" Property="Stroke" Value="{StaticResource Settings.AccentBrush}" />
+                </Trigger>
+                <Trigger Property="IsMouseOver" Value="True">
+                  <Setter TargetName="Outer" Property="Stroke" Value="{StaticResource Settings.AccentHoverBrush}" />
+                </Trigger>
+                <Trigger Property="IsKeyboardFocused" Value="True">
+                  <Setter TargetName="Outer" Property="Stroke" Value="{StaticResource Settings.FocusRingBrush}" />
+                  <Setter TargetName="Outer" Property="StrokeThickness" Value="2" />
+                </Trigger>
+              </ControlTemplate.Triggers>
+            </ControlTemplate>
+          </Setter.Value>
+        </Setter>
+      </Style>
     </ResourceDictionary>
   </Window.Resources>
 
@@ -31,7 +72,7 @@
                   Padding="0,0,4,4">
       <StackPanel>
         <TextBlock Text="Settings" Style="{StaticResource Settings.PageTitle}" />
-        <TextBlock Text="Configure reminder intervals, behavior, appearance, and Windows integration."
+        <TextBlock Text="Configure reminder intervals, sound, behavior, appearance, and Windows integration."
                    Style="{StaticResource Settings.PageDescription}"
                    Margin="0,0,0,14" />
 
@@ -43,11 +84,16 @@
           </Grid.ColumnDefinitions>
 
           <StackPanel Grid.Column="0" Style="{StaticResource Settings.ColumnStack}">
-            <!-- 1. Eye Reset -->
             <Border Style="{StaticResource Settings.SectionCard}">
               <StackPanel>
                 <TextBlock Text="Eye Reset" Style="{StaticResource Settings.SectionTitle}" />
-                <CheckBox Content="Enabled" IsChecked="{Binding EyeResetEnabled}" Style="{StaticResource Settings.CheckBoxRow}" />
+                <CheckBox Content="Enable eye reminder"
+                          IsChecked="{Binding EyeResetEnabled}"
+                          Style="{StaticResource Settings.CheckBoxRow}" />
+                <CheckBox AutomationProperties.AutomationId="EyeBreakSoundCheckbox"
+                          Content="Play sound during eye breaks"
+                          IsChecked="{Binding EyeBreakSoundEnabled}"
+                          Style="{StaticResource Settings.CheckBoxRow}" />
                 <Grid Style="{StaticResource Settings.FieldRow}">
                   <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="156" />
@@ -75,11 +121,16 @@
               </StackPanel>
             </Border>
 
-            <!-- 2. Move Break -->
             <Border Style="{StaticResource Settings.SectionCard}">
               <StackPanel>
                 <TextBlock Text="Move Break" Style="{StaticResource Settings.SectionTitle}" />
-                <CheckBox Content="Enabled" IsChecked="{Binding MoveBreakEnabled}" Style="{StaticResource Settings.CheckBoxRow}" />
+                <CheckBox Content="Enable move reminder"
+                          IsChecked="{Binding MoveBreakEnabled}"
+                          Style="{StaticResource Settings.CheckBoxRow}" />
+                <CheckBox AutomationProperties.AutomationId="MoveBreakSoundCheckbox"
+                          Content="Play sound during move breaks"
+                          IsChecked="{Binding MoveBreakSoundEnabled}"
+                          Style="{StaticResource Settings.CheckBoxRow}" />
                 <Grid Style="{StaticResource Settings.FieldRow}">
                   <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="156" />
@@ -107,7 +158,6 @@
               </StackPanel>
             </Border>
 
-            <!-- 3. Reminder behavior -->
             <Border Style="{StaticResource Settings.SectionCard}" Margin="0">
               <StackPanel>
                 <TextBlock Text="Reminder behavior" Style="{StaticResource Settings.SectionTitle}" />
@@ -134,7 +184,73 @@
           </StackPanel>
 
           <StackPanel Grid.Column="2" Style="{StaticResource Settings.ColumnStack}">
-            <!-- 4. Idle and work hours -->
+            <Border Style="{StaticResource Settings.SectionCard}">
+              <StackPanel>
+                <TextBlock Text="Break sound" Style="{StaticResource Settings.SectionTitle}" />
+                <TextBlock Text="Choose the tone used by both reminders. Each reminder can enable or disable sound independently."
+                           Style="{StaticResource Settings.PageDescription}"
+                           Margin="0,0,0,10" />
+                <RadioButton AutomationProperties.AutomationId="SoftBellSoundRadio"
+                             GroupName="BreakSoundTheme"
+                             Content="Soft bell"
+                             IsChecked="{Binding IsSoftBellSelected}"
+                             Style="{StaticResource Settings.SoundRadio}" />
+                <RadioButton AutomationProperties.AutomationId="GentleChimeSoundRadio"
+                             GroupName="BreakSoundTheme"
+                             Content="Gentle chime"
+                             IsChecked="{Binding IsGentleChimeSelected}"
+                             Style="{StaticResource Settings.SoundRadio}" />
+                <RadioButton AutomationProperties.AutomationId="CalmDropSoundRadio"
+                             GroupName="BreakSoundTheme"
+                             Content="Calm drop"
+                             IsChecked="{Binding IsCalmDropSelected}"
+                             Style="{StaticResource Settings.SoundRadio}"
+                             Margin="0,0,0,12" />
+
+                <TextBlock Text="Volume" Style="{StaticResource Settings.FieldLabel}" Margin="0,0,0,6" />
+                <Grid Margin="0,0,0,10">
+                  <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                  </Grid.ColumnDefinitions>
+                  <Slider Grid.Column="0"
+                          AutomationProperties.AutomationId="BreakSoundVolumeSlider"
+                          Minimum="0"
+                          Maximum="100"
+                          TickFrequency="1"
+                          Value="{Binding BreakSoundVolume, UpdateSourceTrigger=PropertyChanged}"
+                          Style="{StaticResource Settings.GlassSlider}" />
+                  <TextBlock Grid.Column="1"
+                             Text="{Binding BreakSoundVolume, StringFormat={}{0}%}"
+                             Style="{StaticResource Settings.GlassValue}" />
+                </Grid>
+
+                <Grid Style="{StaticResource Settings.FieldRow}">
+                  <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="156" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                  </Grid.ColumnDefinitions>
+                  <TextBlock Grid.Column="0" Text="Repeat every" Style="{StaticResource Settings.FieldLabel}" />
+                  <TextBox AutomationProperties.AutomationId="BreakSoundRepeatInput"
+                           Grid.Column="1"
+                           Text="{Binding BreakSoundRepeatSeconds, UpdateSourceTrigger=PropertyChanged}"
+                           Style="{StaticResource Settings.InputTextBox}" />
+                  <TextBlock Grid.Column="2" Text="seconds, minimum 1" Style="{StaticResource Settings.FieldUnit}" />
+                </Grid>
+
+                <Button AutomationProperties.AutomationId="PreviewBreakSoundButton"
+                        Content="Preview selected sound"
+                        Command="{Binding PreviewSoundCommand}"
+                        Style="{StaticResource Settings.SecondaryButton}"
+                        HorizontalAlignment="Left"
+                        Margin="0,2,0,8" />
+                <TextBlock Text="The sound stops immediately when the break ends. The popup mute button affects only the current break."
+                           Style="{StaticResource Settings.PageDescription}"
+                           Margin="0" />
+              </StackPanel>
+            </Border>
+
             <Border Style="{StaticResource Settings.SectionCard}">
               <StackPanel>
                 <TextBlock Text="Idle and work hours" Style="{StaticResource Settings.SectionTitle}" />
@@ -183,7 +299,6 @@
               </StackPanel>
             </Border>
 
-            <!-- 5. Appearance -->
             <Border Style="{StaticResource Settings.SectionCard}">
               <StackPanel>
                 <TextBlock Text="Appearance" Style="{StaticResource Settings.SectionTitle}" />
@@ -223,7 +338,6 @@
               </StackPanel>
             </Border>
 
-            <!-- 6. Windows behavior -->
             <Border Style="{StaticResource Settings.SectionCard}" Margin="0">
               <StackPanel>
                 <TextBlock Text="Windows behavior" Style="{StaticResource Settings.SectionTitle}" />
