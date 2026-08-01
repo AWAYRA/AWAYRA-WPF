@@ -35,6 +35,12 @@ public sealed class OverlayCoordinator
     {
         try
         {
+            if (IsSameOverlayAlreadyVisible(args.BreakType))
+            {
+                _logger.Warning($"Duplicate {args.BreakType} overlay request ignored.");
+                return;
+            }
+
             CloseAll();
             _session = OverlaySessionPolicy.AfterCloseAll();
             if (args.BreakType == BreakType.Eye)
@@ -79,6 +85,26 @@ public sealed class OverlayCoordinator
         _moveOverlay?.ApplyGlassClarity(glassClarity);
     }
 
+    public void RepositionVisibleOverlays()
+    {
+        try
+        {
+            if (_eyeOverlay is not null && _eyeOverlay.IsVisible)
+            {
+                _eyeOverlay.RepositionOnActiveMonitor();
+            }
+
+            if (_moveOverlay is not null && _moveOverlay.IsVisible)
+            {
+                _moveOverlay.RepositionOnActiveMonitor();
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.Error("Failed to reposition active overlay", ex);
+        }
+    }
+
     public void CloseAll()
     {
         if (_eyeOverlay is not null)
@@ -97,6 +123,11 @@ public sealed class OverlayCoordinator
     }
 
     public OverlaySessionState SessionState => _session;
+
+    private bool IsSameOverlayAlreadyVisible(BreakType breakType) =>
+        breakType == BreakType.Eye
+            ? _eyeOverlay is not null && _eyeOverlay.IsVisible && _session.EyeVisible
+            : _moveOverlay is not null && _moveOverlay.IsVisible && _session.MoveVisible;
 }
 
 public sealed class TrayService : IDisposable

@@ -1,4 +1,4 @@
-﻿using System.Windows;
+using System.Windows;
 using System.Windows.Threading;
 using Awayra.App.Interop;
 using Awayra.App.Services;
@@ -27,6 +27,11 @@ public partial class App : System.Windows.Application
     private UiTestCommandPipe? _uiTestPipe;
     private UiTestDiagnosticsPipe? _uiTestDiagnosticsPipe;
     private SimulatedIdleMonitor? _idleMonitor;
+    private DispatcherTimer? _systemTransitionTimer;
+    private readonly HashSet<string> _systemTransitionReasons = new(StringComparer.Ordinal);
+    private bool _repositionOverlaysAfterTransition;
+    private bool _sessionLocked;
+    private bool _powerSuspended;
 
     protected override async void OnStartup(StartupEventArgs e)
     {
@@ -68,6 +73,7 @@ public partial class App : System.Windows.Application
             args.SetObserved();
         };
 
+        InitializeSystemTransitionTimer();
         SystemEvents.SessionSwitch += OnSessionSwitch;
         SystemEvents.PowerModeChanged += OnPowerModeChanged;
         SystemEvents.DisplaySettingsChanged += OnDisplaySettingsChanged;
@@ -88,7 +94,8 @@ public partial class App : System.Windows.Application
             statisticsStore,
             _idleMonitor,
             new RegistryAutostartService(),
-            localization);
+            localization,
+            Dispatcher);
 
         await _host.InitializeAsync().ConfigureAwait(true);
         if (!UiTestMode.IsEnabled)
@@ -204,6 +211,15 @@ public partial class App : System.Windows.Application
             }, _logger);
             _uiTestDiagnosticsPipe.Start();
         }
+    }
+
+    protected override void OnExit(ExitEventArgs e)
+    {
+        SystemEvents.SessionSwitch -= OnSessionSwitch;
+        SystemEvents.PowerModeChanged -= OnPowerModeChanged;
+        SystemEvents.DisplaySettingsChanged -= OnDisplaySettingsChanged;
+        _systemTransitionTimer?.Stop();
+        base.OnExit(e);
     }
 
     private void DispatchUiTestCommand(string command)
@@ -457,6 +473,7 @@ public partial class App : System.Windows.Application
 
         _isQuitting = true;
         _logger?.Info("Quit requested from tray.");
+        _systemTransitionTimer?.Stop();
 
         _overlays?.CloseAll();
         _tray?.Dispose();
@@ -510,24 +527,117 @@ public partial class App : System.Windows.Application
         _tray.SetPauseMenuLabel(_host.Scheduler.GetSnapshot().IsPausedManual);
     }
 
+    private void InitializeSystemTransitionTimer()
+    {
+        _systemTransitionTimer = new DispatcherTimer(DispatcherPriority.Background, Dispatcher)
+        {
+            Interval = TimeSpan.FromMilliseconds(750)
+        };
+        _systemTransitionTimer.Tick += OnSystemTransitionSettled;
+    }
+
+    private void OnSystemTransitionSettled(object? sender, EventArgs e)
+    {
+        _systemTransitionTimer?.Stop();
+        if (_isQuitting || _sessionLocked || _powerSuspended)
+        {
+            return;
+        }
+
+        var reasons = string.Join(", ", _systemTransitionReasons);
+        _systemTransitionReasons.Clear();
+        var reposition = _repositionOverlaysAfterTransition;
+        _repositionOverlaysAfterTransition = false;
+
+        if (!string.IsNullOrWhiteSpace(reasons))
+        {
+            _logger?.Info($"System transition settled: {reasons}.");
+        }
+
+        _host?.CompleteSystemTransition();
+        if (reposition)
+        {
+            _overlays?.RepositionVisibleOverlays();
+        }
+    }
+
+    private void HoldSystemTransitionCore(string reason)
+    {
+        _systemTransitionTimer?.Stop();
+        _systemTransitionReasons.Add(reason);
+        _repositionOverlaysAfterTransition = true;
+        _host?.BeginSystemTransition();
+    }
+
+    private void ScheduleSystemRecoveryCore(string reason)
+    {
+        HoldSystemTransitionCore(reason);
+        if (_sessionLocked || _powerSuspended || _isQuitting)
+        {
+            return;
+        }
+
+        _systemTransitionTimer?.Start();
+    }
+
+    private void RunOnUi(Action action)
+    {
+        if (Dispatcher.HasShutdownStarted || Dispatcher.HasShutdownFinished)
+        {
+            return;
+        }
+
+        if (Dispatcher.CheckAccess())
+        {
+            action();
+            return;
+        }
+
+        Dispatcher.BeginInvoke(DispatcherPriority.Background, action);
+    }
+
     private void OnSessionSwitch(object sender, SessionSwitchEventArgs e)
     {
-        if (e.Reason is SessionSwitchReason.SessionLock or SessionSwitchReason.SessionUnlock)
+        if (e.Reason is SessionSwitchReason.SessionLock)
         {
-            _host?.Scheduler.Tick();
+            RunOnUi(() =>
+            {
+                _sessionLocked = true;
+                HoldSystemTransitionCore("session locked");
+            });
+        }
+        else if (e.Reason is SessionSwitchReason.SessionUnlock)
+        {
+            RunOnUi(() =>
+            {
+                _sessionLocked = false;
+                ScheduleSystemRecoveryCore("session unlocked");
+            });
         }
     }
 
     private void OnPowerModeChanged(object sender, PowerModeChangedEventArgs e)
     {
-        if (e.Mode is PowerModes.Resume)
+        if (e.Mode is PowerModes.Suspend)
         {
-            _host?.Scheduler.Tick();
+            RunOnUi(() =>
+            {
+                _powerSuspended = true;
+                HoldSystemTransitionCore("power suspended");
+            });
+        }
+        else if (e.Mode is PowerModes.Resume)
+        {
+            RunOnUi(() =>
+            {
+                _powerSuspended = false;
+                ScheduleSystemRecoveryCore("power resumed");
+            });
         }
     }
 
     private void OnDisplaySettingsChanged(object? sender, EventArgs e)
     {
-        // Active overlay reposition handled on next show.
+        RunOnUi(() => ScheduleSystemRecoveryCore("display settings changed"));
     }
 }
