@@ -56,8 +56,17 @@ public partial class BreakOverlayWindow : Window
     {
         MonitorLocator.PositionWindowOnCursorMonitor(this);
         Show();
+        MonitorLocator.PositionWindowOnCursorMonitor(this);
         Activate();
         Focus();
+    }
+
+    public void RepositionOnActiveMonitor()
+    {
+        if (IsVisible)
+        {
+            MonitorLocator.PositionWindowOnCursorMonitor(this);
+        }
     }
 
     public void UpdateRemaining(TimeSpan? remaining, LocalizationService? localization = null, int activityIndex = 0)
