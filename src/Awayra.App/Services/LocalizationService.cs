@@ -54,6 +54,9 @@ public sealed class LocalizationService
         "IdleThresholdInvalid" => Get(StringKeys.ValidationIdleThresholdInvalid),
         "GlassClarityInvalid" => Get(StringKeys.ValidationGlassClarityInvalid),
         "WorkHoursRangeInvalid" => Get(StringKeys.ValidationWorkHoursRangeInvalid),
+        "BreakSoundVolumeInvalid" => "Sound volume must be between 0 and 100.",
+        "BreakSoundRepeatInvalid" => "Sound repeat interval must be between 1 and 60 seconds.",
+        "BreakSoundThemeInvalid" => "Select a valid break sound.",
         _ => errorKey
     };
 }
