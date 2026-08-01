@@ -2,6 +2,7 @@ using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Interop;
 using System.Windows.Forms;
+using System.Windows.Media;
 using System.Linq;
 
 namespace Awayra.App.Interop;
@@ -60,15 +61,6 @@ public sealed class MonitorLocator
             return Screen.PrimaryScreen ?? throw new InvalidOperationException("No display available.");
         }
 
-        var handle = NativeMethods.MonitorFromPoint(point, NativeMethods.MonitorDefaultToNearest);
-        foreach (var screen in Screen.AllScreens)
-        {
-            if ((IntPtr)screen.GetHashCode() == handle || screen.Bounds.Contains(point.X, point.Y))
-            {
-                return screen;
-            }
-        }
-
         return Screen.FromPoint(new System.Drawing.Point(point.X, point.Y));
     }
 
@@ -76,10 +68,15 @@ public sealed class MonitorLocator
     {
         var screen = GetCursorScreen();
         var bounds = screen.Bounds;
-        window.Left = bounds.Left;
-        window.Top = bounds.Top;
-        window.Width = bounds.Width;
-        window.Height = bounds.Height;
+        var dpi = VisualTreeHelper.GetDpi(window);
+        var scaleX = dpi.DpiScaleX > 0 ? dpi.DpiScaleX : 1d;
+        var scaleY = dpi.DpiScaleY > 0 ? dpi.DpiScaleY : 1d;
+
+        window.WindowStartupLocation = WindowStartupLocation.Manual;
+        window.Left = bounds.Left / scaleX;
+        window.Top = bounds.Top / scaleY;
+        window.Width = bounds.Width / scaleX;
+        window.Height = bounds.Height / scaleY;
     }
 
     public static void EnsureWindowOnScreen(Window window)
