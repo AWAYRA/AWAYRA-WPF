@@ -1,3 +1,4 @@
+using System.Windows.Threading;
 using Awayra.App;
 using Awayra.Core.Abstractions;
 using Awayra.Core.Models;
@@ -16,16 +17,18 @@ public sealed class ApplicationHost : IDisposable
     private readonly IIdleMonitor _idleMonitor;
     private readonly IAutostartService _autostartService;
     private readonly LocalizationService _localization;
+    private readonly Dispatcher _dispatcher;
 
     private AppSettings _settings = AppSettings.CreateDefault();
     private BreakScheduler _scheduler = null!;
     private StatisticsService _statistics = null!;
-    private System.Timers.Timer? _tickTimer;
-    private System.Timers.Timer? _idleTimer;
-    private System.Timers.Timer? _diagnosticsTimer;
+    private DispatcherTimer? _tickTimer;
+    private DispatcherTimer? _idleTimer;
+    private DispatcherTimer? _diagnosticsTimer;
     private bool _isShuttingDown;
     private bool _configurationSessionActive;
     private bool _wasIdle;
+    private bool _systemTransitionPaused;
 
     public ApplicationHost(
         IAppLogger logger,
@@ -35,7 +38,8 @@ public sealed class ApplicationHost : IDisposable
         IStatisticsStore statisticsStore,
         IIdleMonitor idleMonitor,
         IAutostartService autostartService,
-        LocalizationService localization)
+        LocalizationService localization,
+        Dispatcher? dispatcher = null)
     {
         _logger = logger;
         _clock = clock;
@@ -45,6 +49,9 @@ public sealed class ApplicationHost : IDisposable
         _idleMonitor = idleMonitor;
         _autostartService = autostartService;
         _localization = localization;
+        _dispatcher = dispatcher
+            ?? System.Windows.Application.Current?.Dispatcher
+            ?? Dispatcher.CurrentDispatcher;
     }
 
     public BreakScheduler Scheduler => _scheduler;
@@ -81,29 +88,73 @@ public sealed class ApplicationHost : IDisposable
         _scheduler.SnapshotChanged += (_, _) => StateChanged?.Invoke(this, EventArgs.Empty);
         _scheduler.BreakEnded += OnBreakEnded;
 
-        _tickTimer = new System.Timers.Timer(1000);
-        _tickTimer.Elapsed += (_, _) => _scheduler.Tick();
-        _tickTimer.AutoReset = true;
-        _tickTimer.Start();
-
-        _idleTimer = new System.Timers.Timer(UiTestMode.IsEnabled ? 1_000 : 5_000);
-        _idleTimer.Elapsed += (_, _) => UpdateIdleState();
-        _idleTimer.AutoReset = true;
-        _idleTimer.Start();
-        UpdateIdleState();
-
-        if (UiTestMode.IsEnabled && UiTestMode.DataRoot is not null)
+        RunOnDispatcher(() =>
         {
-            UiTestDiagnosticsWriter.Initialize(UiTestMode.DataRoot);
-            _diagnosticsTimer = new System.Timers.Timer(1_000);
-            _diagnosticsTimer.Elapsed += (_, _) => PublishUiTestDiagnostics();
-            _diagnosticsTimer.AutoReset = true;
-            _diagnosticsTimer.Start();
-            PublishUiTestDiagnostics();
-        }
+            _tickTimer = new DispatcherTimer(DispatcherPriority.Background, _dispatcher)
+            {
+                Interval = TimeSpan.FromSeconds(1)
+            };
+            _tickTimer.Tick += (_, _) =>
+            {
+                if (!_isShuttingDown && !_systemTransitionPaused)
+                {
+                    _scheduler.Tick();
+                }
+            };
+            _tickTimer.Start();
+
+            _idleTimer = new DispatcherTimer(DispatcherPriority.Background, _dispatcher)
+            {
+                Interval = TimeSpan.FromMilliseconds(UiTestMode.IsEnabled ? 1_000 : 5_000)
+            };
+            _idleTimer.Tick += (_, _) => UpdateIdleState();
+            _idleTimer.Start();
+            UpdateIdleState();
+
+            if (UiTestMode.IsEnabled && UiTestMode.DataRoot is not null)
+            {
+                UiTestDiagnosticsWriter.Initialize(UiTestMode.DataRoot);
+                _diagnosticsTimer = new DispatcherTimer(DispatcherPriority.Background, _dispatcher)
+                {
+                    Interval = TimeSpan.FromSeconds(1)
+                };
+                _diagnosticsTimer.Tick += (_, _) => PublishUiTestDiagnostics();
+                _diagnosticsTimer.Start();
+                PublishUiTestDiagnostics();
+            }
+        });
 
         _logger.Info("Awayra initialized.");
         await PersistStateAsync().ConfigureAwait(false);
+    }
+
+    public void BeginSystemTransition()
+    {
+        RunOnDispatcher(() =>
+        {
+            if (!_isShuttingDown)
+            {
+                _systemTransitionPaused = true;
+            }
+        });
+    }
+
+    public void CompleteSystemTransition()
+    {
+        RunOnDispatcher(() =>
+        {
+            if (_isShuttingDown)
+            {
+                return;
+            }
+
+            var wasPaused = _systemTransitionPaused;
+            _systemTransitionPaused = false;
+            if (wasPaused)
+            {
+                _scheduler.Tick();
+            }
+        });
     }
 
     public void BeginConfigurationSession()
@@ -212,11 +263,16 @@ public sealed class ApplicationHost : IDisposable
         }
 
         _isShuttingDown = true;
-        _tickTimer?.Stop();
-        _idleTimer?.Stop();
-        _tickTimer?.Dispose();
-        _idleTimer?.Dispose();
-        _diagnosticsTimer?.Dispose();
+        RunOnDispatcher(() =>
+        {
+            _tickTimer?.Stop();
+            _idleTimer?.Stop();
+            _diagnosticsTimer?.Stop();
+            _tickTimer = null;
+            _idleTimer = null;
+            _diagnosticsTimer = null;
+            _systemTransitionPaused = false;
+        });
         _logger.Info("Awayra shutting down.");
     }
 
@@ -224,6 +280,11 @@ public sealed class ApplicationHost : IDisposable
 
     private async void UpdateIdleState()
     {
+        if (_isShuttingDown)
+        {
+            return;
+        }
+
         if (!_settings.PauseWhileIdle)
         {
             if (_wasIdle)
@@ -256,6 +317,11 @@ public sealed class ApplicationHost : IDisposable
 
     private void PublishUiTestDiagnostics()
     {
+        if (_isShuttingDown)
+        {
+            return;
+        }
+
         var diagnostics = _scheduler.GetDiagnostics(_idleMonitor.GetIdleTime().TotalSeconds);
         diagnostics.SnapshotCaptured = false;
         var today = _statistics.GetToday();
@@ -292,5 +358,21 @@ public sealed class ApplicationHost : IDisposable
         }
 
         StateChanged?.Invoke(this, EventArgs.Empty);
+    }
+
+    private void RunOnDispatcher(Action action)
+    {
+        if (_dispatcher.HasShutdownStarted || _dispatcher.HasShutdownFinished)
+        {
+            return;
+        }
+
+        if (_dispatcher.CheckAccess())
+        {
+            action();
+            return;
+        }
+
+        _dispatcher.Invoke(action, DispatcherPriority.Background);
     }
 }
