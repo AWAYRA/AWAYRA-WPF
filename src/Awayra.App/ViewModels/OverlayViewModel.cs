@@ -5,7 +5,6 @@ using Awayra.Core.Localization;
 using Awayra.Core.Models;
 using Awayra.Core.Services;
 using System.Windows.Media;
-using System.Windows.Media.Effects;
 
 namespace Awayra.App.ViewModels;
 
@@ -22,6 +21,8 @@ public partial class OverlayViewModel : ObservableObject
     [ObservableProperty] private int _glassClarity = OverlayGlassSettings.DefaultGlassClarity;
     [ObservableProperty] private ImageSource? _snapshotSource;
     [ObservableProperty] private double _blurRadius = OverlayGlassSettings.BlurRadiusFromClarity(OverlayGlassSettings.DefaultGlassClarity);
+    [ObservableProperty] private bool _isSoundMuted = true;
+    [ObservableProperty] private string _soundToggleText = "🔇 Muted";
 
     public double BackgroundTintOpacity => OverlayGlassSettings.BackgroundTintOpacityFromClarity(GlassClarity);
 
@@ -30,6 +31,7 @@ public partial class OverlayViewModel : ObservableObject
     public IRelayCommand? SkipCommand { get; set; }
     public IRelayCommand? SnoozeCommand { get; set; }
     public IRelayCommand? CompleteCommand { get; set; }
+    public IRelayCommand? ToggleSoundCommand { get; set; }
 
     public void ConfigureEye(BreakStartedEventArgs args, AppSettings settings, LocalizationService localization, ImageSource? snapshot)
     {
@@ -55,6 +57,12 @@ public partial class OverlayViewModel : ObservableObject
         ApplyGlassClarity(settings.GlassClarity);
         SnapshotSource = snapshot;
         UpdateRemaining(TimeSpan.FromSeconds(args.DurationSeconds));
+    }
+
+    public void SetSoundMuted(bool muted)
+    {
+        IsSoundMuted = muted;
+        SoundToggleText = muted ? "🔇 Muted" : "🔊 Sound on";
     }
 
     public void ApplyGlassClarity(int glassClarity)
