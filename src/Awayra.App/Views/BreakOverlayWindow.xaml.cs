@@ -2,6 +2,7 @@ using System.Windows;
 using System.Windows.Automation;
 using System.Windows.Input;
 using System.Windows.Media.Animation;
+using System.Windows.Threading;
 using Awayra.App.Interop;
 using Awayra.App.Services;
 using Awayra.App.ViewModels;
@@ -29,7 +30,10 @@ public partial class BreakOverlayWindow : Window
         viewModel.SkipCommand = new CommunityToolkit.Mvvm.Input.RelayCommand(OnSkip, () => _viewModel.ShowSkip);
         viewModel.SnoozeCommand = new CommunityToolkit.Mvvm.Input.RelayCommand(OnSnooze, () => _viewModel.ShowSnooze);
         viewModel.CompleteCommand = new CommunityToolkit.Mvvm.Input.RelayCommand(OnComplete);
+        viewModel.ToggleSoundCommand = new CommunityToolkit.Mvvm.Input.RelayCommand(OnToggleSound);
+        _host.BreakSound.StateChanged += OnSoundStateChanged;
         Loaded += OnLoaded;
+        Closed += OnClosed;
     }
 
     public void Configure(BreakStartedEventArgs args, AppSettings settings, LocalizationService localization, bool isEye)
@@ -37,6 +41,7 @@ public partial class BreakOverlayWindow : Window
         var prefix = isEye ? "Eye" : "Move";
         AutomationProperties.SetAutomationId(this, $"{prefix}OverlayWindow");
         AutomationProperties.SetAutomationId(OverlayCountdown, $"{prefix}OverlayCountdown");
+        AutomationProperties.SetAutomationId(SoundToggleButton, $"{prefix}SoundToggleButton");
         AutomationProperties.SetAutomationId(SkipButton, $"{prefix}SkipButton");
         AutomationProperties.SetAutomationId(SnoozeButton, $"{prefix}SnoozeButton");
         AutomationProperties.SetAutomationId(CompleteButton, $"{prefix}CompleteButton");
@@ -50,6 +55,8 @@ public partial class BreakOverlayWindow : Window
         {
             _viewModel.ConfigureMove(args, settings, localization, snapshot);
         }
+
+        UpdateSoundState();
     }
 
     public void ShowOnActiveMonitor()
@@ -109,12 +116,41 @@ public partial class BreakOverlayWindow : Window
         }
     }
 
+    private void OnClosed(object? sender, EventArgs e) =>
+        _host.BreakSound.StateChanged -= OnSoundStateChanged;
+
+    private void OnSoundStateChanged(object? sender, EventArgs e)
+    {
+        if (Dispatcher.HasShutdownStarted || Dispatcher.HasShutdownFinished)
+        {
+            return;
+        }
+
+        if (Dispatcher.CheckAccess())
+        {
+            UpdateSoundState();
+        }
+        else
+        {
+            Dispatcher.BeginInvoke(UpdateSoundState, DispatcherPriority.Background);
+        }
+    }
+
+    private void UpdateSoundState() =>
+        _viewModel.SetSoundMuted(_host.BreakSound.IsMuted);
+
     private void Window_OnKeyDown(object sender, System.Windows.Input.KeyEventArgs e)
     {
         if (e.Key == Key.Escape && _viewModel.ShowSkip)
         {
             OnSkip();
         }
+    }
+
+    private void OnToggleSound()
+    {
+        _host.BreakSound.ToggleMute();
+        UpdateSoundState();
     }
 
     private void OnSkip() => _host.Scheduler.SkipActiveBreak();

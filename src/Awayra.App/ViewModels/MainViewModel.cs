@@ -1,3 +1,4 @@
+using System.Threading;
 using System.Windows.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -12,6 +13,7 @@ public partial class MainViewModel : ObservableObject
     private readonly ApplicationHost _host;
     private readonly Action _openSettings;
     private readonly DispatcherTimer _uiTimer;
+    private readonly SemaphoreSlim _settingsUpdateGate = new(1, 1);
 
     [ObservableProperty] private string _title = string.Empty;
     [ObservableProperty] private string _statusText = string.Empty;
@@ -23,6 +25,10 @@ public partial class MainViewModel : ObservableObject
     [ObservableProperty] private bool _isManuallyPaused;
     [ObservableProperty] private bool _canPause;
     [ObservableProperty] private bool _canResume;
+    [ObservableProperty] private bool _eyeReminderEnabled;
+    [ObservableProperty] private bool _moveReminderEnabled;
+    [ObservableProperty] private bool _eyeSoundEnabled;
+    [ObservableProperty] private bool _moveSoundEnabled;
     [ObservableProperty] private int _todayEyeCompleted;
     [ObservableProperty] private int _todayMoveCompleted;
     [ObservableProperty] private int _todaySkipped;
@@ -78,7 +84,44 @@ public partial class MainViewModel : ObservableObject
     }
 
     [RelayCommand]
+    private async Task ToggleEyeReminderAsync() =>
+        await UpdateQuickSettingAsync(settings => settings.EyeResetEnabled = !settings.EyeResetEnabled).ConfigureAwait(true);
+
+    [RelayCommand]
+    private async Task ToggleMoveReminderAsync() =>
+        await UpdateQuickSettingAsync(settings => settings.MoveBreakEnabled = !settings.MoveBreakEnabled).ConfigureAwait(true);
+
+    [RelayCommand]
+    private async Task ToggleEyeSoundAsync() =>
+        await UpdateQuickSettingAsync(settings => settings.EyeBreakSoundEnabled = !settings.EyeBreakSoundEnabled).ConfigureAwait(true);
+
+    [RelayCommand]
+    private async Task ToggleMoveSoundAsync() =>
+        await UpdateQuickSettingAsync(settings => settings.MoveBreakSoundEnabled = !settings.MoveBreakSoundEnabled).ConfigureAwait(true);
+
+    [RelayCommand]
     private void OpenSettings() => _openSettings();
+
+    private async Task UpdateQuickSettingAsync(Action<AppSettings> update)
+    {
+        await _settingsUpdateGate.WaitAsync().ConfigureAwait(true);
+        try
+        {
+            var settings = _host.Settings.Copy();
+            update(settings);
+            await _host.UpdateSettingsAsync(settings).ConfigureAwait(true);
+            Refresh();
+        }
+        catch (Exception ex)
+        {
+            _host.Logger.Error("Dashboard quick setting update failed", ex);
+            Refresh();
+        }
+        finally
+        {
+            _settingsUpdateGate.Release();
+        }
+    }
 
     private void DispatchRefresh()
     {
@@ -95,6 +138,7 @@ public partial class MainViewModel : ObservableObject
     {
         var l = _host.Localization;
         var snapshot = _host.Scheduler.GetSnapshot();
+        var settings = _host.Settings;
         var today = _host.Statistics.GetToday();
 
         Title = l.Get(StringKeys.AppTitle);
@@ -108,10 +152,14 @@ public partial class MainViewModel : ObservableObject
         TodayMoveText = $"{l.Get(StringKeys.TodayMoveCompleted)}: {today.MoveCompleted}";
         TodaySkippedText = $"{l.Get(StringKeys.TodaySkipped)}: {today.Skipped}";
         TodaySnoozedText = $"{l.Get(StringKeys.TodaySnoozed)}: {today.Snoozed}";
-        EyeCountdown = FormatCountdown(snapshot.EyeRemaining);
-        MoveCountdown = FormatCountdown(snapshot.MoveRemaining);
+        EyeCountdown = snapshot.EyeEnabled ? FormatCountdown(snapshot.EyeRemaining) : "--";
+        MoveCountdown = snapshot.MoveEnabled ? FormatCountdown(snapshot.MoveRemaining) : "--";
         EyeStateText = snapshot.EyeEnabled ? l.Get(StringKeys.Enabled) : l.Get(StringKeys.Disabled);
         MoveStateText = snapshot.MoveEnabled ? l.Get(StringKeys.Enabled) : l.Get(StringKeys.Disabled);
+        EyeReminderEnabled = snapshot.EyeEnabled;
+        MoveReminderEnabled = snapshot.MoveEnabled;
+        EyeSoundEnabled = settings.EyeBreakSoundEnabled;
+        MoveSoundEnabled = settings.MoveBreakSoundEnabled;
         IsManuallyPaused = snapshot.IsPausedManual;
         PauseResumeText = snapshot.IsPausedManual ? l.Get(StringKeys.Resume) : l.Get(StringKeys.Pause);
         CanPause = !snapshot.IsPausedManual;

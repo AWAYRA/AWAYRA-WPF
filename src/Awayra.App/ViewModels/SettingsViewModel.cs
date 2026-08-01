@@ -15,9 +15,14 @@ public partial class SettingsViewModel : ObservableObject
     [ObservableProperty] private bool _eyeResetEnabled;
     [ObservableProperty] private int _eyeResetIntervalMinutes;
     [ObservableProperty] private int _eyeResetDurationSeconds;
+    [ObservableProperty] private bool _eyeBreakSoundEnabled;
     [ObservableProperty] private bool _moveBreakEnabled;
     [ObservableProperty] private int _moveBreakIntervalMinutes;
     [ObservableProperty] private int _moveBreakDurationSeconds;
+    [ObservableProperty] private bool _moveBreakSoundEnabled;
+    [ObservableProperty] private BreakSoundTheme _breakSoundTheme;
+    [ObservableProperty] private int _breakSoundVolume;
+    [ObservableProperty] private int _breakSoundRepeatSeconds;
     [ObservableProperty] private bool _allowSkip;
     [ObservableProperty] private bool _allowSnooze;
     [ObservableProperty] private int _snoozeDurationMinutes;
@@ -34,6 +39,42 @@ public partial class SettingsViewModel : ObservableObject
 
     public ObservableCollection<string> ValidationErrors { get; } = [];
 
+    public bool IsSoftBellSelected
+    {
+        get => BreakSoundTheme == BreakSoundTheme.SoftBell;
+        set
+        {
+            if (value)
+            {
+                BreakSoundTheme = BreakSoundTheme.SoftBell;
+            }
+        }
+    }
+
+    public bool IsGentleChimeSelected
+    {
+        get => BreakSoundTheme == BreakSoundTheme.GentleChime;
+        set
+        {
+            if (value)
+            {
+                BreakSoundTheme = BreakSoundTheme.GentleChime;
+            }
+        }
+    }
+
+    public bool IsCalmDropSelected
+    {
+        get => BreakSoundTheme == BreakSoundTheme.CalmDrop;
+        set
+        {
+            if (value)
+            {
+                BreakSoundTheme = BreakSoundTheme.CalmDrop;
+            }
+        }
+    }
+
     public SettingsViewModel(ApplicationHost host, Action<bool> close)
     {
         _host = host;
@@ -43,9 +84,21 @@ public partial class SettingsViewModel : ObservableObject
 
     partial void OnGlassClarityChanged(int value) => _host.PreviewGlassClarity(value);
 
+    partial void OnBreakSoundThemeChanged(BreakSoundTheme value)
+    {
+        OnPropertyChanged(nameof(IsSoftBellSelected));
+        OnPropertyChanged(nameof(IsGentleChimeSelected));
+        OnPropertyChanged(nameof(IsCalmDropSelected));
+    }
+
+    [RelayCommand]
+    private void PreviewSound() =>
+        _host.BreakSound.Preview(BreakSoundTheme, BreakSoundVolume);
+
     [RelayCommand]
     private async Task SaveAsync()
     {
+        _host.BreakSound.StopPreview();
         var settings = BuildSettings();
         var errors = SettingsValidator.Validate(settings);
         ValidationErrors.Clear();
@@ -64,16 +117,25 @@ public partial class SettingsViewModel : ObservableObject
     }
 
     [RelayCommand]
-    private void Cancel() => _close(false);
+    private void Cancel()
+    {
+        _host.BreakSound.StopPreview();
+        _close(false);
+    }
 
     private void LoadFromSettings(AppSettings settings)
     {
         EyeResetEnabled = settings.EyeResetEnabled;
         EyeResetIntervalMinutes = settings.EyeResetIntervalMinutes;
         EyeResetDurationSeconds = settings.EyeResetDurationSeconds;
+        EyeBreakSoundEnabled = settings.EyeBreakSoundEnabled;
         MoveBreakEnabled = settings.MoveBreakEnabled;
         MoveBreakIntervalMinutes = settings.MoveBreakIntervalMinutes;
         MoveBreakDurationSeconds = settings.MoveBreakDurationSeconds;
+        MoveBreakSoundEnabled = settings.MoveBreakSoundEnabled;
+        BreakSoundTheme = settings.BreakSoundTheme;
+        BreakSoundVolume = settings.BreakSoundVolume;
+        BreakSoundRepeatSeconds = settings.BreakSoundRepeatSeconds;
         AllowSkip = settings.AllowSkip;
         AllowSnooze = settings.AllowSnooze;
         SnoozeDurationMinutes = settings.SnoozeDurationMinutes;
@@ -100,9 +162,14 @@ public partial class SettingsViewModel : ObservableObject
             EyeResetEnabled = EyeResetEnabled,
             EyeResetIntervalMinutes = EyeResetIntervalMinutes,
             EyeResetDurationSeconds = EyeResetDurationSeconds,
+            EyeBreakSoundEnabled = EyeBreakSoundEnabled,
             MoveBreakEnabled = MoveBreakEnabled,
             MoveBreakIntervalMinutes = MoveBreakIntervalMinutes,
             MoveBreakDurationSeconds = MoveBreakDurationSeconds,
+            MoveBreakSoundEnabled = MoveBreakSoundEnabled,
+            BreakSoundTheme = BreakSoundTheme,
+            BreakSoundVolume = BreakSoundVolume,
+            BreakSoundRepeatSeconds = BreakSoundRepeatSeconds,
             AllowSkip = AllowSkip,
             AllowSnooze = AllowSnooze,
             SnoozeDurationMinutes = SnoozeDurationMinutes,

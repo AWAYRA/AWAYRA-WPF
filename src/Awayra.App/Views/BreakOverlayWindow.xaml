@@ -34,7 +34,7 @@
     <Border HorizontalAlignment="Center"
             VerticalAlignment="Center"
             MinWidth="420"
-            MaxWidth="560"
+            MaxWidth="600"
             Padding="36"
             CornerRadius="24"
             Background="{StaticResource Overlay.CardSurfaceBrush}"
@@ -76,6 +76,11 @@
                    Margin="0,0,0,20" />
 
         <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+          <Button x:Name="SoundToggleButton"
+                  Content="{Binding SoundToggleText}"
+                  Command="{Binding ToggleSoundCommand}"
+                  Style="{StaticResource Overlay.SecondaryButton}"
+                  Margin="0,0,8,0" />
           <Button x:Name="SkipButton"
                   Content="Skip"
                   Command="{Binding SkipCommand}"

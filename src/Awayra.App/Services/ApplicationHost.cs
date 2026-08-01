@@ -18,6 +18,7 @@ public sealed class ApplicationHost : IDisposable
     private readonly IAutostartService _autostartService;
     private readonly LocalizationService _localization;
     private readonly Dispatcher _dispatcher;
+    private readonly IBreakSoundService _breakSound;
 
     private AppSettings _settings = AppSettings.CreateDefault();
     private BreakScheduler _scheduler = null!;
@@ -39,7 +40,8 @@ public sealed class ApplicationHost : IDisposable
         IIdleMonitor idleMonitor,
         IAutostartService autostartService,
         LocalizationService localization,
-        Dispatcher? dispatcher = null)
+        Dispatcher? dispatcher = null,
+        IBreakSoundService? breakSound = null)
     {
         _logger = logger;
         _clock = clock;
@@ -52,6 +54,7 @@ public sealed class ApplicationHost : IDisposable
         _dispatcher = dispatcher
             ?? System.Windows.Application.Current?.Dispatcher
             ?? Dispatcher.CurrentDispatcher;
+        _breakSound = breakSound ?? new BreakSoundService(_dispatcher, logger);
     }
 
     public BreakScheduler Scheduler => _scheduler;
@@ -60,6 +63,7 @@ public sealed class ApplicationHost : IDisposable
     public LocalizationService Localization => _localization;
     public IAppLogger Logger => _logger;
     public IIdleMonitor IdleMonitor => _idleMonitor;
+    public IBreakSoundService BreakSound => _breakSound;
 
     public event EventHandler? StateChanged;
     public event EventHandler<int>? GlassClarityPreviewChanged;
@@ -86,7 +90,9 @@ public sealed class ApplicationHost : IDisposable
         _statistics = new StatisticsService(_clock, statsData);
 
         _scheduler.SnapshotChanged += (_, _) => StateChanged?.Invoke(this, EventArgs.Empty);
+        _scheduler.BreakStarted += OnBreakStarted;
         _scheduler.BreakEnded += OnBreakEnded;
+        _breakSound.ApplySettings(_settings);
 
         RunOnDispatcher(() =>
         {
@@ -135,6 +141,7 @@ public sealed class ApplicationHost : IDisposable
             if (!_isShuttingDown)
             {
                 _systemTransitionPaused = true;
+                _breakSound.PauseForSystemTransition();
             }
         });
     }
@@ -153,6 +160,15 @@ public sealed class ApplicationHost : IDisposable
             if (wasPaused)
             {
                 _scheduler.Tick();
+            }
+
+            if (_scheduler.GetSnapshot().ActiveBreak is not null)
+            {
+                _breakSound.ResumeAfterSystemTransition(_settings);
+            }
+            else
+            {
+                _breakSound.StopBreak();
             }
         });
     }
@@ -174,6 +190,7 @@ public sealed class ApplicationHost : IDisposable
         var saveTime = _clock.Now;
         _settings = settings;
         _scheduler.ApplyConfigurationSave(settings, saveTime);
+        _breakSound.ApplySettings(settings);
         _configurationSessionActive = false;
         _localization.Apply();
         await _settingsStore.SaveAsync(settings).ConfigureAwait(false);
@@ -210,6 +227,7 @@ public sealed class ApplicationHost : IDisposable
 
         _settings = settings;
         _scheduler.UpdateSettings(settings);
+        _breakSound.ApplySettings(settings);
         _localization.Apply();
         await _settingsStore.SaveAsync(settings).ConfigureAwait(false);
         await PersistStateAsync().ConfigureAwait(false);
@@ -272,6 +290,7 @@ public sealed class ApplicationHost : IDisposable
             _idleTimer = null;
             _diagnosticsTimer = null;
             _systemTransitionPaused = false;
+            _breakSound.Dispose();
         });
         _logger.Info("Awayra shutting down.");
     }
@@ -332,8 +351,13 @@ public sealed class ApplicationHost : IDisposable
         UiTestDiagnosticsWriter.Write(diagnostics);
     }
 
+    private void OnBreakStarted(object? sender, BreakStartedEventArgs e) =>
+        _breakSound.StartBreak(e.BreakType, _settings);
+
     private async void OnBreakEnded(object? sender, BreakEndedEventArgs e)
     {
+        _breakSound.StopBreak();
+
         if (e.Completed)
         {
             _statistics.RecordCompletion(e.BreakType);

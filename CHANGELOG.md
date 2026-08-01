@@ -8,6 +8,31 @@ The project follows semantic versioning where practical.
 
 No unreleased changes yet.
 
+## [1.1.0] - 2026-08-02
+
+### Added
+
+- Independent Reminder and Sound switches under Eye Reset and Move Break timers
+- Separate persistent sound enablement for eye and movement breaks
+- Three built-in offline sound choices: Soft bell, Gentle chime, and Calm drop
+- Configurable sound volume from 0 to 100
+- Configurable sound repeat interval from 1 to 60 seconds
+- Sound preview in Settings
+- Per-break mute and unmute control inside the fullscreen overlay
+- Automated tests for legacy settings migration, sound validation, generated WAV integrity, mute behavior, and lifecycle handling
+
+### Changed
+
+- Break sounds are generated locally without external packages, downloaded assets, telemetry, or network access
+- Existing settings files load the new sound options with safe defaults and no reset
+- Dashboard height and timer cards were adjusted to fit the new compact controls without changing the existing navigation flow
+
+### Fixed
+
+- Break sound now stops on completion, skip, snooze, Windows lock, suspend, shutdown, and application exit
+- Monitor wake, unlock, and display changes no longer create duplicate fullscreen overlays or visible flicker
+- Fullscreen overlay sizing now respects per-monitor DPI
+
 ## [1.0.3] - 2026-07-29
 
 ### Added

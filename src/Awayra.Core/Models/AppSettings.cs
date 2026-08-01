@@ -2,6 +2,13 @@ namespace Awayra.Core.Models;
 
 using Awayra.Core.Services;
 
+public enum BreakSoundTheme
+{
+    SoftBell = 0,
+    GentleChime = 1,
+    CalmDrop = 2
+}
+
 public sealed class AppSettings
 {
     public const int CurrentSchemaVersion = 1;
@@ -11,10 +18,16 @@ public sealed class AppSettings
     public bool EyeResetEnabled { get; set; } = true;
     public int EyeResetIntervalMinutes { get; set; } = 20;
     public int EyeResetDurationSeconds { get; set; } = 20;
+    public bool EyeBreakSoundEnabled { get; set; }
 
     public bool MoveBreakEnabled { get; set; } = true;
     public int MoveBreakIntervalMinutes { get; set; } = 45;
     public int MoveBreakDurationSeconds { get; set; } = 60;
+    public bool MoveBreakSoundEnabled { get; set; }
+
+    public BreakSoundTheme BreakSoundTheme { get; set; } = BreakSoundTheme.SoftBell;
+    public int BreakSoundVolume { get; set; } = 15;
+    public int BreakSoundRepeatSeconds { get; set; } = 2;
 
     public bool AllowSkip { get; set; } = true;
     public bool AllowSnooze { get; set; } = true;
@@ -34,6 +47,8 @@ public sealed class AppSettings
     public int GlassClarity { get; set; } = OverlayGlassSettings.DefaultGlassClarity;
     public bool ReducedMotion { get; set; }
     public AppTheme Theme { get; set; } = AppTheme.Dark;
+
+    public AppSettings Copy() => (AppSettings)MemberwiseClone();
 
     public static AppSettings CreateDefault() => new();
 }
