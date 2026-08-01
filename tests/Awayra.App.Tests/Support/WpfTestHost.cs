@@ -50,7 +50,9 @@ internal static class WpfTestHost
             new InMemoryStatisticsStore(),
             new NullIdleMonitor(),
             new NullAutostartService(),
-            new LocalizationService());
+            new LocalizationService(),
+            Application.Current?.Dispatcher,
+            NullBreakSoundService.Instance);
 
         host.InitializeAsync().ConfigureAwait(false).GetAwaiter().GetResult();
         return host;
