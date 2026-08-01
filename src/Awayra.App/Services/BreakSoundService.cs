@@ -3,6 +3,7 @@ using System.Windows.Media;
 using System.Windows.Threading;
 using Awayra.Core.Abstractions;
 using Awayra.Core.Models;
+using Awayra.Core.Services;
 
 namespace Awayra.App.Services;
 
@@ -236,8 +237,8 @@ public sealed class BreakSoundService : IBreakSoundService
     {
         var seconds = Math.Clamp(
             settings.BreakSoundRepeatSeconds,
-            Core.Services.SettingsValidator.MinBreakSoundRepeatSeconds,
-            Core.Services.SettingsValidator.MaxBreakSoundRepeatSeconds);
+            SettingsValidator.MinBreakSoundRepeatSeconds,
+            SettingsValidator.MaxBreakSoundRepeatSeconds);
         _repeatTimer.Interval = TimeSpan.FromSeconds(seconds);
     }
 
@@ -489,9 +490,12 @@ public static class BreakToneGenerator
             return 0;
         }
 
-        var progress = Math.Min(1d, x / glideSeconds);
+        var glideTime = Math.Min(x, glideSeconds);
         var frequencySlope = (startFrequency - endFrequency) / glideSeconds;
-        var phase = 2 * Math.PI * (startFrequency * x - 0.5 * frequencySlope * x * x);
+        var cyclesDuringGlide = startFrequency * glideTime - 0.5 * frequencySlope * glideTime * glideTime;
+        var cyclesAfterGlide = endFrequency * Math.Max(0d, x - glideSeconds);
+        var phase = 2 * Math.PI * (cyclesDuringGlide + cyclesAfterGlide);
+        var progress = Math.Min(1d, x / glideSeconds);
         var attack = Math.Min(1d, x / 0.008);
         var envelope = attack * Math.Exp(-5.8 * x) * (1d - 0.18 * progress);
         return envelope * (Math.Sin(phase) + 0.2 * Math.Sin(phase * 2.03));
