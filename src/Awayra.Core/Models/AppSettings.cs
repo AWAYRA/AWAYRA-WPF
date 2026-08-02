@@ -6,7 +6,8 @@ public enum BreakSoundTheme
 {
     SoftBell = 0,
     GentleChime = 1,
-    CalmDrop = 2
+    CalmDrop = 2,
+    CalmPiano = 3
 }
 
 public sealed class AppSettings

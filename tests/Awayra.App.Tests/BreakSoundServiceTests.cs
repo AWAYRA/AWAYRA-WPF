@@ -2,6 +2,7 @@ using System.Text;
 using System.Windows.Threading;
 using Awayra.App.Services;
 using Awayra.App.Tests.Support;
+using Awayra.Core.Abstractions;
 using Awayra.Core.Models;
 
 namespace Awayra.App.Tests;
@@ -17,7 +18,7 @@ public sealed class BreakSoundServiceTests
             var player = new RecordingTonePlayer();
             using var service = new BreakSoundService(
                 Dispatcher.CurrentDispatcher,
-                new NullLogger(),
+                new TestLogger(),
                 player);
             var settings = AppSettings.CreateDefault();
             settings.EyeBreakSoundEnabled = true;
@@ -57,7 +58,7 @@ public sealed class BreakSoundServiceTests
             var player = new RecordingTonePlayer();
             using var service = new BreakSoundService(
                 Dispatcher.CurrentDispatcher,
-                new NullLogger(),
+                new TestLogger(),
                 player);
             var settings = AppSettings.CreateDefault();
             settings.MoveBreakSoundEnabled = false;
@@ -81,7 +82,7 @@ public sealed class BreakSoundServiceTests
             var player = new RecordingTonePlayer();
             using var service = new BreakSoundService(
                 Dispatcher.CurrentDispatcher,
-                new NullLogger(),
+                new TestLogger(),
                 player);
             var settings = AppSettings.CreateDefault();
             settings.EyeBreakSoundEnabled = true;
@@ -97,13 +98,13 @@ public sealed class BreakSoundServiceTests
     }
 
     [TestMethod]
-    public void ToneGenerator_ProducesThreeDistinctValidWaveFiles()
+    public void ToneGenerator_ProducesFourDistinctValidWaveFiles()
     {
         var generated = Enum.GetValues<BreakSoundTheme>()
             .Select(BreakToneGenerator.GenerateWaveBytes)
             .ToArray();
 
-        Assert.AreEqual(3, generated.Length);
+        Assert.AreEqual(4, generated.Length);
         foreach (var wave in generated)
         {
             Assert.IsTrue(wave.Length > 44);
@@ -111,9 +112,27 @@ public sealed class BreakSoundServiceTests
             Assert.AreEqual("WAVE", Encoding.ASCII.GetString(wave, 8, 4));
         }
 
-        Assert.IsFalse(generated[0].SequenceEqual(generated[1]));
-        Assert.IsFalse(generated[1].SequenceEqual(generated[2]));
-        Assert.IsFalse(generated[0].SequenceEqual(generated[2]));
+        for (var left = 0; left < generated.Length; left++)
+        {
+            for (var right = left + 1; right < generated.Length; right++)
+            {
+                Assert.IsFalse(
+                    generated[left].SequenceEqual(generated[right]),
+                    $"Themes {left} and {right} unexpectedly generated identical audio.");
+            }
+        }
+    }
+
+    [TestMethod]
+    public void CalmPiano_IsGeneratedLocallyWithExpectedDuration()
+    {
+        var wave = BreakToneGenerator.GenerateWaveBytes(BreakSoundTheme.CalmPiano);
+        var dataLength = BitConverter.ToInt32(wave, 40);
+        var sampleCount = dataLength / sizeof(short);
+        var durationSeconds = sampleCount / 44_100d;
+
+        Assert.IsTrue(durationSeconds >= 1.79 && durationSeconds <= 1.81);
+        Assert.IsTrue(wave.Skip(44).Any(value => value != 0));
     }
 
     private sealed class RecordingTonePlayer : IBreakTonePlayer
@@ -132,5 +151,13 @@ public sealed class BreakSoundServiceTests
 
         public void Stop() => StopCount++;
         public void Dispose() { }
+    }
+
+    private sealed class TestLogger : IAppLogger
+    {
+        public void Info(string message) { }
+        public void Warning(string message) { }
+        public void Error(string message, Exception? exception = null) { }
+        public Task FlushAsync() => Task.CompletedTask;
     }
 }

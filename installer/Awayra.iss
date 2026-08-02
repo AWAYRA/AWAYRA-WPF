@@ -2,11 +2,11 @@
 ; Build with: powershell -ExecutionPolicy Bypass -File .\scripts\build-installer.ps1
 
 #ifndef MyAppVersion
-  #define MyAppVersion "1.0.3"
+  #define MyAppVersion "1.1.1"
 #endif
 
 #ifndef MyAppVersionInfo
-  #define MyAppVersionInfo "1.0.3.0"
+  #define MyAppVersionInfo "1.1.1.0"
 #endif
 
 #ifndef PublishDir
@@ -16,8 +16,8 @@
 #define MyAppName "Awayra"
 #define MyAppPublisher "Farzin Alavi"
 #define MyAppExeName "Awayra.exe"
-#define MyAppUrl "https://github.com/AAA-It-uae/AWAYRA-WPF"
-#define MyAppSupportUrl "https://github.com/AAA-It-uae/AWAYRA-WPF/issues"
+#define MyAppUrl "https://github.com/AWAYRA/AWAYRA-WPF"
+#define MyAppSupportUrl "https://github.com/AWAYRA/AWAYRA-WPF/issues"
 
 [Setup]
 AppId={{C348E9A2-7E31-4E8D-A638-94A635B813C1}
@@ -44,12 +44,18 @@ ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
 MinVersion=10.0
 PrivilegesRequired=lowest
+DisableDirPage=yes
 DisableProgramGroupPage=yes
-CloseApplications=yes
+UsePreviousAppDir=no
+UsePreviousTasks=no
+CloseApplications=force
+CloseApplicationsFilter=Awayra.exe
 RestartApplications=no
 RestartIfNeededByRun=no
 Uninstallable=yes
 CreateUninstallRegKey=yes
+UninstallLogMode=new
+SetupLogging=yes
 VersionInfoCompany={#MyAppPublisher}
 VersionInfoDescription=Awayra Installer
 VersionInfoProductName={#MyAppName}
@@ -74,16 +80,96 @@ Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: de
 [Run]
 Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; Flags: nowait postinstall skipifsilent
 
+[UninstallDelete]
+Type: filesandordirs; Name: "{localappdata}\Awayra"
+Type: filesandordirs; Name: "{userappdata}\Awayra"
+Type: files; Name: "{autodesktop}\Awayra.lnk"
+Type: files; Name: "{userstartup}\Awayra.lnk"
+
 [Code]
+const
+  RunKeyPath = 'Software\Microsoft\Windows\CurrentVersion\Run';
+  RunValueName = 'Awayra';
+
 function IconFileExists(): Boolean;
 begin
   Result := FileExists(ExpandConstant('{app}\awayra.ico'));
 end;
 
+procedure StopRunningAwayra();
+var
+  ResultCode: Integer;
+begin
+  Exec(
+    ExpandConstant('{sys}\taskkill.exe'),
+    '/F /T /IM {#MyAppExeName}',
+    '',
+    SW_HIDE,
+    ewWaitUntilTerminated,
+    ResultCode);
+end;
+
+procedure DeleteDirectoryOrAbort(const DirectoryPath: String; const Description: String);
+begin
+  if not DirExists(DirectoryPath) then
+    Exit;
+
+  Log('Clean upgrade: deleting ' + Description + ': ' + DirectoryPath);
+  if not DelTree(DirectoryPath, True, True, True) then
+  begin
+    MsgBox(
+      'Awayra could not remove old ' + Description + '.' + #13#10 +
+      'Close any remaining Awayra process and run the installer again.' + #13#10#13#10 +
+      DirectoryPath,
+      mbError,
+      MB_OK);
+    Abort;
+  end;
+end;
+
+procedure DeleteFileIfPresent(const FilePath: String);
+begin
+  if FileExists(FilePath) then
+  begin
+    Log('Clean upgrade: deleting legacy file: ' + FilePath);
+    if not DeleteFile(FilePath) then
+    begin
+      MsgBox('Awayra could not remove a legacy shortcut:' + #13#10 + FilePath, mbError, MB_OK);
+      Abort;
+    end;
+  end;
+end;
+
+procedure CleanPreviousInstallation();
+begin
+  StopRunningAwayra();
+
+  DeleteDirectoryOrAbort(ExpandConstant('{localappdata}\Programs\Awayra'), 'program files');
+  DeleteDirectoryOrAbort(ExpandConstant('{localappdata}\Awayra'), 'settings and runtime data');
+  DeleteDirectoryOrAbort(ExpandConstant('{userappdata}\Awayra'), 'legacy roaming data');
+  DeleteDirectoryOrAbort(ExpandConstant('{group}'), 'Start menu shortcuts');
+
+  DeleteFileIfPresent(ExpandConstant('{autodesktop}\Awayra.lnk'));
+  DeleteFileIfPresent(ExpandConstant('{userstartup}\Awayra.lnk'));
+  RegDeleteValue(HKCU, RunKeyPath, RunValueName);
+end;
+
+procedure CurStepChanged(CurStep: TSetupStep);
+begin
+  if CurStep = ssInstall then
+    CleanPreviousInstallation();
+end;
+
 procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
 begin
-  if CurUninstallStep = usPostUninstall then
+  if CurUninstallStep = usUninstall then
   begin
-    { Preserve user data under %LocalAppData%\Awayra on uninstall. }
+    StopRunningAwayra();
+    RegDeleteValue(HKCU, RunKeyPath, RunValueName);
+  end
+  else if CurUninstallStep = usPostUninstall then
+  begin
+    DelTree(ExpandConstant('{localappdata}\Awayra'), True, True, True);
+    DelTree(ExpandConstant('{userappdata}\Awayra'), True, True, True);
   end;
 end;

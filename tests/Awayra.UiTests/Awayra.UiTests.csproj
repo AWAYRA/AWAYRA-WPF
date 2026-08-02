@@ -7,6 +7,8 @@
     <IsPackable>false</IsPackable>
     <UseWPF>false</UseWPF>
     <RootNamespace>Awayra.UiTests</RootNamespace>
+    <!-- MSTest initializes TestContext.TestName for setup/cleanup, while its annotation remains nullable. -->
+    <NoWarn>$(NoWarn);CS8604</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>

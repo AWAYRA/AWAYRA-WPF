@@ -8,6 +8,32 @@ The project follows semantic versioning where practical.
 
 No unreleased changes yet.
 
+## [1.1.1] - 2026-08-02
+
+### Added
+
+- Original locally generated Calm piano loop with no downloaded or third-party audio asset
+- Automated validation for all four sound themes and the piano waveform duration
+- Installer tests covering clean installation over legacy files, reinstall, and complete uninstall cleanup
+- TRX evidence validation for core and application test suites
+
+### Changed
+
+- Rebalanced the Settings window into two organized columns with sound controls at the top left
+- Moved Windows build, installer, and NuGet validation to the self-hosted Windows runner
+- Added every test project to `Awayra.sln` so `--no-build` tests cannot use stale binaries
+- Unified application, assembly, package, and installer versions at `1.1.1`
+- Migrated repository, installer, and package metadata from `AAA-It-uae` to `AWAYRA`
+- Renamed the reusable package to `Awayra.Core` and moved its GitHub Packages feed to the `AWAYRA` organization
+
+### Fixed
+
+- Prevented fullscreen overlay recomposition when monitor bounds have not changed
+- Stabilized monitor bounds before performing one physical-pixel reposition after wake, unlock, resume, or topology changes
+- Prevented repeated display recovery from causing visible monitor flashes
+- Replaced the previous false-green Windows test path with a complete solution build and verified test-result gate
+- Ensured upgrades remove stale program files, settings, runtime state, logs, shortcuts, and startup registration
+
 ## [1.1.0] - 2026-08-02
 
 ### Added
@@ -48,7 +74,7 @@ No unreleased changes yet.
 
 ### Changed
 
-- Official repository and issue links now point to `AAA-It-uae/AWAYRA-WPF`
+- Official repository and issue links now point to `AWAYRA/AWAYRA-WPF`
 - Generated installers and local build metadata are excluded from the source tree
 - Public source history starts from a clean open-source baseline
 - Windows CI now runs core and application automated tests after the Release build

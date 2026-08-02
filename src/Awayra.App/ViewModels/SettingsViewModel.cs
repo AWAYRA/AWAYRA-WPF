@@ -75,6 +75,18 @@ public partial class SettingsViewModel : ObservableObject
         }
     }
 
+    public bool IsCalmPianoSelected
+    {
+        get => BreakSoundTheme == BreakSoundTheme.CalmPiano;
+        set
+        {
+            if (value)
+            {
+                BreakSoundTheme = BreakSoundTheme.CalmPiano;
+            }
+        }
+    }
+
     public SettingsViewModel(ApplicationHost host, Action<bool> close)
     {
         _host = host;
@@ -89,6 +101,7 @@ public partial class SettingsViewModel : ObservableObject
         OnPropertyChanged(nameof(IsSoftBellSelected));
         OnPropertyChanged(nameof(IsGentleChimeSelected));
         OnPropertyChanged(nameof(IsCalmDropSelected));
+        OnPropertyChanged(nameof(IsCalmPianoSelected));
     }
 
     [RelayCommand]

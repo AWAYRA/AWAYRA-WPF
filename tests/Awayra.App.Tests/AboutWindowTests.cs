@@ -30,12 +30,14 @@ public sealed class AboutWindowTests
     }
 
     [TestMethod]
-    public void AboutViewModel_SupportButtonUsesConfiguredExactUrlWhenEnabled()
+    public void AboutViewModel_SupportButtonIsDisabledWhenNoSupportUrlIsConfigured()
     {
-        Assert.AreEqual("https://www.buymeacoffee.com/YOUR_USERNAME", AppLinkUrls.Support);
+        Assert.AreEqual(string.Empty, AppLinkUrls.Support);
         var launcher = new FakeExternalLinkLauncher();
         var vm = new AboutViewModel(launcher, () => { });
+        Assert.IsFalse(vm.IsSupportConfigured);
         Assert.IsFalse(vm.OpenSupportCommand.CanExecute(null));
+        Assert.AreEqual(0, launcher.LaunchedUrls.Count);
     }
 
     [TestMethod]

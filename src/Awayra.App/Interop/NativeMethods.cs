@@ -1,9 +1,9 @@
+using System.Linq;
 using System.Runtime.InteropServices;
 using System.Windows;
-using System.Windows.Interop;
 using System.Windows.Forms;
+using System.Windows.Interop;
 using System.Windows.Media;
-using System.Linq;
 
 namespace Awayra.App.Interop;
 
@@ -16,15 +16,6 @@ internal static class NativeMethods
         public uint DwTime;
     }
 
-    [DllImport("user32.dll")]
-    internal static extern bool GetLastInputInfo(ref LastInputInfo plii);
-
-    [DllImport("user32.dll")]
-    internal static extern IntPtr MonitorFromPoint(POINT pt, uint dwFlags);
-
-    [DllImport("user32.dll", CharSet = CharSet.Auto)]
-    internal static extern bool GetCursorPos(out POINT lpPoint);
-
     [StructLayout(LayoutKind.Sequential)]
     internal struct POINT
     {
@@ -32,13 +23,39 @@ internal static class NativeMethods
         public int Y;
     }
 
-    internal const uint MonitorDefaultToNearest = 2;
+    [StructLayout(LayoutKind.Sequential)]
+    internal struct RECT
+    {
+        public int Left;
+        public int Top;
+        public int Right;
+        public int Bottom;
+    }
+
+    [DllImport("user32.dll")]
+    internal static extern bool GetLastInputInfo(ref LastInputInfo plii);
+
+    [DllImport("user32.dll", CharSet = CharSet.Auto)]
+    internal static extern bool GetCursorPos(out POINT lpPoint);
 
     [DllImport("user32.dll")]
     internal static extern bool SetForegroundWindow(IntPtr hWnd);
 
     [DllImport("user32.dll")]
     internal static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
+
+    [DllImport("user32.dll", SetLastError = true)]
+    internal static extern bool SetWindowPos(
+        IntPtr hWnd,
+        IntPtr hWndInsertAfter,
+        int x,
+        int y,
+        int cx,
+        int cy,
+        uint uFlags);
+
+    [DllImport("user32.dll")]
+    internal static extern bool GetWindowRect(IntPtr hWnd, out RECT lpRect);
 
     [DllImport("user32.dll", EntryPoint = "SendMessageW")]
     internal static extern IntPtr SendMessage(IntPtr hWnd, int msg, IntPtr wParam, IntPtr lParam);
@@ -48,6 +65,9 @@ internal static class NativeMethods
 
     internal const int SwRestore = 9;
     internal const int WmSetIcon = 0x0080;
+    internal const uint SwpNoActivate = 0x0010;
+    internal const uint SwpShowWindow = 0x0040;
+    internal static readonly IntPtr HwndTopmost = new(-1);
     internal static readonly IntPtr IconSmall = IntPtr.Zero;
     internal static readonly IntPtr IconBig = new(1);
 }
@@ -58,25 +78,63 @@ public sealed class MonitorLocator
     {
         if (!NativeMethods.GetCursorPos(out var point))
         {
-            return Screen.PrimaryScreen ?? throw new InvalidOperationException("No display available.");
+            return Screen.PrimaryScreen
+                ?? Screen.AllScreens.FirstOrDefault()
+                ?? throw new InvalidOperationException("No display available.");
         }
 
         return Screen.FromPoint(new System.Drawing.Point(point.X, point.Y));
     }
 
-    public static void PositionWindowOnCursorMonitor(Window window)
-    {
-        var screen = GetCursorScreen();
-        var bounds = screen.Bounds;
-        var dpi = VisualTreeHelper.GetDpi(window);
-        var scaleX = dpi.DpiScaleX > 0 ? dpi.DpiScaleX : 1d;
-        var scaleY = dpi.DpiScaleY > 0 ? dpi.DpiScaleY : 1d;
+    public static bool PositionWindowOnCursorMonitor(Window window, bool force = false) =>
+        PositionWindowOnBounds(window, GetCursorScreen().Bounds, force);
 
+    public static bool PositionWindowOnBounds(
+        Window window,
+        System.Drawing.Rectangle bounds,
+        bool force = false)
+    {
+        ArgumentNullException.ThrowIfNull(window);
         window.WindowStartupLocation = WindowStartupLocation.Manual;
-        window.Left = bounds.Left / scaleX;
-        window.Top = bounds.Top / scaleY;
-        window.Width = bounds.Width / scaleX;
-        window.Height = bounds.Height / scaleY;
+
+        var handle = new WindowInteropHelper(window).Handle;
+        if (handle != IntPtr.Zero)
+        {
+            if (!force && IsWindowAtPhysicalBounds(handle, bounds))
+            {
+                return false;
+            }
+
+            var flags = NativeMethods.SwpNoActivate;
+            if (window.IsVisible)
+            {
+                flags |= NativeMethods.SwpShowWindow;
+            }
+
+            if (NativeMethods.SetWindowPos(
+                    handle,
+                    NativeMethods.HwndTopmost,
+                    bounds.Left,
+                    bounds.Top,
+                    bounds.Width,
+                    bounds.Height,
+                    flags))
+            {
+                return true;
+            }
+        }
+
+        return SetDipBoundsIfChanged(window, bounds, force);
+    }
+
+    public static bool IsWindowAtPhysicalBounds(
+        Window window,
+        System.Drawing.Rectangle bounds,
+        int tolerance = 1)
+    {
+        ArgumentNullException.ThrowIfNull(window);
+        var handle = new WindowInteropHelper(window).Handle;
+        return handle != IntPtr.Zero && IsWindowAtPhysicalBounds(handle, bounds, tolerance);
     }
 
     public static void EnsureWindowOnScreen(Window window)
@@ -131,6 +189,54 @@ public sealed class MonitorLocator
             window.Topmost = false;
         }
     }
+
+    private static bool IsWindowAtPhysicalBounds(
+        IntPtr handle,
+        System.Drawing.Rectangle bounds,
+        int tolerance = 1)
+    {
+        if (!NativeMethods.GetWindowRect(handle, out var rect))
+        {
+            return false;
+        }
+
+        return Math.Abs(rect.Left - bounds.Left) <= tolerance
+            && Math.Abs(rect.Top - bounds.Top) <= tolerance
+            && Math.Abs((rect.Right - rect.Left) - bounds.Width) <= tolerance
+            && Math.Abs((rect.Bottom - rect.Top) - bounds.Height) <= tolerance;
+    }
+
+    private static bool SetDipBoundsIfChanged(
+        Window window,
+        System.Drawing.Rectangle bounds,
+        bool force)
+    {
+        var dpi = VisualTreeHelper.GetDpi(window);
+        var scaleX = dpi.DpiScaleX > 0 ? dpi.DpiScaleX : 1d;
+        var scaleY = dpi.DpiScaleY > 0 ? dpi.DpiScaleY : 1d;
+        var left = bounds.Left / scaleX;
+        var top = bounds.Top / scaleY;
+        var width = bounds.Width / scaleX;
+        var height = bounds.Height / scaleY;
+
+        if (!force
+            && NearlyEqual(window.Left, left)
+            && NearlyEqual(window.Top, top)
+            && NearlyEqual(window.Width, width)
+            && NearlyEqual(window.Height, height))
+        {
+            return false;
+        }
+
+        window.Left = left;
+        window.Top = top;
+        window.Width = width;
+        window.Height = height;
+        return true;
+    }
+
+    private static bool NearlyEqual(double current, double target) =>
+        !double.IsNaN(current) && Math.Abs(current - target) < 0.5d;
 }
 
 public static class DwmHelper

@@ -18,16 +18,16 @@ jobs:
   release:
     name: installer
     runs-on: windows-latest
-    timeout-minutes: 40
+    timeout-minutes: 50
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           fetch-depth: 0
 
       - name: Setup .NET
-        uses: actions/setup-dotnet@v4
+        uses: actions/setup-dotnet@v5
         with:
           dotnet-version: 10.0.x
 
@@ -45,6 +45,15 @@ jobs:
 
           "version=$version" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
           "tag=v$version" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+
+      - name: Check release prerequisites
+        if: github.event_name != 'pull_request'
+        shell: pwsh
+        run: |
+          if (-not (Get-Command gh -ErrorAction SilentlyContinue)) {
+            throw "GitHub CLI is required on the Windows release runner."
+          }
+          gh --version
 
       - name: Check whether release already exists
         id: existing
@@ -85,7 +94,6 @@ jobs:
             }
 
             "tag_exists=true" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
-            Write-Host "Tag $env:RELEASE_TAG already points to the current commit."
           }
           else {
             "tag_exists=false" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
@@ -108,18 +116,15 @@ jobs:
             $downloadUrl = "https://github.com/jrsoftware/issrc/releases/download/is-7_0_2/innosetup-$innoVersion-x64.exe"
 
             Invoke-WebRequest -Uri $downloadUrl -OutFile $installerPath
-
             $signature = Get-AuthenticodeSignature -FilePath $installerPath
             if ($signature.Status -ne "Valid") {
               throw "Inno Setup Authenticode verification failed: $($signature.Status)"
             }
-
             if ($signature.SignerCertificate.Subject -notmatch 'Pyrsys B\.V\.') {
               throw "Unexpected Inno Setup signer: $($signature.SignerCertificate.Subject)"
             }
 
-            $arguments = "/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /SP-"
-            $process = Start-Process -FilePath $installerPath -ArgumentList $arguments -Wait -PassThru
+            $process = Start-Process -FilePath $installerPath -ArgumentList "/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /SP-" -Wait -PassThru
             if ($process.ExitCode -ne 0) {
               throw "Inno Setup installation failed with exit code $($process.ExitCode)."
             }
@@ -128,7 +133,7 @@ jobs:
           }
 
           if (-not $compiler) {
-            throw "Inno Setup 7 compiler was not found after verified installation."
+            throw "Inno Setup 7 compiler was not found after installation."
           }
 
           Write-Host "Using Inno Setup compiler: $compiler"
@@ -137,6 +142,17 @@ jobs:
         if: steps.existing.outputs.release_exists != 'true'
         shell: pwsh
         run: powershell -ExecutionPolicy Bypass -File .\scripts\build-installer.ps1
+
+      - name: Test clean install upgrade and uninstall
+        if: steps.existing.outputs.release_exists != 'true'
+        shell: pwsh
+        env:
+          APP_VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          $installer = Join-Path $PWD "artifacts\installer\Awayra-Setup-$env:APP_VERSION-x64.exe"
+          powershell -ExecutionPolicy Bypass -File .\scripts\test-clean-upgrade.ps1 `
+            -InstallerPath $installer `
+            -ExpectedVersion $env:APP_VERSION
 
       - name: Prepare permanent download filenames
         if: steps.existing.outputs.release_exists != 'true'
@@ -159,12 +175,12 @@ jobs:
 
       - name: Upload pull request installer artifact
         if: github.event_name == 'pull_request'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: Awayra-installer-pr-${{ github.event.pull_request.number }}
           path: artifacts/installer/*
           if-no-files-found: error
-          retention-days: 7
+          retention-days: 14
 
       - name: Create version tag
         if: github.event_name != 'pull_request' && steps.existing.outputs.release_exists != 'true' && steps.tag.outputs.tag_exists != 'true'

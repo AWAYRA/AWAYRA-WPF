@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://aaa-it-uae.github.io/AWAYRA-WPF/sitemap.xml
+Sitemap: https://awayra.github.io/AWAYRA-WPF/sitemap.xml

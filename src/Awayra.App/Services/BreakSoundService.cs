@@ -380,7 +380,7 @@ public static class BreakToneGenerator
     private const int SampleRate = 44_100;
     private const short Channels = 1;
     private const short BitsPerSample = 16;
-    private const string CacheVersion = "v1";
+    private const string CacheVersion = "v2";
 
     public static string GetOrCreateWaveFile(BreakSoundTheme theme)
     {
@@ -395,6 +395,7 @@ public static class BreakToneGenerator
         {
             BreakSoundTheme.GentleChime => "gentle-chime.wav",
             BreakSoundTheme.CalmDrop => "calm-drop.wav",
+            BreakSoundTheme.CalmPiano => "calm-piano.wav",
             _ => "soft-bell.wav"
         };
         var path = Path.Combine(directory, fileName);
@@ -413,6 +414,7 @@ public static class BreakToneGenerator
         {
             BreakSoundTheme.GentleChime => 1.15,
             BreakSoundTheme.CalmDrop => 0.95,
+            BreakSoundTheme.CalmPiano => 1.8,
             _ => 0.9
         };
         var sampleCount = (int)(SampleRate * durationSeconds);
@@ -430,6 +432,11 @@ public static class BreakToneGenerator
                 BreakSoundTheme.CalmDrop =>
                     Drop(t, 0.00, 980, 520, 0.48) +
                     0.65 * Drop(t, 0.28, 760, 440, 0.42),
+                BreakSoundTheme.CalmPiano =>
+                    PianoNote(t, 0.00, 261.63) +
+                    0.90 * PianoNote(t, 0.42, 329.63) +
+                    0.84 * PianoNote(t, 0.84, 392.00) +
+                    0.76 * PianoNote(t, 1.26, 329.63),
                 _ =>
                     Bell(t, 0.00, 659.25, 5.4) +
                     0.82 * Bell(t, 0.24, 880.00, 6.0)
@@ -480,6 +487,25 @@ public static class BreakToneGenerator
                (Math.Sin(2 * Math.PI * frequency * x) +
                 0.28 * Math.Sin(2 * Math.PI * frequency * 2.01 * x) +
                 0.12 * Math.Sin(2 * Math.PI * frequency * 3.97 * x));
+    }
+
+    private static double PianoNote(double t, double start, double frequency)
+    {
+        var x = t - start;
+        if (x < 0)
+        {
+            return 0;
+        }
+
+        var attack = Math.Min(1d, x / 0.006);
+        var hammer = Math.Exp(-36d * x) * Math.Sin(2 * Math.PI * frequency * 4.02 * x);
+        var body =
+            Math.Sin(2 * Math.PI * frequency * x) +
+            0.48 * Math.Sin(2 * Math.PI * frequency * 2.002 * x) +
+            0.20 * Math.Sin(2 * Math.PI * frequency * 3.006 * x) +
+            0.08 * Math.Sin(2 * Math.PI * frequency * 4.011 * x);
+        var envelope = attack * Math.Exp(-3.5d * x);
+        return envelope * (0.92 * body + 0.08 * hammer);
     }
 
     private static double Drop(double t, double start, double startFrequency, double endFrequency, double glideSeconds)
