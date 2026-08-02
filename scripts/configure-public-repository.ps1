@@ -1,6 +1,6 @@
 [CmdletBinding(SupportsShouldProcess = $true)]
 param(
-    [string]$Repository = "AAA-It-uae/AWAYRA-WPF"
+    [string]$Repository = "AWAYRA/AWAYRA-WPF"
 )
 
 $ErrorActionPreference = "Stop"
@@ -37,8 +37,8 @@ if (-not $repo.permissions.admin) {
     throw "The authenticated account does not have admin permission for $Repository."
 }
 
-$description = "Free open-source Windows break reminder with a 20-20-20 eye timer, movement breaks, fullscreen overlays, and no telemetry."
-$homepage = "https://aaa-it-uae.github.io/AWAYRA-WPF/"
+$description = "Free open-source Windows break reminder with a 20-20-20 eye timer, movement breaks, locally generated sounds, and no telemetry."
+$homepage = "https://awayra.github.io/AWAYRA-WPF/"
 $topics = @(
     "windows", "windows-11", "wpf", "dotnet", "csharp",
     "break-reminder", "eye-strain", "eye-care", "20-20-20", "screen-break",
@@ -48,7 +48,7 @@ $topics = @(
 
 Write-Host "Configuring $Repository for public release..." -ForegroundColor Cyan
 
-if ($PSCmdlet.ShouldProcess($Repository, "Change visibility to public and update repository metadata")) {
+if ($PSCmdlet.ShouldProcess($Repository, "Update repository metadata and merge behavior")) {
     Invoke-GhApi -Arguments @(
         "--method", "PATCH", "repos/$Repository",
         "-f", "visibility=public",
@@ -110,7 +110,7 @@ if ($PSCmdlet.ShouldProcess($Repository, "Protect the main branch")) {
     $protectionPayload = @{
         required_status_checks = @{
             strict = $true
-            contexts = @("build", "installer")
+            contexts = @("build-and-test", "installer")
         }
         enforce_admins = $false
         required_pull_request_reviews = @{
