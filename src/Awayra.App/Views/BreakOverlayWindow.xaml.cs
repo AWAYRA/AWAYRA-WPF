@@ -143,10 +143,18 @@ public partial class BreakOverlayWindow : Window
 
         if (MonitorLocator.IsWindowAtPhysicalBounds(this, stableBounds))
         {
+            _host.Logger.Info($"Overlay display recovery skipped; physical bounds unchanged: {stableBounds}.");
             return;
         }
 
-        _ = MonitorLocator.PositionWindowOnBounds(this, stableBounds);
+        if (MonitorLocator.PositionWindowOnBounds(this, stableBounds))
+        {
+            _host.Logger.Info($"Overlay repositioned once after display stabilization: {stableBounds}.");
+        }
+        else
+        {
+            _host.Logger.Warning($"Overlay display recovery could not apply stable bounds: {stableBounds}.");
+        }
     }
 
     private void OnLoaded(object sender, RoutedEventArgs e)
