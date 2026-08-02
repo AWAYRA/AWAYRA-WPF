@@ -1,6 +1,6 @@
-# AAAItUae.Awayra.Core
+# Awayra.Core
 
-Reusable, platform-neutral domain logic from [Awayra](https://github.com/AAA-It-uae/AWAYRA-WPF), the open-source Windows break reminder.
+Reusable, platform-neutral domain logic from [Awayra](https://github.com/AWAYRA/AWAYRA-WPF), the open-source Windows break reminder.
 
 This package contains:
 
@@ -10,7 +10,7 @@ This package contains:
 - scheduler state and snapshot models
 - break statistics logic
 
-It does **not** contain the WPF user interface, Windows tray integration, Registry startup handling, installer, telemetry, or network services.
+It does **not** contain the WPF interface, Windows tray integration, Registry startup handling, installer, telemetry, or network services.
 
 ## Target framework
 
@@ -18,16 +18,16 @@ It does **not** contain the WPF user interface, Windows tray integration, Regist
 
 ## Install from GitHub Packages
 
-GitHub's NuGet registry requires authentication. Add the organization feed using a GitHub token with `read:packages`, then install the package:
+GitHub Packages requires authentication. Add the AWAYRA feed using a GitHub token with `read:packages`, then install the package:
 
-```bash
-dotnet nuget add source https://nuget.pkg.github.com/AAA-It-uae/index.json \
-  --name github \
-  --username YOUR_GITHUB_USERNAME \
-  --password YOUR_GITHUB_TOKEN \
+```powershell
+dotnet nuget add source https://nuget.pkg.github.com/AWAYRA/index.json `
+  --name github `
+  --username YOUR_GITHUB_USERNAME `
+  --password YOUR_GITHUB_TOKEN `
   --store-password-in-clear-text
 
-dotnet add package AAAItUae.Awayra.Core --source github
+dotnet add package Awayra.Core --source github
 ```
 
 Do not commit tokens or a credential-bearing `nuget.config` file.
