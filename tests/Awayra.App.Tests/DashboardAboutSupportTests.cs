@@ -85,19 +85,21 @@ public sealed class DashboardAboutSupportTests
     }
 
     [TestMethod]
-    public void AboutViewModel_SupportDisabledWhenPlaceholderUrlConfigured()
+    public void AboutViewModel_SupportDisabledWhenNoUrlIsConfigured()
     {
         var vm = new AboutViewModel(new FakeExternalLinkLauncher(), () => { });
         Assert.IsFalse(vm.IsSupportConfigured);
         Assert.IsTrue(vm.ShowSupportUnavailable);
         Assert.AreEqual("Support link is not configured yet.", vm.SupportUnavailableMessage);
         Assert.IsFalse(vm.OpenSupportCommand.CanExecute(null));
+        Assert.AreEqual(string.Empty, AppLinkUrls.Support);
     }
 
     [TestMethod]
-    public void AboutViewModel_SupportUrlConstantMatchesConfiguredValue()
+    public void AboutViewModel_RepositoryUrlsUseCurrentOrganization()
     {
-        Assert.AreEqual("https://www.buymeacoffee.com/YOUR_USERNAME", AppLinkUrls.Support);
+        Assert.AreEqual("https://github.com/AWAYRA/AWAYRA-WPF", AppLinkUrls.Source);
+        Assert.AreEqual("https://github.com/AWAYRA/AWAYRA-WPF/issues", AppLinkUrls.Issues);
     }
 
     [TestMethod]
