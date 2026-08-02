@@ -1,0 +1,53 @@
+name: Cleanup stale branches
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/cleanup-stale-branches.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  cleanup:
+    name: delete-closed-work-branches
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Delete stale branches
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+
+          branches=(
+            'agent/add-break-sound-controls'
+            'agent/community-settings'
+            'agent/fix-display-wake-flicker'
+            'agent/fix-monitor-wake-flicker-v2'
+            'agent/full-audit-awayra'
+            'agent/harden-release-bootstrap'
+            'agent/latest-release-wins'
+            'agent/public-download-release'
+            'agent/publish-awayra-core-nuget'
+            'agent/reboot-onboarding-1.0.4'
+            'agent/release-1.0.3'
+            'agent/verify-installer-in-pr'
+            'ci/open-source-validation'
+            'ops/public-launch'
+            'seo/github-discoverability'
+          )
+
+          for branch in "${branches[@]}"; do
+            if gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/$branch" >/dev/null 2>&1; then
+              echo "Deleting $branch"
+              gh api --method DELETE "repos/$GITHUB_REPOSITORY/git/refs/heads/$branch"
+            else
+              echo "Already absent: $branch"
+            fi
+          done
+
+          echo 'Stale branch cleanup completed.'
