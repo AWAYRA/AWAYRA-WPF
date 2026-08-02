@@ -2,6 +2,7 @@ using System.Text;
 using System.Windows.Threading;
 using Awayra.App.Services;
 using Awayra.App.Tests.Support;
+using Awayra.Core.Abstractions;
 using Awayra.Core.Models;
 
 namespace Awayra.App.Tests;
