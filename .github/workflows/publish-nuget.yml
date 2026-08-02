@@ -27,7 +27,7 @@ concurrency:
 jobs:
   package:
     name: nuget-package
-    runs-on: [self-hosted, Windows, X64]
+    runs-on: windows-latest
     timeout-minutes: 25
 
     steps:
