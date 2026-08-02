@@ -3,10 +3,10 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         AutomationProperties.AutomationId="SettingsWindow"
         Title="Settings"
-        Width="980"
-        Height="720"
-        MinWidth="760"
-        MinHeight="580"
+        Width="1040"
+        Height="760"
+        MinWidth="800"
+        MinHeight="620"
         WindowStartupLocation="CenterOwner"
         Background="#0E1319"
         Foreground="#F7F9FC"
@@ -22,7 +22,7 @@
         <Setter Property="FontFamily" Value="{StaticResource Settings.Font}" />
         <Setter Property="FontSize" Value="13" />
         <Setter Property="Cursor" Value="Hand" />
-        <Setter Property="Margin" Value="0,0,0,7" />
+        <Setter Property="Margin" Value="0,0,0,8" />
         <Setter Property="Template">
           <Setter.Value>
             <ControlTemplate TargetType="RadioButton">
@@ -72,18 +72,96 @@
                   Padding="0,0,4,4">
       <StackPanel>
         <TextBlock Text="Settings" Style="{StaticResource Settings.PageTitle}" />
-        <TextBlock Text="Configure reminder intervals, sound, behavior, appearance, and Windows integration."
+        <TextBlock Text="Configure sound, reminder timing, behavior, appearance, and Windows integration."
                    Style="{StaticResource Settings.PageDescription}"
                    Margin="0,0,0,14" />
 
         <Grid Style="{StaticResource Settings.TwoColumnGrid}">
           <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="*" MinWidth="340" />
+            <ColumnDefinition Width="*" MinWidth="360" />
             <ColumnDefinition Width="16" />
-            <ColumnDefinition Width="*" MinWidth="340" />
+            <ColumnDefinition Width="*" MinWidth="360" />
           </Grid.ColumnDefinitions>
 
           <StackPanel Grid.Column="0" Style="{StaticResource Settings.ColumnStack}">
+            <Border Style="{StaticResource Settings.SectionCard}">
+              <StackPanel>
+                <TextBlock Text="Break sound" Style="{StaticResource Settings.SectionTitle}" />
+                <TextBlock Text="All sounds are generated locally. Calm piano is an original, copyright-free Awayra loop."
+                           Style="{StaticResource Settings.PageDescription}"
+                           Margin="0,0,0,12" />
+
+                <RadioButton AutomationProperties.AutomationId="SoftBellSoundRadio"
+                             GroupName="BreakSoundTheme"
+                             Content="Soft bell"
+                             IsChecked="{Binding IsSoftBellSelected}"
+                             Style="{StaticResource Settings.SoundRadio}" />
+                <RadioButton AutomationProperties.AutomationId="GentleChimeSoundRadio"
+                             GroupName="BreakSoundTheme"
+                             Content="Gentle chime"
+                             IsChecked="{Binding IsGentleChimeSelected}"
+                             Style="{StaticResource Settings.SoundRadio}" />
+                <RadioButton AutomationProperties.AutomationId="CalmDropSoundRadio"
+                             GroupName="BreakSoundTheme"
+                             Content="Calm drop"
+                             IsChecked="{Binding IsCalmDropSelected}"
+                             Style="{StaticResource Settings.SoundRadio}" />
+                <RadioButton AutomationProperties.AutomationId="CalmPianoSoundRadio"
+                             GroupName="BreakSoundTheme"
+                             Content="Calm piano loop"
+                             IsChecked="{Binding IsCalmPianoSelected}"
+                             Style="{StaticResource Settings.SoundRadio}"
+                             Margin="0,0,0,14" />
+
+                <Grid Margin="0,0,0,12">
+                  <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                  </Grid.ColumnDefinitions>
+                  <TextBlock Grid.Column="0"
+                             Text="Volume"
+                             Style="{StaticResource Settings.FieldLabel}"
+                             Margin="0,0,14,0" />
+                  <Slider Grid.Column="1"
+                          AutomationProperties.AutomationId="BreakSoundVolumeSlider"
+                          Minimum="0"
+                          Maximum="100"
+                          TickFrequency="1"
+                          Value="{Binding BreakSoundVolume, UpdateSourceTrigger=PropertyChanged}"
+                          Style="{StaticResource Settings.GlassSlider}" />
+                  <TextBlock Grid.Column="2"
+                             Text="{Binding BreakSoundVolume, StringFormat={}{0}%}"
+                             Style="{StaticResource Settings.GlassValue}"
+                             Margin="12,0,0,0" />
+                </Grid>
+
+                <Grid Style="{StaticResource Settings.FieldRow}">
+                  <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="156" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                  </Grid.ColumnDefinitions>
+                  <TextBlock Grid.Column="0" Text="Repeat every" Style="{StaticResource Settings.FieldLabel}" />
+                  <TextBox AutomationProperties.AutomationId="BreakSoundRepeatInput"
+                           Grid.Column="1"
+                           Text="{Binding BreakSoundRepeatSeconds, UpdateSourceTrigger=PropertyChanged}"
+                           Style="{StaticResource Settings.InputTextBox}" />
+                  <TextBlock Grid.Column="2" Text="seconds, minimum 1" Style="{StaticResource Settings.FieldUnit}" />
+                </Grid>
+
+                <Button AutomationProperties.AutomationId="PreviewBreakSoundButton"
+                        Content="Preview selected sound"
+                        Command="{Binding PreviewSoundCommand}"
+                        Style="{StaticResource Settings.SecondaryButton}"
+                        HorizontalAlignment="Left"
+                        Margin="0,3,0,9" />
+                <TextBlock Text="Sound stops when the break ends. The popup mute button only affects the current break."
+                           Style="{StaticResource Settings.PageDescription}"
+                           Margin="0" />
+              </StackPanel>
+            </Border>
+
             <Border Style="{StaticResource Settings.SectionCard}">
               <StackPanel>
                 <TextBlock Text="Eye Reset" Style="{StaticResource Settings.SectionTitle}" />
@@ -121,7 +199,7 @@
               </StackPanel>
             </Border>
 
-            <Border Style="{StaticResource Settings.SectionCard}">
+            <Border Style="{StaticResource Settings.SectionCard}" Margin="0">
               <StackPanel>
                 <TextBlock Text="Move Break" Style="{StaticResource Settings.SectionTitle}" />
                 <CheckBox Content="Enable move reminder"
@@ -157,11 +235,15 @@
                 </Grid>
               </StackPanel>
             </Border>
+          </StackPanel>
 
-            <Border Style="{StaticResource Settings.SectionCard}" Margin="0">
+          <StackPanel Grid.Column="2" Style="{StaticResource Settings.ColumnStack}">
+            <Border Style="{StaticResource Settings.SectionCard}">
               <StackPanel>
                 <TextBlock Text="Reminder behavior" Style="{StaticResource Settings.SectionTitle}" />
-                <CheckBox Content="Allow skip" IsChecked="{Binding AllowSkip}" Style="{StaticResource Settings.CheckBoxRow}" />
+                <CheckBox Content="Allow skip"
+                          IsChecked="{Binding AllowSkip}"
+                          Style="{StaticResource Settings.CheckBoxRow}" />
                 <CheckBox AutomationProperties.AutomationId="AllowSnoozeCheckbox"
                           Content="Allow snooze"
                           IsChecked="{Binding AllowSnooze}"
@@ -179,75 +261,6 @@
                            Style="{StaticResource Settings.InputTextBox}" />
                   <TextBlock Grid.Column="2" Text="minutes" Style="{StaticResource Settings.FieldUnit}" />
                 </Grid>
-              </StackPanel>
-            </Border>
-          </StackPanel>
-
-          <StackPanel Grid.Column="2" Style="{StaticResource Settings.ColumnStack}">
-            <Border Style="{StaticResource Settings.SectionCard}">
-              <StackPanel>
-                <TextBlock Text="Break sound" Style="{StaticResource Settings.SectionTitle}" />
-                <TextBlock Text="Choose the tone used by both reminders. Each reminder can enable or disable sound independently."
-                           Style="{StaticResource Settings.PageDescription}"
-                           Margin="0,0,0,10" />
-                <RadioButton AutomationProperties.AutomationId="SoftBellSoundRadio"
-                             GroupName="BreakSoundTheme"
-                             Content="Soft bell"
-                             IsChecked="{Binding IsSoftBellSelected}"
-                             Style="{StaticResource Settings.SoundRadio}" />
-                <RadioButton AutomationProperties.AutomationId="GentleChimeSoundRadio"
-                             GroupName="BreakSoundTheme"
-                             Content="Gentle chime"
-                             IsChecked="{Binding IsGentleChimeSelected}"
-                             Style="{StaticResource Settings.SoundRadio}" />
-                <RadioButton AutomationProperties.AutomationId="CalmDropSoundRadio"
-                             GroupName="BreakSoundTheme"
-                             Content="Calm drop"
-                             IsChecked="{Binding IsCalmDropSelected}"
-                             Style="{StaticResource Settings.SoundRadio}"
-                             Margin="0,0,0,12" />
-
-                <TextBlock Text="Volume" Style="{StaticResource Settings.FieldLabel}" Margin="0,0,0,6" />
-                <Grid Margin="0,0,0,10">
-                  <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="Auto" />
-                  </Grid.ColumnDefinitions>
-                  <Slider Grid.Column="0"
-                          AutomationProperties.AutomationId="BreakSoundVolumeSlider"
-                          Minimum="0"
-                          Maximum="100"
-                          TickFrequency="1"
-                          Value="{Binding BreakSoundVolume, UpdateSourceTrigger=PropertyChanged}"
-                          Style="{StaticResource Settings.GlassSlider}" />
-                  <TextBlock Grid.Column="1"
-                             Text="{Binding BreakSoundVolume, StringFormat={}{0}%}"
-                             Style="{StaticResource Settings.GlassValue}" />
-                </Grid>
-
-                <Grid Style="{StaticResource Settings.FieldRow}">
-                  <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="156" />
-                    <ColumnDefinition Width="Auto" />
-                    <ColumnDefinition Width="*" />
-                  </Grid.ColumnDefinitions>
-                  <TextBlock Grid.Column="0" Text="Repeat every" Style="{StaticResource Settings.FieldLabel}" />
-                  <TextBox AutomationProperties.AutomationId="BreakSoundRepeatInput"
-                           Grid.Column="1"
-                           Text="{Binding BreakSoundRepeatSeconds, UpdateSourceTrigger=PropertyChanged}"
-                           Style="{StaticResource Settings.InputTextBox}" />
-                  <TextBlock Grid.Column="2" Text="seconds, minimum 1" Style="{StaticResource Settings.FieldUnit}" />
-                </Grid>
-
-                <Button AutomationProperties.AutomationId="PreviewBreakSoundButton"
-                        Content="Preview selected sound"
-                        Command="{Binding PreviewSoundCommand}"
-                        Style="{StaticResource Settings.SecondaryButton}"
-                        HorizontalAlignment="Left"
-                        Margin="0,2,0,8" />
-                <TextBlock Text="The sound stops immediately when the break ends. The popup mute button affects only the current break."
-                           Style="{StaticResource Settings.PageDescription}"
-                           Margin="0" />
               </StackPanel>
             </Border>
 
