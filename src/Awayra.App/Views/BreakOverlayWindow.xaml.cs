@@ -1,6 +1,7 @@
 using System.Windows;
 using System.Windows.Automation;
 using System.Windows.Input;
+using System.Windows.Interop;
 using System.Windows.Media.Animation;
 using System.Windows.Threading;
 using Awayra.App.Interop;
@@ -15,7 +16,10 @@ public partial class BreakOverlayWindow : Window
     private readonly ApplicationHost _host;
     private readonly OverlayViewModel _viewModel;
     private readonly IMonitorSnapshotService _snapshotService;
+    private readonly DispatcherTimer _monitorRecoveryTimer;
+    private readonly DisplayBoundsStabilizer _displayBoundsStabilizer = new();
     private Storyboard? _pulseStoryboard;
+    private bool _isClosed;
 
     public BreakOverlayWindow(
         ApplicationHost host,
@@ -31,6 +35,11 @@ public partial class BreakOverlayWindow : Window
         viewModel.SnoozeCommand = new CommunityToolkit.Mvvm.Input.RelayCommand(OnSnooze, () => _viewModel.ShowSnooze);
         viewModel.CompleteCommand = new CommunityToolkit.Mvvm.Input.RelayCommand(OnComplete);
         viewModel.ToggleSoundCommand = new CommunityToolkit.Mvvm.Input.RelayCommand(OnToggleSound);
+        _monitorRecoveryTimer = new DispatcherTimer(DispatcherPriority.Background, Dispatcher)
+        {
+            Interval = TimeSpan.FromMilliseconds(250)
+        };
+        _monitorRecoveryTimer.Tick += OnMonitorRecoveryTick;
         _host.BreakSound.StateChanged += OnSoundStateChanged;
         Loaded += OnLoaded;
         Closed += OnClosed;
@@ -61,19 +70,32 @@ public partial class BreakOverlayWindow : Window
 
     public void ShowOnActiveMonitor()
     {
-        MonitorLocator.PositionWindowOnCursorMonitor(this);
+        if (_isClosed)
+        {
+            throw new InvalidOperationException("A closed break overlay cannot be shown again.");
+        }
+
+        _monitorRecoveryTimer.Stop();
+        _displayBoundsStabilizer.Reset();
+        _ = new WindowInteropHelper(this).EnsureHandle();
+        var targetBounds = MonitorLocator.GetCursorScreen().Bounds;
+        _ = MonitorLocator.PositionWindowOnBounds(this, targetBounds);
         Show();
-        MonitorLocator.PositionWindowOnCursorMonitor(this);
+        _ = MonitorLocator.PositionWindowOnBounds(this, targetBounds);
         Activate();
         Focus();
     }
 
     public void RepositionOnActiveMonitor()
     {
-        if (IsVisible)
+        if (_isClosed || !IsVisible)
         {
-            MonitorLocator.PositionWindowOnCursorMonitor(this);
+            return;
         }
+
+        _monitorRecoveryTimer.Stop();
+        _displayBoundsStabilizer.Reset();
+        _monitorRecoveryTimer.Start();
     }
 
     public void UpdateRemaining(TimeSpan? remaining, LocalizationService? localization = null, int activityIndex = 0)
@@ -90,8 +112,41 @@ public partial class BreakOverlayWindow : Window
 
     public void CloseSafely()
     {
+        if (_isClosed)
+        {
+            return;
+        }
+
+        _monitorRecoveryTimer.Stop();
         _pulseStoryboard?.Stop();
         Close();
+    }
+
+    private void OnMonitorRecoveryTick(object? sender, EventArgs e)
+    {
+        if (_isClosed || !IsVisible)
+        {
+            _monitorRecoveryTimer.Stop();
+            _displayBoundsStabilizer.Reset();
+            return;
+        }
+
+        var observedBounds = MonitorLocator.GetCursorScreen().Bounds;
+        if (!_displayBoundsStabilizer.Observe(observedBounds))
+        {
+            return;
+        }
+
+        _monitorRecoveryTimer.Stop();
+        var stableBounds = _displayBoundsStabilizer.CurrentBounds ?? observedBounds;
+        _displayBoundsStabilizer.Reset();
+
+        if (MonitorLocator.IsWindowAtPhysicalBounds(this, stableBounds))
+        {
+            return;
+        }
+
+        _ = MonitorLocator.PositionWindowOnBounds(this, stableBounds);
     }
 
     private void OnLoaded(object sender, RoutedEventArgs e)
@@ -116,8 +171,17 @@ public partial class BreakOverlayWindow : Window
         }
     }
 
-    private void OnClosed(object? sender, EventArgs e) =>
+    private void OnClosed(object? sender, EventArgs e)
+    {
+        _isClosed = true;
+        _monitorRecoveryTimer.Stop();
+        _monitorRecoveryTimer.Tick -= OnMonitorRecoveryTick;
+        _displayBoundsStabilizer.Reset();
+        _pulseStoryboard?.Stop();
         _host.BreakSound.StateChanged -= OnSoundStateChanged;
+        Loaded -= OnLoaded;
+        Closed -= OnClosed;
+    }
 
     private void OnSoundStateChanged(object? sender, EventArgs e)
     {
