@@ -17,7 +17,7 @@ concurrency:
 jobs:
   release:
     name: installer
-    runs-on: [self-hosted, Windows, X64]
+    runs-on: windows-latest
     timeout-minutes: 50
 
     steps:
@@ -51,7 +51,7 @@ jobs:
         shell: pwsh
         run: |
           if (-not (Get-Command gh -ErrorAction SilentlyContinue)) {
-            throw "GitHub CLI is required on the self-hosted release runner."
+            throw "GitHub CLI is required on the Windows release runner."
           }
           gh --version
 
