@@ -18,7 +18,7 @@ public sealed class BreakSoundServiceTests
             var player = new RecordingTonePlayer();
             using var service = new BreakSoundService(
                 Dispatcher.CurrentDispatcher,
-                new NullLogger(),
+                new TestLogger(),
                 player);
             var settings = AppSettings.CreateDefault();
             settings.EyeBreakSoundEnabled = true;
@@ -58,7 +58,7 @@ public sealed class BreakSoundServiceTests
             var player = new RecordingTonePlayer();
             using var service = new BreakSoundService(
                 Dispatcher.CurrentDispatcher,
-                new NullLogger(),
+                new TestLogger(),
                 player);
             var settings = AppSettings.CreateDefault();
             settings.MoveBreakSoundEnabled = false;
@@ -82,7 +82,7 @@ public sealed class BreakSoundServiceTests
             var player = new RecordingTonePlayer();
             using var service = new BreakSoundService(
                 Dispatcher.CurrentDispatcher,
-                new NullLogger(),
+                new TestLogger(),
                 player);
             var settings = AppSettings.CreateDefault();
             settings.EyeBreakSoundEnabled = true;
@@ -151,5 +151,13 @@ public sealed class BreakSoundServiceTests
 
         public void Stop() => StopCount++;
         public void Dispose() { }
+    }
+
+    private sealed class TestLogger : IAppLogger
+    {
+        public void Info(string message) { }
+        public void Warning(string message) { }
+        public void Error(string message, Exception? exception = null) { }
+        public Task FlushAsync() => Task.CompletedTask;
     }
 }
