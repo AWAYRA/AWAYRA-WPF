@@ -12,7 +12,7 @@ permissions:
 jobs:
   build:
     name: build-and-test
-    runs-on: [self-hosted, Windows, X64]
+    runs-on: windows-latest
     timeout-minutes: 35
 
     steps:
@@ -30,7 +30,6 @@ jobs:
           Write-Host "Runner: $env:RUNNER_NAME"
           Write-Host "OS: $env:RUNNER_OS"
           Write-Host "Architecture: $env:RUNNER_ARCH"
-          Write-Host "Runner version: $env:RUNNER_VERSION"
           dotnet --info
 
       - name: Validate repository files
