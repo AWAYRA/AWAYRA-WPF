@@ -6,19 +6,19 @@
     <Nullable>enable</Nullable>
 
     <IsPackable>true</IsPackable>
-    <PackageId>AAAItUae.Awayra.Core</PackageId>
+    <PackageId>Awayra.Core</PackageId>
     <Title>Awayra Core</Title>
     <Authors>Farzin Alavi</Authors>
-    <Company>AAA IT UAE</Company>
+    <Company>Awayra</Company>
     <Description>Platform-neutral scheduling, settings, statistics, and reminder-domain logic used by the Awayra Windows break reminder.</Description>
     <PackageTags>awayra;break-reminder;20-20-20;eye-care;posture;wellness;scheduler;dotnet</PackageTags>
     <PackageLicenseExpression>GPL-3.0-only</PackageLicenseExpression>
     <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
-    <PackageProjectUrl>https://github.com/AAA-It-uae/AWAYRA-WPF</PackageProjectUrl>
-    <RepositoryUrl>https://github.com/AAA-It-uae/AWAYRA-WPF.git</RepositoryUrl>
+    <PackageProjectUrl>https://github.com/AWAYRA/AWAYRA-WPF</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/AWAYRA/AWAYRA-WPF.git</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <PackageReadmeFile>PACKAGE-README.md</PackageReadmeFile>
-    <PackageReleaseNotes>Initial GitHub Packages release of the reusable Awayra scheduling core.</PackageReleaseNotes>
+    <PackageReleaseNotes>Awayra 1.1.1 scheduling core with validated settings and reminder lifecycle behavior.</PackageReleaseNotes>
     <IncludeSymbols>false</IncludeSymbols>
   </PropertyGroup>
 
