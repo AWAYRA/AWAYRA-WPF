@@ -53,18 +53,22 @@ public partial class MainViewModel : ObservableObject
     {
         _host = host;
         _openSettings = openSettings;
-        try
+
+        if (System.Windows.Application.Current is Awayra.App.App)
         {
-            _displayDiagnostics = DisplayDiagnosticsManager.GetOrCreate(host.Logger);
-            _displayDiagnostics.Record("awayra", "dashboard_diagnostics_ready", new
+            try
             {
-                timeline = _displayDiagnostics.TimelinePath
-            });
-        }
-        catch (Exception ex)
-        {
-            host.Logger.Error("Display diagnostics could not start", ex);
-            DiagnosticStatusText = "Display diagnostics could not start. Check Awayra logs.";
+                _displayDiagnostics = DisplayDiagnosticsManager.GetOrCreate(host.Logger);
+                _displayDiagnostics.Record("awayra", "dashboard_diagnostics_ready", new
+                {
+                    timeline = _displayDiagnostics.TimelinePath
+                });
+            }
+            catch (Exception ex)
+            {
+                host.Logger.Error("Display diagnostics could not start", ex);
+                DiagnosticStatusText = "Display diagnostics could not start. Check Awayra logs.";
+            }
         }
 
         _uiTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
