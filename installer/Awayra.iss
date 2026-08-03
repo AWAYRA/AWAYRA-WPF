@@ -2,11 +2,11 @@
 ; Build with: powershell -ExecutionPolicy Bypass -File .\scripts\build-installer.ps1
 
 #ifndef MyAppVersion
-  #define MyAppVersion "1.1.2"
+  #define MyAppVersion "1.1.3"
 #endif
 
 #ifndef MyAppVersionInfo
-  #define MyAppVersionInfo "1.1.2.0"
+  #define MyAppVersionInfo "1.1.3.0"
 #endif
 
 #ifndef PublishDir
