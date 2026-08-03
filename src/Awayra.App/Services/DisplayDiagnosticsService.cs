@@ -92,7 +92,7 @@ public sealed class DisplayDiagnosticsService : IDisposable
 
         try
         {
-            var line = JsonSerializer.Serialize(envelope, JsonOptions);
+            var line = JsonSerializer.Serialize(envelope, TimelineJsonOptions);
             _queue.Writer.TryWrite(new QueueItem(line, null));
         }
         catch (Exception ex)
@@ -144,7 +144,7 @@ public sealed class DisplayDiagnosticsService : IDisposable
             };
             await File.WriteAllTextAsync(
                 Path.Combine(workingDirectory, "summary.json"),
-                JsonSerializer.Serialize(summary, JsonOptions),
+                JsonSerializer.Serialize(summary, ReportJsonOptions),
                 Encoding.UTF8,
                 cancellationToken).ConfigureAwait(false);
 
@@ -153,6 +153,7 @@ public sealed class DisplayDiagnosticsService : IDisposable
                 "Awayra display diagnostics\r\n\r\n" +
                 "This ZIP was created when the user reported a visible screen blink.\r\n" +
                 "The JSONL timeline uses local, UTC, and monotonic timestamps so Awayra, Windows, DWM, power, device, and monitor events can be correlated.\r\n" +
+                "Each timeline event is exactly one JSON object per line.\r\n" +
                 "Send the complete ZIP without editing individual files.\r\n",
                 Encoding.UTF8,
                 cancellationToken).ConfigureAwait(false);
@@ -364,7 +365,7 @@ public sealed class DisplayDiagnosticsService : IDisposable
         var cursor = Forms.Cursor.Position;
         var foreground = CaptureForegroundProcess();
         var power = Forms.SystemInformation.PowerStatus;
-        var process = Process.GetCurrentProcess();
+        using var process = Process.GetCurrentProcess();
         return new
         {
             screenCount = screens.Length,
@@ -523,7 +524,7 @@ public sealed class DisplayDiagnosticsService : IDisposable
             var error = await standardError.ConfigureAwait(false);
             await File.WriteAllTextAsync(
                 outputPath,
-                $"Command: {executable} {string.Join(' ', arguments)}{Environment.NewLine}" +
+                $"Command: {executable} {string.Join(" ", arguments)}{Environment.NewLine}" +
                 $"ExitCode: {(process.HasExited ? process.ExitCode : -1)}{Environment.NewLine}{Environment.NewLine}" +
                 output + Environment.NewLine + "--- STDERR ---" + Environment.NewLine + error,
                 Encoding.UTF8,
@@ -658,7 +659,13 @@ public sealed class DisplayDiagnosticsService : IDisposable
         public int PanningHeight;
     }
 
-    private static readonly JsonSerializerOptions JsonOptions = new()
+    private static readonly JsonSerializerOptions TimelineJsonOptions = new()
+    {
+        WriteIndented = false,
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+    };
+
+    private static readonly JsonSerializerOptions ReportJsonOptions = new()
     {
         WriteIndented = true,
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase
