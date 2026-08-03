@@ -11,7 +11,7 @@ namespace Awayra.App.Tests;
 public sealed class BreakOverlayPresentationTests
 {
     [TestMethod]
-    public void ShowOnActiveMonitor_RevealsAfterFirstRenderedFrame()
+    public void ShowOnActiveMonitor_RevealsAfterPostPositionRenderFrames()
     {
         StaTestContext.Run(() =>
         {
@@ -34,7 +34,10 @@ public sealed class BreakOverlayPresentationTests
                 isEye: true);
 
             window.ShowOnActiveMonitor();
-            PumpDispatcherUntilIdle(window.Dispatcher);
+            PumpUntil(
+                window.Dispatcher,
+                () => Math.Abs(window.Opacity - 1d) < 0.001d,
+                TimeSpan.FromSeconds(5));
 
             Assert.IsTrue(window.IsVisible);
             Assert.AreEqual(1d, window.Opacity, 0.001d);
@@ -46,12 +49,25 @@ public sealed class BreakOverlayPresentationTests
         });
     }
 
-    private static void PumpDispatcherUntilIdle(Dispatcher dispatcher)
+    private static void PumpUntil(Dispatcher dispatcher, Func<bool> condition, TimeSpan timeout)
     {
-        var frame = new DispatcherFrame();
-        dispatcher.BeginInvoke(
-            DispatcherPriority.ApplicationIdle,
-            new Action(() => frame.Continue = false));
-        Dispatcher.PushFrame(frame);
+        var deadline = DateTime.UtcNow + timeout;
+        while (!condition() && DateTime.UtcNow < deadline)
+        {
+            var frame = new DispatcherFrame();
+            var timer = new DispatcherTimer(DispatcherPriority.ApplicationIdle, dispatcher)
+            {
+                Interval = TimeSpan.FromMilliseconds(25)
+            };
+            timer.Tick += (_, _) =>
+            {
+                timer.Stop();
+                frame.Continue = false;
+            };
+            timer.Start();
+            Dispatcher.PushFrame(frame);
+        }
+
+        Assert.IsTrue(condition(), "Overlay did not reveal after the required post-position render frames.");
     }
 }
