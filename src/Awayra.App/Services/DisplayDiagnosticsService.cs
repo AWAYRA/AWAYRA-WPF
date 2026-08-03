@@ -15,6 +15,10 @@ public sealed class DisplayDiagnosticsService : IDisposable
     private const long MaxTimelineBytes = 8 * 1024 * 1024;
     private const int MaxTimelineFiles = 4;
     private const int HeartbeatMilliseconds = 2_000;
+    private static readonly TimeSpan FlushTimeout = TimeSpan.FromSeconds(10);
+    private static readonly Guid MonitorPowerOnGuid = new("02731015-4510-4526-99E6-E5A17EBD1AEA");
+    private static readonly Guid ConsoleDisplayStateGuid = new("6FE69556-704A-47A0-8F24-C28D936FDA47");
+    private static readonly Guid SessionDisplayStatusGuid = new("2B84C20E-AD23-4DDF-93DB-05FFBD7EFCA5");
     private readonly IAppLogger _logger;
     private readonly Channel<QueueItem> _queue = Channel.CreateUnbounded<QueueItem>(
         new UnboundedChannelOptions { SingleReader = true, SingleWriter = false });
@@ -24,6 +28,7 @@ public sealed class DisplayDiagnosticsService : IDisposable
     private readonly Task _writerTask;
     private DiagnosticMessageWindow? _messageWindow;
     private System.Threading.Timer? _heartbeatTimer;
+    private Exception? _writerFailure;
     private long _sequence;
     private int _disposed;
 
@@ -63,6 +68,12 @@ public sealed class DisplayDiagnosticsService : IDisposable
             processArchitecture = RuntimeInformation.ProcessArchitecture.ToString(),
             machine = Environment.MachineName,
             session = Environment.GetEnvironmentVariable("SESSIONNAME"),
+            broadcastWindow = new
+            {
+                handle = $"0x{_messageWindow.Handle.ToInt64():X}",
+                type = "hidden_top_level",
+                registeredPowerNotifications = _messageWindow.RegisteredPowerNotificationCount
+            },
             state = CaptureDesktopState()
         });
         _logger.Info($"Display diagnostics started. Session={_sessionId}; Timeline={TimelinePath}");
@@ -207,9 +218,24 @@ public sealed class DisplayDiagnosticsService : IDisposable
 
     public async Task FlushAsync(CancellationToken cancellationToken = default)
     {
+        if (Volatile.Read(ref _writerFailure) is { } existingFailure)
+        {
+            throw new IOException("The display diagnostic timeline writer is unavailable.", existingFailure);
+        }
+
         var completion = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
-        await _queue.Writer.WriteAsync(new QueueItem(null, completion), cancellationToken).ConfigureAwait(false);
-        await completion.Task.WaitAsync(cancellationToken).ConfigureAwait(false);
+        using var timeoutSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        timeoutSource.CancelAfter(FlushTimeout);
+
+        try
+        {
+            await _queue.Writer.WriteAsync(new QueueItem(null, completion), timeoutSource.Token).ConfigureAwait(false);
+            await completion.Task.WaitAsync(timeoutSource.Token).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+        {
+            throw new TimeoutException($"The display diagnostic timeline did not flush within {FlushTimeout.TotalSeconds:0} seconds.");
+        }
     }
 
     public void Dispose()
@@ -259,6 +285,13 @@ public sealed class DisplayDiagnosticsService : IDisposable
         }
         catch (Exception ex)
         {
+            Volatile.Write(ref _writerFailure, ex);
+            _queue.Writer.TryComplete(ex);
+            while (_queue.Reader.TryRead(out var pendingItem))
+            {
+                pendingItem.Completion?.TrySetException(ex);
+            }
+
             _logger.Error("Display diagnostic writer failed", ex);
         }
     }
@@ -334,6 +367,10 @@ public sealed class DisplayDiagnosticsService : IDisposable
 
         var displayWidth = message == 0x007E ? LowWord(lParam) : (int?)null;
         var displayHeight = message == 0x007E ? HighWord(lParam) : (int?)null;
+        var powerSetting = message == 0x0218 && wParam.ToInt64() == 0x8013
+            ? ReadPowerSetting(lParam)
+            : null;
+
         Record("windows_message", name, new
         {
             message = $"0x{message:X4}",
@@ -342,8 +379,65 @@ public sealed class DisplayDiagnosticsService : IDisposable
             bitsPerPixel = message == 0x007E ? wParam.ToInt64() : (long?)null,
             displayWidth,
             displayHeight,
+            powerSetting,
             state = CaptureDesktopState()
         });
+    }
+
+    private static object? ReadPowerSetting(nint dataPointer)
+    {
+        if (dataPointer == nint.Zero)
+        {
+            return null;
+        }
+
+        try
+        {
+            var setting = Marshal.PtrToStructure<PowerBroadcastSetting>(dataPointer);
+            var dataOffset = Marshal.SizeOf<PowerBroadcastSetting>();
+            var value = setting.DataLength >= sizeof(int)
+                ? Marshal.ReadInt32(dataPointer, dataOffset)
+                : (int?)null;
+            var settingName = GetPowerSettingName(setting.PowerSetting);
+            return new
+            {
+                settingGuid = setting.PowerSetting,
+                settingName,
+                setting.DataLength,
+                value,
+                displayState = DescribeDisplayPowerValue(setting.PowerSetting, value)
+            };
+        }
+        catch (Exception ex)
+        {
+            return new { parseError = ex.Message };
+        }
+    }
+
+    private static string GetPowerSettingName(Guid setting) =>
+        setting == MonitorPowerOnGuid ? "GUID_MONITOR_POWER_ON" :
+        setting == ConsoleDisplayStateGuid ? "GUID_CONSOLE_DISPLAY_STATE" :
+        setting == SessionDisplayStatusGuid ? "GUID_SESSION_DISPLAY_STATUS" :
+        "unknown";
+
+    private static string? DescribeDisplayPowerValue(Guid setting, int? value)
+    {
+        if (value is null)
+        {
+            return null;
+        }
+
+        if (setting == MonitorPowerOnGuid)
+        {
+            return value == 0 ? "off" : value == 1 ? "on" : $"unknown:{value}";
+        }
+
+        if (setting == ConsoleDisplayStateGuid || setting == SessionDisplayStatusGuid)
+        {
+            return value == 0 ? "off" : value == 1 ? "on" : value == 2 ? "dimmed" : $"unknown:{value}";
+        }
+
+        return null;
     }
 
     private static object CaptureDesktopState()
@@ -581,7 +675,12 @@ public sealed class DisplayDiagnosticsService : IDisposable
 
     private sealed class DiagnosticMessageWindow : Forms.NativeWindow, IDisposable
     {
+        private const int WsPopup = unchecked((int)0x80000000);
+        private const int WsExToolWindow = 0x00000080;
+        private const int WsExNoActivate = 0x08000000;
+        private const uint DeviceNotifyWindowHandle = 0;
         private readonly Action<int, nint, nint> _callback;
+        private readonly List<nint> _powerNotificationHandles = [];
 
         public DiagnosticMessageWindow(Action<int, nint, nint> callback)
         {
@@ -589,9 +688,20 @@ public sealed class DisplayDiagnosticsService : IDisposable
             CreateHandle(new Forms.CreateParams
             {
                 Caption = "Awayra.DisplayDiagnostics",
-                Parent = new nint(-3)
+                X = -32_000,
+                Y = -32_000,
+                Width = 1,
+                Height = 1,
+                Style = WsPopup,
+                ExStyle = WsExToolWindow | WsExNoActivate
             });
+
+            RegisterPowerNotification(MonitorPowerOnGuid);
+            RegisterPowerNotification(ConsoleDisplayStateGuid);
+            RegisterPowerNotification(SessionDisplayStatusGuid);
         }
+
+        public int RegisteredPowerNotificationCount => _powerNotificationHandles.Count;
 
         protected override void WndProc(ref Forms.Message message)
         {
@@ -601,9 +711,28 @@ public sealed class DisplayDiagnosticsService : IDisposable
 
         public void Dispose()
         {
+            foreach (var notificationHandle in _powerNotificationHandles)
+            {
+                if (notificationHandle != nint.Zero)
+                {
+                    _ = UnregisterPowerSettingNotification(notificationHandle);
+                }
+            }
+
+            _powerNotificationHandles.Clear();
             if (Handle != nint.Zero)
             {
                 DestroyHandle();
+            }
+        }
+
+        private void RegisterPowerNotification(Guid settingGuid)
+        {
+            var mutableGuid = settingGuid;
+            var notificationHandle = RegisterPowerSettingNotification(Handle, ref mutableGuid, DeviceNotifyWindowHandle);
+            if (notificationHandle != nint.Zero)
+            {
+                _powerNotificationHandles.Add(notificationHandle);
             }
         }
     }
@@ -622,6 +751,13 @@ public sealed class DisplayDiagnosticsService : IDisposable
         public required string Category { get; init; }
         public required string EventName { get; init; }
         public object? Data { get; init; }
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct PowerBroadcastSetting
+    {
+        public Guid PowerSetting;
+        public uint DataLength;
     }
 
     [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
@@ -683,4 +819,11 @@ public sealed class DisplayDiagnosticsService : IDisposable
 
     [DllImport("user32.dll")]
     private static extern uint GetWindowThreadProcessId(nint windowHandle, out uint processId);
+
+    [DllImport("user32.dll", SetLastError = true)]
+    private static extern nint RegisterPowerSettingNotification(nint recipient, ref Guid powerSettingGuid, uint flags);
+
+    [DllImport("user32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool UnregisterPowerSettingNotification(nint handle);
 }
