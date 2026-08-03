@@ -2,6 +2,7 @@ using System.Windows;
 using System.Windows.Automation;
 using System.Windows.Input;
 using System.Windows.Interop;
+using System.Windows.Media;
 using System.Windows.Media.Animation;
 using System.Windows.Threading;
 using Awayra.App.Interop;
@@ -13,12 +14,18 @@ namespace Awayra.App.Views;
 
 public partial class BreakOverlayWindow : Window
 {
+    private const int RenderFramesRequiredAfterPosition = 2;
+
     private readonly ApplicationHost _host;
     private readonly OverlayViewModel _viewModel;
     private readonly IMonitorSnapshotService _snapshotService;
     private readonly DispatcherTimer _monitorRecoveryTimer;
     private readonly DisplayBoundsStabilizer _displayBoundsStabilizer = new();
     private Storyboard? _pulseStoryboard;
+    private System.Drawing.Rectangle? _pendingRevealBounds;
+    private int _renderFramesUntilReveal;
+    private bool _waitingForRevealRender;
+    private bool _firstFrameRevealed;
     private bool _isClosed;
 
     public BreakOverlayWindow(
@@ -42,6 +49,7 @@ public partial class BreakOverlayWindow : Window
         _monitorRecoveryTimer.Tick += OnMonitorRecoveryTick;
         _host.BreakSound.StateChanged += OnSoundStateChanged;
         Loaded += OnLoaded;
+        ContentRendered += OnFirstContentRendered;
         Closed += OnClosed;
     }
 
@@ -77,19 +85,35 @@ public partial class BreakOverlayWindow : Window
 
         _monitorRecoveryTimer.Stop();
         _displayBoundsStabilizer.Reset();
-        _ = new WindowInteropHelper(this).EnsureHandle();
+        StopWaitingForRevealRender();
+
         var targetBounds = MonitorLocator.GetCursorScreen().Bounds;
+        _pendingRevealBounds = targetBounds;
+        _firstFrameRevealed = false;
+
+        // A fullscreen WPF window can briefly expose its black background before the
+        // snapshot and controls have completed their first render. Keep the native
+        // window fully transparent and non-activating until a complete frame has been
+        // rendered at the final physical monitor bounds.
+        Opacity = 0;
+        ShowActivated = false;
+        _ = new WindowInteropHelper(this).EnsureHandle();
         _ = MonitorLocator.PositionWindowOnBounds(this, targetBounds);
+        _host.Logger.Info($"Overlay prepared invisibly before first render: {targetBounds}.");
         Show();
-        _ = MonitorLocator.PositionWindowOnBounds(this, targetBounds);
-        Activate();
-        Focus();
     }
 
     public void RepositionOnActiveMonitor()
     {
         if (_isClosed || !IsVisible)
         {
+            return;
+        }
+
+        if (!_firstFrameRevealed)
+        {
+            _pendingRevealBounds = MonitorLocator.GetCursorScreen().Bounds;
+            _renderFramesUntilReveal = RenderFramesRequiredAfterPosition;
             return;
         }
 
@@ -118,13 +142,106 @@ public partial class BreakOverlayWindow : Window
         }
 
         _monitorRecoveryTimer.Stop();
+        StopWaitingForRevealRender();
         _pulseStoryboard?.Stop();
         Close();
     }
 
+    private void OnFirstContentRendered(object? sender, EventArgs e)
+    {
+        if (_isClosed || !IsVisible || _firstFrameRevealed)
+        {
+            return;
+        }
+
+        ContentRendered -= OnFirstContentRendered;
+        ApplyPendingRevealBounds();
+        BeginWaitingForRevealRender();
+    }
+
+    private void ApplyPendingRevealBounds()
+    {
+        var targetBounds = _pendingRevealBounds ?? MonitorLocator.GetCursorScreen().Bounds;
+        _pendingRevealBounds = null;
+
+        // Any final DPI/topology correction can invalidate the frame that triggered
+        // ContentRendered. Keep opacity at zero and require subsequent render frames
+        // after this position has been applied before exposing the window to DWM.
+        var changed = MonitorLocator.PositionWindowOnBounds(this, targetBounds);
+        UpdateLayout();
+        _renderFramesUntilReveal = RenderFramesRequiredAfterPosition;
+        _host.Logger.Info(changed
+            ? $"Overlay final bounds changed while invisible; waiting for post-position render: {targetBounds}."
+            : $"Overlay final bounds confirmed while invisible; waiting for reveal render: {targetBounds}.");
+    }
+
+    private void BeginWaitingForRevealRender()
+    {
+        if (_waitingForRevealRender)
+        {
+            return;
+        }
+
+        _waitingForRevealRender = true;
+        CompositionTarget.Rendering += OnPostPositionRendering;
+    }
+
+    private void StopWaitingForRevealRender()
+    {
+        if (!_waitingForRevealRender)
+        {
+            return;
+        }
+
+        CompositionTarget.Rendering -= OnPostPositionRendering;
+        _waitingForRevealRender = false;
+        _renderFramesUntilReveal = 0;
+    }
+
+    private void OnPostPositionRendering(object? sender, EventArgs e)
+    {
+        if (_isClosed || !IsVisible || _firstFrameRevealed)
+        {
+            StopWaitingForRevealRender();
+            return;
+        }
+
+        if (_pendingRevealBounds is not null)
+        {
+            ApplyPendingRevealBounds();
+            return;
+        }
+
+        if (_renderFramesUntilReveal > 0)
+        {
+            _renderFramesUntilReveal--;
+            return;
+        }
+
+        StopWaitingForRevealRender();
+        RevealPreparedOverlay();
+    }
+
+    private void RevealPreparedOverlay()
+    {
+        if (_isClosed || !IsVisible || _firstFrameRevealed)
+        {
+            return;
+        }
+
+        _firstFrameRevealed = true;
+        Opacity = 1;
+        ShowActivated = true;
+        Activate();
+        Focus();
+
+        var bounds = MonitorLocator.GetCursorScreen().Bounds;
+        _host.Logger.Info($"Overlay revealed after complete post-position render: {bounds}.");
+    }
+
     private void OnMonitorRecoveryTick(object? sender, EventArgs e)
     {
-        if (_isClosed || !IsVisible)
+        if (_isClosed || !IsVisible || !_firstFrameRevealed)
         {
             _monitorRecoveryTimer.Stop();
             _displayBoundsStabilizer.Reset();
@@ -182,12 +299,16 @@ public partial class BreakOverlayWindow : Window
     private void OnClosed(object? sender, EventArgs e)
     {
         _isClosed = true;
+        _firstFrameRevealed = false;
+        _pendingRevealBounds = null;
         _monitorRecoveryTimer.Stop();
         _monitorRecoveryTimer.Tick -= OnMonitorRecoveryTick;
+        StopWaitingForRevealRender();
         _displayBoundsStabilizer.Reset();
         _pulseStoryboard?.Stop();
         _host.BreakSound.StateChanged -= OnSoundStateChanged;
         Loaded -= OnLoaded;
+        ContentRendered -= OnFirstContentRendered;
         Closed -= OnClosed;
     }
 

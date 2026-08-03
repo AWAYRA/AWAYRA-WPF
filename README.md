@@ -52,7 +52,7 @@ Awayra stores settings and runtime information locally under `%LocalAppData%\Awa
 
 ## Installation behavior
 
-Awayra uses a per-user installation at `%LocalAppData%\Programs\Awayra` and does not require administrator access. Version 1.1.1 performs a clean replacement: it stops an old Awayra process and removes stale program files, settings, scheduler state, logs, shortcuts, and startup registration before installing the new version. Uninstall removes Awayra-owned application data.
+Awayra uses a per-user installation at `%LocalAppData%\Programs\Awayra` and does not require administrator access. Version 1.1.2 performs a clean replacement: it stops an old Awayra process and removes stale program files, settings, scheduler state, logs, shortcuts, and startup registration before installing the new version. Uninstall removes Awayra-owned application data.
 
 ## Development
 
