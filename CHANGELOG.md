@@ -8,6 +8,27 @@ The project follows semantic versioning where practical.
 
 No unreleased changes yet.
 
+## [1.1.3] - 2026-08-03
+
+### Added
+
+- Continuous local display timeline with UTC, local, and monotonic timestamps
+- Two-second desktop state snapshots covering monitor topology, resolution, refresh rate, DWM state, power state, foreground process, and Awayra process health
+- Low-level capture for Windows display, power, device, setting, DPI, and DWM composition messages
+- Direct capture of session, power-mode, display-setting, and user-preference system events
+- Dashboard action to mark a visible screen blink and create a complete diagnostic ZIP
+- Diagnostic bundle collection for Awayra logs, Windows System and Application events, DxgKrnl and Kernel-PnP events, connected monitor and display devices, active power plan, display power settings, and DxDiag
+
+### Changed
+
+- Application, assembly, package, installer, and public release metadata updated to `1.1.3`
+- Dashboard includes the current diagnostic recorder status and automatically opens the generated ZIP in Explorer
+
+### Notes
+
+- Version 1.1.3 is an evidence-gathering build. It does not claim that the remaining physical monitor blink is fixed.
+- Diagnostic information stays local until the user explicitly sends the generated ZIP.
+
 ## [1.1.2] - 2026-08-03
 
 ### Changed

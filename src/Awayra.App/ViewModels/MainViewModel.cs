@@ -1,4 +1,6 @@
+using System.Diagnostics;
 using System.Threading;
+using System.Windows;
 using System.Windows.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -14,6 +16,7 @@ public partial class MainViewModel : ObservableObject
     private readonly Action _openSettings;
     private readonly DispatcherTimer _uiTimer;
     private readonly SemaphoreSlim _settingsUpdateGate = new(1, 1);
+    private readonly DisplayDiagnosticsManager? _displayDiagnostics;
 
     [ObservableProperty] private string _title = string.Empty;
     [ObservableProperty] private string _statusText = string.Empty;
@@ -42,11 +45,32 @@ public partial class MainViewModel : ObservableObject
     [ObservableProperty] private string _todayMoveText = string.Empty;
     [ObservableProperty] private string _todaySkippedText = string.Empty;
     [ObservableProperty] private string _todaySnoozedText = string.Empty;
+    [ObservableProperty] private string _reportScreenBlinkLabel = "Screen blink happened — Save diagnostics";
+    [ObservableProperty] private string _diagnosticStatusText = "Diagnostics record continuously while Awayra is running.";
+    [ObservableProperty] private bool _isDiagnosticReportRunning;
 
     public MainViewModel(ApplicationHost host, Action openSettings)
     {
         _host = host;
         _openSettings = openSettings;
+
+        if (System.Windows.Application.Current is Awayra.App.App)
+        {
+            try
+            {
+                _displayDiagnostics = DisplayDiagnosticsManager.GetOrCreate(host.Logger);
+                _displayDiagnostics.Record("awayra", "dashboard_diagnostics_ready", new
+                {
+                    timeline = _displayDiagnostics.TimelinePath
+                });
+            }
+            catch (Exception ex)
+            {
+                host.Logger.Error("Display diagnostics could not start", ex);
+                DiagnosticStatusText = "Display diagnostics could not start. Check Awayra logs.";
+            }
+        }
+
         _uiTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
         _uiTimer.Tick += (_, _) => Refresh();
         _host.StateChanged += (_, _) => DispatchRefresh();
@@ -72,6 +96,7 @@ public partial class MainViewModel : ObservableObject
     [RelayCommand]
     private void EyeNow()
     {
+        _displayDiagnostics?.Record("user_action", "eye_break_now_clicked");
         _host.Scheduler.TriggerNow(BreakType.Eye);
         Refresh();
     }
@@ -79,6 +104,7 @@ public partial class MainViewModel : ObservableObject
     [RelayCommand]
     private void MoveNow()
     {
+        _displayDiagnostics?.Record("user_action", "move_break_now_clicked");
         _host.Scheduler.TriggerNow(BreakType.Move);
         Refresh();
     }
@@ -100,7 +126,60 @@ public partial class MainViewModel : ObservableObject
         await UpdateQuickSettingAsync(settings => settings.MoveBreakSoundEnabled = !settings.MoveBreakSoundEnabled).ConfigureAwait(true);
 
     [RelayCommand]
-    private void OpenSettings() => _openSettings();
+    private void OpenSettings()
+    {
+        _displayDiagnostics?.Record("user_action", "settings_clicked");
+        _openSettings();
+    }
+
+    [RelayCommand(CanExecute = nameof(CanReportScreenBlink))]
+    private async Task ReportScreenBlinkAsync()
+    {
+        if (_displayDiagnostics is null)
+        {
+            System.Windows.MessageBox.Show(
+                "Display diagnostics are not active. Open the Awayra log folder and send awayra.log.",
+                "Awayra diagnostics",
+                MessageBoxButton.OK,
+                MessageBoxImage.Warning);
+            return;
+        }
+
+        IsDiagnosticReportRunning = true;
+        DiagnosticStatusText = "Collecting the timeline, Windows events, monitor, GPU, power, and DxDiag data...";
+        _displayDiagnostics.Record("user_action", "screen_blink_button_clicked");
+
+        try
+        {
+            var reportPath = await _displayDiagnostics.CaptureBlinkReportAsync().ConfigureAwait(true);
+            DiagnosticStatusText = $"Diagnostic ZIP saved: {Path.GetFileName(reportPath)}";
+            System.Windows.MessageBox.Show(
+                $"The diagnostic ZIP is ready. Send this complete file:\n\n{reportPath}",
+                "Awayra display diagnostics",
+                MessageBoxButton.OK,
+                MessageBoxImage.Information);
+            RevealFileInExplorer(reportPath);
+        }
+        catch (Exception ex)
+        {
+            _host.Logger.Error("Screen blink diagnostic capture failed", ex);
+            DiagnosticStatusText = "Diagnostic capture failed. The continuous timeline is still available in LocalAppData\\Awayra\\Diagnostics.";
+            System.Windows.MessageBox.Show(
+                $"Diagnostic capture failed:\n\n{ex.Message}\n\nThe continuous timeline is still being recorded.",
+                "Awayra display diagnostics",
+                MessageBoxButton.OK,
+                MessageBoxImage.Error);
+        }
+        finally
+        {
+            IsDiagnosticReportRunning = false;
+        }
+    }
+
+    private bool CanReportScreenBlink() => !IsDiagnosticReportRunning;
+
+    partial void OnIsDiagnosticReportRunningChanged(bool value) =>
+        ReportScreenBlinkCommand.NotifyCanExecuteChanged();
 
     private async Task UpdateQuickSettingAsync(Action<AppSettings> update)
     {
@@ -110,6 +189,13 @@ public partial class MainViewModel : ObservableObject
             var settings = _host.Settings.Copy();
             update(settings);
             await _host.UpdateSettingsAsync(settings).ConfigureAwait(true);
+            _displayDiagnostics?.Record("settings", "dashboard_quick_setting_updated", new
+            {
+                settings.EyeResetEnabled,
+                settings.MoveBreakEnabled,
+                settings.EyeBreakSoundEnabled,
+                settings.MoveBreakSoundEnabled
+            });
             Refresh();
         }
         catch (Exception ex)
@@ -169,6 +255,22 @@ public partial class MainViewModel : ObservableObject
         TodaySkipped = today.Skipped;
         TodaySnoozed = today.Snoozed;
         TogglePauseCommand.NotifyCanExecuteChanged();
+    }
+
+    private static void RevealFileInExplorer(string path)
+    {
+        try
+        {
+            Process.Start(new ProcessStartInfo
+            {
+                FileName = "explorer.exe",
+                Arguments = $"/select,\"{path}\"",
+                UseShellExecute = true
+            });
+        }
+        catch
+        {
+        }
     }
 
     private static string FormatCountdown(TimeSpan remaining)
