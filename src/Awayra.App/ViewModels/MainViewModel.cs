@@ -133,7 +133,7 @@ public partial class MainViewModel : ObservableObject
     {
         if (_displayDiagnostics is null)
         {
-            MessageBox.Show(
+            System.Windows.MessageBox.Show(
                 "Display diagnostics are not active. Open the Awayra log folder and send awayra.log.",
                 "Awayra diagnostics",
                 MessageBoxButton.OK,
@@ -149,7 +149,7 @@ public partial class MainViewModel : ObservableObject
         {
             var reportPath = await _displayDiagnostics.CaptureBlinkReportAsync().ConfigureAwait(true);
             DiagnosticStatusText = $"Diagnostic ZIP saved: {Path.GetFileName(reportPath)}";
-            MessageBox.Show(
+            System.Windows.MessageBox.Show(
                 $"The diagnostic ZIP is ready. Send this complete file:\n\n{reportPath}",
                 "Awayra display diagnostics",
                 MessageBoxButton.OK,
@@ -160,7 +160,7 @@ public partial class MainViewModel : ObservableObject
         {
             _host.Logger.Error("Screen blink diagnostic capture failed", ex);
             DiagnosticStatusText = "Diagnostic capture failed. The continuous timeline is still available in LocalAppData\\Awayra\\Diagnostics.";
-            MessageBox.Show(
+            System.Windows.MessageBox.Show(
                 $"Diagnostic capture failed:\n\n{ex.Message}\n\nThe continuous timeline is still being recorded.",
                 "Awayra display diagnostics",
                 MessageBoxButton.OK,
