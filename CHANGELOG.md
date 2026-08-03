@@ -8,6 +8,21 @@ The project follows semantic versioning where practical.
 
 No unreleased changes yet.
 
+## [1.1.2] - 2026-08-03
+
+### Changed
+
+- Fullscreen break overlays are now created and positioned while fully transparent and non-activating
+- Overlay activation is deferred until WPF reports that the first complete content frame has rendered
+- Monitor recovery is held until the initial overlay frame has been revealed
+- Added structured log entries for invisible overlay preparation, first-frame reveal, and later display recovery
+
+### Fixed
+
+- Prevented the one-frame black fullscreen surface that could look like the monitor briefly powered off when a break overlay opened
+- Removed the second visible `SetWindowPos` call from the overlay startup path
+- Prevented display-recovery positioning from racing the initial WPF render
+
 ## [1.1.1] - 2026-08-02
 
 ### Added
