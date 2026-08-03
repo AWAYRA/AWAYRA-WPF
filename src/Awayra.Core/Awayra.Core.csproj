@@ -18,7 +18,7 @@
     <RepositoryUrl>https://github.com/AWAYRA/AWAYRA-WPF.git</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <PackageReadmeFile>PACKAGE-README.md</PackageReadmeFile>
-    <PackageReleaseNotes>Awayra 1.1.1 scheduling core with validated settings and reminder lifecycle behavior.</PackageReleaseNotes>
+    <PackageReleaseNotes>Awayra 1.1.2 scheduling core with validated settings, reminder lifecycle behavior, and synchronized release metadata.</PackageReleaseNotes>
     <IncludeSymbols>false</IncludeSymbols>
   </PropertyGroup>
 
