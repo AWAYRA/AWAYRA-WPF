@@ -75,17 +75,76 @@ public sealed class DisplayDiagnosticsServiceTests
         finally
         {
             AppPaths.OverrideDataRoot = previousDataRoot;
+            DeleteDirectoryBestEffort(dataRoot);
+        }
+    }
+
+    [TestMethod]
+    [Timeout(15_000)]
+    public async Task FlushAsync_WhenTimelineIsLocked_FailsInsteadOfHanging()
+    {
+        var previousDataRoot = AppPaths.OverrideDataRoot;
+        var dataRoot = Path.Combine(Path.GetTempPath(), "Awayra.DisplayDiagnostics.LockTests", Guid.NewGuid().ToString("N"));
+        AppPaths.OverrideDataRoot = dataRoot;
+
+        try
+        {
+            AppPaths.EnsureDataRoot();
+            using var logger = new FileLogger(AppPaths.LogFilePath);
+            using var recorder = new DisplayDiagnosticsService(logger);
+            await using var exclusiveLock = new FileStream(
+                AppPaths.DisplayTimelinePath,
+                FileMode.OpenOrCreate,
+                FileAccess.ReadWrite,
+                FileShare.None);
+
+            recorder.Record("test", "locked_timeline");
+
+            Exception? firstFailure = null;
             try
             {
-                if (Directory.Exists(dataRoot))
-                {
-                    Directory.Delete(dataRoot, recursive: true);
-                }
+                await recorder.FlushAsync().ConfigureAwait(false);
             }
-            catch
+            catch (Exception ex)
             {
-                // A failed cleanup must not hide the diagnostic assertion that failed.
+                firstFailure = ex;
             }
+
+            Assert.IsNotNull(firstFailure, "FlushAsync unexpectedly succeeded while the timeline was exclusively locked.");
+            Assert.IsInstanceOfType<IOException>(firstFailure);
+
+            Exception? secondFailure = null;
+            try
+            {
+                await recorder.FlushAsync().ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                secondFailure = ex;
+            }
+
+            Assert.IsNotNull(secondFailure, "A failed writer must reject later flush attempts immediately.");
+            Assert.IsInstanceOfType<IOException>(secondFailure);
+        }
+        finally
+        {
+            AppPaths.OverrideDataRoot = previousDataRoot;
+            DeleteDirectoryBestEffort(dataRoot);
+        }
+    }
+
+    private static void DeleteDirectoryBestEffort(string path)
+    {
+        try
+        {
+            if (Directory.Exists(path))
+            {
+                Directory.Delete(path, recursive: true);
+            }
+        }
+        catch
+        {
+            // A failed cleanup must not hide the diagnostic assertion that failed.
         }
     }
 }
