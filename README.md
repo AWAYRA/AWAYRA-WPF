@@ -35,7 +35,16 @@ The installer includes the required .NET runtime. Official executable files are 
 - Windows startup, start-minimized, and tray behavior
 - Daily break statistics
 - Per-monitor DPI support and stabilized recovery after monitor wake, lock/unlock, resume, or display changes
+- Continuous local display diagnostics with a one-click screen-blink report
 - Offline operation with no account, advertising, telemetry, or cloud dependency
+
+## Display diagnostics
+
+Awayra 1.1.3 continuously records a bounded local display timeline while the program is running. It captures monitor topology and refresh rate, DWM composition state, Windows display and power messages, session and device transitions, the active foreground process name, and Awayra process health.
+
+After a visible blink, open the dashboard and press **Screen blink happened — Save diagnostics**. Awayra creates a ZIP under `%LocalAppData%\Awayra\Diagnostics\` and opens it in File Explorer. The ZIP contains the timeline, Awayra logs, recent Windows event logs, connected monitor and GPU device information, power configuration, and DxDiag output.
+
+The recorder does not upload anything. Window titles, screenshots, document contents, and browser history are not collected. Diagnostic data leaves the computer only when the user explicitly sends the ZIP.
 
 ## Default schedule
 
@@ -48,11 +57,11 @@ All intervals and durations are configurable.
 
 ## Privacy
 
-Awayra stores settings and runtime information locally under `%LocalAppData%\Awayra\`. It does not upload screenshots, browsing history, application usage, or personal information.
+Awayra stores settings, runtime information, logs, and diagnostic traces locally under `%LocalAppData%\Awayra\`. It does not automatically upload screenshots, browsing history, application usage, diagnostic files, or personal information.
 
 ## Installation behavior
 
-Awayra uses a per-user installation at `%LocalAppData%\Programs\Awayra` and does not require administrator access. Version 1.1.2 performs a clean replacement: it stops an old Awayra process and removes stale program files, settings, scheduler state, logs, shortcuts, and startup registration before installing the new version. Uninstall removes Awayra-owned application data.
+Awayra uses a per-user installation at `%LocalAppData%\Programs\Awayra` and does not require administrator access. Version 1.1.3 performs a clean replacement: it stops an old Awayra process and removes stale program files, settings, scheduler state, logs, diagnostics, shortcuts, and startup registration before installing the new version. Uninstall removes Awayra-owned application data.
 
 ## Development
 
@@ -88,7 +97,7 @@ Generated installers, executables, certificates, and release directories must no
 | Project | Responsibility |
 |---|---|
 | `src/Awayra.Core` | Scheduling, settings, validation, statistics, and domain logic |
-| `src/Awayra.App` | WPF UI, tray integration, overlays, persistence, sound, and Windows interop |
+| `src/Awayra.App` | WPF UI, tray integration, overlays, persistence, sound, diagnostics, and Windows interop |
 | `tests/Awayra.Core.Tests` | Platform-neutral domain tests |
 | `tests/Awayra.App.Tests` | WPF application and service tests |
 | `tests/Awayra.UiTests` | Windows UI automation tests |
