@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.IO;
 using System.Windows;
 using System.Windows.Media;
@@ -80,18 +81,29 @@ public sealed class AboutWindowTests
             WpfTestHost.EnsureApplicationResources();
             var host = WpfTestHost.CreateHost();
             var before = host.Scheduler.GetSnapshot();
+            var elapsed = Stopwatch.StartNew();
 
             AboutWindow? window = null;
             window = new AboutWindow(new AboutViewModel(new FakeExternalLinkLauncher(), () => window?.Close()));
             window.Show();
             window.UpdateLayout();
             window.Close();
+            elapsed.Stop();
 
             var after = host.Scheduler.GetSnapshot();
+            var permittedCountdownChange = elapsed.Elapsed + TimeSpan.FromSeconds(1);
+            var eyeCountdownChange = before.EyeRemaining - after.EyeRemaining;
+            var moveCountdownChange = before.MoveRemaining - after.MoveRemaining;
+
             Assert.AreEqual(before.Status, after.Status);
-            Assert.IsTrue(Math.Abs((before.EyeRemaining - after.EyeRemaining).TotalSeconds) <= 2);
-            Assert.IsTrue(Math.Abs((before.MoveRemaining - after.MoveRemaining).TotalSeconds) <= 2);
             Assert.AreEqual(before.IsPausedManual, after.IsPausedManual);
+            Assert.AreEqual(before.EyeEnabled, after.EyeEnabled);
+            Assert.AreEqual(before.MoveEnabled, after.MoveEnabled);
+            Assert.AreEqual(before.ActiveBreak, after.ActiveBreak);
+            Assert.AreEqual(before.QueuedBreak, after.QueuedBreak);
+            Assert.AreEqual(before.NextBreakDue, after.NextBreakDue);
+            Assert.IsTrue(eyeCountdownChange >= TimeSpan.Zero && eyeCountdownChange <= permittedCountdownChange);
+            Assert.IsTrue(moveCountdownChange >= TimeSpan.Zero && moveCountdownChange <= permittedCountdownChange);
             host.Dispose();
         });
     }
