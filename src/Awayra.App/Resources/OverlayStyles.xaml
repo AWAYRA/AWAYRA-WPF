@@ -49,7 +49,7 @@
   <Style x:Key="Overlay.CountdownText" TargetType="TextBlock">
     <Setter Property="Foreground" Value="{StaticResource Overlay.CountdownTextBrush}" />
     <Setter Property="FontFamily" Value="{StaticResource Overlay.Font}" />
-    <Setter Property="FontSize" Value="52" />
+    <Setter Property="FontSize" Value="44" />
     <Setter Property="FontWeight" Value="SemiBold" />
     <Setter Property="HorizontalAlignment" Value="Center" />
     <Setter Property="VerticalAlignment" Value="Center" />
