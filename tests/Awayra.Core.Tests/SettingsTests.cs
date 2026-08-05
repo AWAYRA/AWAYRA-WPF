@@ -30,6 +30,7 @@ public sealed class SettingsTests
         Assert.IsTrue(settings.CloseToTray);
         Assert.AreEqual(OverlayGlassSettings.DefaultGlassClarity, settings.GlassClarity);
         Assert.IsFalse(settings.ReducedMotion);
+        Assert.IsTrue(settings.BreakAnimationEnabled, "The guided break exercise should be on by default.");
     }
 
     [TestMethod]

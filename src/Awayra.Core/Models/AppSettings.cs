@@ -52,6 +52,13 @@ public sealed class AppSettings
     public bool CloseToTray { get; set; } = true;
 
     public int GlassClarity { get; set; } = OverlayGlassSettings.DefaultGlassClarity;
+
+    /// <summary>
+    /// Whether the break overlay shows the guided exercise illustration at all. Independent of
+    /// <see cref="ReducedMotion"/>, which keeps the illustration but removes its movement.
+    /// </summary>
+    public bool BreakAnimationEnabled { get; set; } = true;
+
     public bool ReducedMotion { get; set; }
 
     public AppSettings Copy() => (AppSettings)MemberwiseClone();

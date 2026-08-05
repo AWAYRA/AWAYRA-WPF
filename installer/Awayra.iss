@@ -79,8 +79,12 @@ Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; IconFilename: "
 Name: "{group}\{cm:UninstallProgram,{#MyAppName}}"; Filename: "{uninstallexe}"
 Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\awayra.ico"; Check: WantsDesktopIcon() and IconFileExists()
 
+; Deliberately no postinstall flag. That flag puts the entry on the Finished page inside Inno's
+; RunList, which is another TNewCheckListBox and clips its check glyph at fractional display
+; scaling exactly like the Tasks page did. The choice is offered on the options page as a native
+; check box instead, and Awayra starts as installation finishes.
 [Run]
-Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; Flags: nowait postinstall skipifsilent
+Filename: "{app}\{#MyAppExeName}"; Flags: nowait skipifsilent; Check: WantsLaunch()
 
 ; Personal data is intentionally NOT listed here. Whether settings, statistics and logs are
 ; removed is decided at uninstall time in CurUninstallStepChanged so the user can keep them.
@@ -98,6 +102,7 @@ var
   KeepDataRadio: TNewRadioButton;
   ResetDataRadio: TNewRadioButton;
   DesktopIconCheck: TNewCheckBox;
+  LaunchCheck: TNewCheckBox;
   ForceCleanData: Boolean;
   ForceDesktopIcon: Boolean;
   RemoveDataOnUninstall: Boolean;
@@ -202,6 +207,18 @@ begin
   Result.Caption := ACaption;
 end;
 
+function AddCheck(APage: TWizardPage; const ACaption: String; ATop: Integer; AChecked: Boolean): TNewCheckBox;
+begin
+  Result := TNewCheckBox.Create(APage);
+  Result.Parent := APage.Surface;
+  Result.Left := 0;
+  Result.Top := ATop;
+  Result.Width := APage.SurfaceWidth;
+  Result.Height := ScaleY(20);
+  Result.Caption := ACaption;
+  Result.Checked := AChecked;
+end;
+
 procedure InitializeWizard();
 var
   Y: Integer;
@@ -230,15 +247,10 @@ begin
     Y := Y + ResetDataRadio.Height + ScaleY(22);
   end;
 
-  Y := AddHeading(OptionsPage, 'Additional shortcuts', Y);
-
-  DesktopIconCheck := TNewCheckBox.Create(OptionsPage);
-  DesktopIconCheck.Parent := OptionsPage.Surface;
-  DesktopIconCheck.Left := 0;
-  DesktopIconCheck.Top := Y;
-  DesktopIconCheck.Width := OptionsPage.SurfaceWidth;
-  DesktopIconCheck.Height := ScaleY(20);
-  DesktopIconCheck.Caption := 'Create a desktop shortcut';
+  Y := AddHeading(OptionsPage, 'Shortcuts and startup', Y);
+  DesktopIconCheck := AddCheck(OptionsPage, 'Create a desktop shortcut', Y, False);
+  Y := Y + DesktopIconCheck.Height + ScaleY(2);
+  LaunchCheck := AddCheck(OptionsPage, 'Start Awayra when Setup finishes', Y, True);
 end;
 
 { Interactive installs follow the wizard choice. Silent installs preserve data unless the caller
@@ -263,6 +275,14 @@ begin
     Result := False
   else
     Result := (DesktopIconCheck <> nil) and DesktopIconCheck.Checked;
+end;
+
+function WantsLaunch(): Boolean;
+begin
+  if WizardSilent() then
+    Result := False
+  else
+    Result := (LaunchCheck <> nil) and LaunchCheck.Checked;
 end;
 
 procedure RemoveUserData();

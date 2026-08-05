@@ -48,7 +48,10 @@ Each break shows a guided animation instead of a bare countdown.
 
 **Move Break** shows a figure typing at a desk who stands, turns, walks away while the camera follows, reaches up to stretch, bends side to side and rolls their shoulders. They then turn to face you for three squats and three jumps, before walking back and sitting down. The loop begins and ends in the same pose, so it plays as a continuous round trip.
 
-Enabling **Reduced motion** in Settings replaces both animations with static illustrations and a single line of written guidance.
+Both are controlled from **Settings → Break sound and exercise**:
+
+- **Show the guided exercise animation** is on by default. Turn it off for a plain countdown.
+- **Reduced motion**, under Appearance, keeps the illustration but replaces the movement with a single line of written guidance.
 
 ## Sounds
 

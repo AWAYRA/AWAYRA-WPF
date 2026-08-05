@@ -17,6 +17,7 @@ No unreleased changes yet.
 - Two soft melodic sounds, Morning dew and Still water, that swell in from silence and recede rather than starting at full volume like the alert tones
 - Detailed workstation in the Move Break scene: a monitor with an on-screen layout, keyboard, mouse, mug, and an office chair with a gas cylinder, star base and casters
 - Both animations honour the existing Reduced motion setting, which replaces them with static illustrations and written guidance
+- Setting to turn the guided break exercise off entirely, on by default, in Settings under Break sound and exercise
 - Installer wizard page asking whether to keep or delete existing settings, statistics and reminder schedule
 - `/CLEANDATA=yes` installer switch for unattended installs that intentionally want a full reset
 - Uninstall now asks before removing personal data
@@ -32,7 +33,8 @@ No unreleased changes yet.
 ### Fixed
 
 - The Eye Reset blink is now driven by two lids that sweep across a stationary eyeball, closing quickly and opening slowly the way a real blink does, instead of the whole eye squashing
-- Installer check boxes and radio buttons no longer have their glyphs clipped at 125% or 150% display scaling
+- Installer check boxes and radio buttons no longer have their glyphs clipped at 125% or 150% display scaling. Every option now lives on one page built from native controls, including the launch choice that used to sit on the Finished page
+- Six sound choices now fit the Settings window without a scrollbar at its minimum size
 - Snoozing one reminder no longer postpones the other. A snoozed Eye Reset could delay an unrelated Move Break by up to the full snooze duration; each reminder now keeps its own schedule, with only a 60-second handoff grace so two overlays never appear back to back
 
 ### Removed

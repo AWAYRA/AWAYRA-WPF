@@ -39,6 +39,7 @@ public sealed class SettingsSaveTransitionTests
             StartMinimized = source.StartMinimized,
             CloseToTray = source.CloseToTray,
             GlassClarity = source.GlassClarity,
+            BreakAnimationEnabled = source.BreakAnimationEnabled,
             ReducedMotion = source.ReducedMotion
         };
 

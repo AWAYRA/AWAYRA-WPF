@@ -103,6 +103,7 @@ public sealed class SettingsViewModelSaveTests
             StartMinimized = source.StartMinimized,
             CloseToTray = source.CloseToTray,
             GlassClarity = source.GlassClarity,
+            BreakAnimationEnabled = source.BreakAnimationEnabled,
             ReducedMotion = source.ReducedMotion
         };
 

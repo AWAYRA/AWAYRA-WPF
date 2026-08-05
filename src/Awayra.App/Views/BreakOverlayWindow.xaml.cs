@@ -73,16 +73,24 @@ public partial class BreakOverlayWindow : Window
             _viewModel.ConfigureMove(args, settings, localization, snapshot);
         }
 
-        ConfigureExerciseView(isEye);
+        ConfigureExerciseView(isEye, settings.BreakAnimationEnabled);
         UpdateSoundState();
     }
 
     /// <summary>
-    /// Shows the guided exercise that matches this break. Motion only starts once the overlay is
-    /// loaded, and never when the user has asked for reduced motion.
+    /// Shows the guided exercise that matches this break. Turning the exercise off hides the
+    /// illustration entirely and leaves a plain countdown; Reduced motion keeps the illustration
+    /// but replaces the movement with static guidance. Motion only starts once the overlay loads.
     /// </summary>
-    private void ConfigureExerciseView(bool isEye)
+    private void ConfigureExerciseView(bool isEye, bool animationEnabled)
     {
+        if (!animationEnabled)
+        {
+            EyeExercise.Visibility = Visibility.Collapsed;
+            MoveExercise.Visibility = Visibility.Collapsed;
+            return;
+        }
+
         EyeExercise.Visibility = isEye ? Visibility.Visible : Visibility.Collapsed;
         MoveExercise.Visibility = isEye ? Visibility.Collapsed : Visibility.Visible;
 

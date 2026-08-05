@@ -35,6 +35,7 @@ public partial class SettingsViewModel : ObservableObject
     [ObservableProperty] private bool _startMinimized;
     [ObservableProperty] private bool _closeToTray;
     [ObservableProperty] private int _glassClarity;
+    [ObservableProperty] private bool _breakAnimationEnabled;
     [ObservableProperty] private bool _reducedMotion;
 
     public ObservableCollection<string> ValidationErrors { get; } = [];
@@ -195,6 +196,7 @@ public partial class SettingsViewModel : ObservableObject
         StartMinimized = settings.StartMinimized;
         CloseToTray = settings.CloseToTray;
         GlassClarity = settings.GlassClarity;
+        BreakAnimationEnabled = settings.BreakAnimationEnabled;
         ReducedMotion = settings.ReducedMotion;
     }
 
@@ -234,6 +236,7 @@ public partial class SettingsViewModel : ObservableObject
             StartMinimized = StartMinimized,
             CloseToTray = CloseToTray,
             GlassClarity = GlassClarity,
+            BreakAnimationEnabled = BreakAnimationEnabled,
             ReducedMotion = ReducedMotion
         };
     }

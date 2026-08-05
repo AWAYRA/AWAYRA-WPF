@@ -178,6 +178,38 @@ public sealed class XamlViewInstantiationTests
     }
 
     [TestMethod]
+    [DataRow(true)]
+    [DataRow(false)]
+    public void DisablingTheBreakAnimation_HidesBothExercisesEntirely(bool isEye)
+    {
+        StaTestContext.Run(() =>
+        {
+            WpfTestHost.EnsureApplicationResources();
+            var host = WpfTestHost.CreateHost();
+            host.Settings.BreakAnimationEnabled = false;
+            var overlay = new BreakOverlayWindow(host, new OverlayViewModel(), new NullMonitorSnapshotService());
+            overlay.Configure(
+                new BreakStartedEventArgs
+                {
+                    BreakType = isEye ? BreakType.Eye : BreakType.Move,
+                    DurationSeconds = 20,
+                    ActivityIndex = 0
+                },
+                host.Settings,
+                host.Localization,
+                isEye: isEye);
+
+            var eye = (UIElement)overlay.FindName("EyeExercise");
+            var move = (UIElement)overlay.FindName("MoveExercise");
+            Assert.AreEqual(Visibility.Collapsed, eye.Visibility);
+            Assert.AreEqual(Visibility.Collapsed, move.Visibility);
+
+            overlay.CloseSafely();
+            host.Dispose();
+        });
+    }
+
+    [TestMethod]
     public void ReducedMotion_ReplacesTheAnimatedEyeCueWithStaticGuidance()
     {
         StaTestContext.Run(() =>
