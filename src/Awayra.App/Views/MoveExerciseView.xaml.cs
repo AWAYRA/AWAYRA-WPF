@@ -4,10 +4,11 @@ using UserControl = System.Windows.Controls.UserControl;
 namespace Awayra.App.Views;
 
 /// <summary>
-/// Animated movement prompt shown during a Move Break: a figure leaves the desk, walks out with
-/// the camera following, stretches overhead, bends side to side, rolls their shoulders, does three
-/// squats, then walks back and sits down. The loop starts and ends in the same pose so it reads as
-/// a continuous round trip rather than a restart.
+/// Animated movement prompt shown during a Move Break: a figure stops typing, leaves the desk,
+/// walks out with the camera following, stretches overhead, bends side to side, rolls their
+/// shoulders, turns to face the viewer for three squats and three jumps, then walks back and sits
+/// down. The loop starts and ends in the same pose so it reads as a continuous round trip rather
+/// than a restart.
 /// </summary>
 public partial class MoveExerciseView : UserControl
 {
@@ -50,6 +51,6 @@ public partial class MoveExerciseView : UserControl
     public void ApplyReducedMotion()
     {
         StopAnimation();
-        MoveCaptionText.Text = "Stand up, walk, stretch, three squats, then sit back down";
+        MoveCaptionText.Text = "Stand up, walk, stretch, three squats, three jumps, then sit back down";
     }
 }

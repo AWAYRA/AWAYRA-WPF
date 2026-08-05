@@ -46,7 +46,7 @@ Each break shows a guided animation instead of a bare countdown.
 
 **Eye Reset** draws an eye with expanding focus rings that prompt you to send your focus into the distance and bring it back, alongside ten complete blinks counted on screen. One blink every two seconds means a default 20-second break delivers exactly ten.
 
-**Move Break** shows a figure at a desk who stands, turns, walks away while the camera follows, reaches up to stretch, bends side to side, rolls their shoulders, does three squats, then walks back and sits down. The loop begins and ends in the same pose, so it plays as a continuous round trip.
+**Move Break** shows a figure typing at a desk who stands, turns, walks away while the camera follows, reaches up to stretch, bends side to side and rolls their shoulders. They then turn to face you for three squats and three jumps, before walking back and sitting down. The loop begins and ends in the same pose, so it plays as a continuous round trip.
 
 Enabling **Reduced motion** in Settings replaces both animations with static illustrations and a single line of written guidance.
 

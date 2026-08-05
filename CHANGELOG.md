@@ -13,7 +13,7 @@ No unreleased changes yet.
 ### Added
 
 - Guided eye exercise on the Eye Reset overlay: an animated eye with expanding focus rings and ten complete blinks counted on screen
-- Guided movement routine on the Move Break overlay: a figure stands, turns, walks away with the camera following, stretches overhead, bends side to side, rolls their shoulders, performs three squats, then walks back and sits down
+- Guided movement routine on the Move Break overlay: a figure stops typing, stands, walks away with the camera following, stretches overhead, bends side to side and rolls their shoulders, then turns to face the viewer for three squats and three jumps before walking back and sitting down
 - Two soft melodic sounds, Morning dew and Still water, that swell in from silence and recede rather than starting at full volume like the alert tones
 - Detailed workstation in the Move Break scene: a monitor with an on-screen layout, keyboard, mouse, mug, and an office chair with a gas cylinder, star base and casters
 - Both animations honour the existing Reduced motion setting, which replaces them with static illustrations and written guidance
