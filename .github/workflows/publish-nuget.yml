@@ -59,7 +59,7 @@ jobs:
 
       - name: Upload pull request package artifact
         if: github.event_name == 'pull_request'
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: Awayra-Core-NuGet-${{ github.event.pull_request.number }}
           path: artifacts/nuget/*.nupkg
