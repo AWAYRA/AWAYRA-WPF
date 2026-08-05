@@ -30,7 +30,7 @@ The installer includes the required .NET runtime. Official executable files are 
 - Guided eye exercise: an animated focus cue and ten counted blinks
 - Guided movement routine: an animated stand, walk, stretch, and return
 - Optional sound for each reminder
-- Four locally generated sounds: Soft bell, Gentle chime, Calm drop, and an original Calm piano loop
+- Six locally generated sounds, including two soft melodies that fade in from silence rather than startling you
 - Configurable volume and repeat interval
 - Per-break mute and unmute control
 - Idle detection and optional work-hour restrictions
@@ -46,9 +46,22 @@ Each break shows a guided animation instead of a bare countdown.
 
 **Eye Reset** draws an eye with expanding focus rings that prompt you to send your focus into the distance and bring it back, alongside ten complete blinks counted on screen. One blink every two seconds means a default 20-second break delivers exactly ten.
 
-**Move Break** shows a figure at a desk who stands, turns, walks away while the camera follows, reaches up to stretch, bends side to side, rolls their shoulders, then walks back and sits down. The loop begins and ends in the same pose, so it plays as a continuous round trip.
+**Move Break** shows a figure at a desk who stands, turns, walks away while the camera follows, reaches up to stretch, bends side to side, rolls their shoulders, does three squats, then walks back and sits down. The loop begins and ends in the same pose, so it plays as a continuous round trip.
 
 Enabling **Reduced motion** in Settings replaces both animations with static illustrations and a single line of written guidance.
+
+## Sounds
+
+All six sounds are generated locally at first use. Nothing is downloaded and no audio file ships with the application.
+
+| Sound | Character |
+|---|---|
+| Soft bell, Gentle chime, Calm drop | Short alert tones |
+| Calm piano | A four-note piano phrase |
+| **Morning dew** | A five-note phrase that rises and returns, fading in from silence |
+| **Still water** | The same shape an octave lower and slower |
+
+The two melodies are deliberately quieter than the alert tones and begin below one twentieth of their peak volume, so a break never announces itself with a jolt.
 
 ## Default schedule
 

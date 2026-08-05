@@ -87,6 +87,30 @@ public partial class SettingsViewModel : ObservableObject
         }
     }
 
+    public bool IsMorningDewSelected
+    {
+        get => BreakSoundTheme == BreakSoundTheme.MorningDew;
+        set
+        {
+            if (value)
+            {
+                BreakSoundTheme = BreakSoundTheme.MorningDew;
+            }
+        }
+    }
+
+    public bool IsStillWaterSelected
+    {
+        get => BreakSoundTheme == BreakSoundTheme.StillWater;
+        set
+        {
+            if (value)
+            {
+                BreakSoundTheme = BreakSoundTheme.StillWater;
+            }
+        }
+    }
+
     public SettingsViewModel(ApplicationHost host, Action<bool> close)
     {
         _host = host;
@@ -102,6 +126,8 @@ public partial class SettingsViewModel : ObservableObject
         OnPropertyChanged(nameof(IsGentleChimeSelected));
         OnPropertyChanged(nameof(IsCalmDropSelected));
         OnPropertyChanged(nameof(IsCalmPianoSelected));
+        OnPropertyChanged(nameof(IsMorningDewSelected));
+        OnPropertyChanged(nameof(IsStillWaterSelected));
     }
 
     [RelayCommand]

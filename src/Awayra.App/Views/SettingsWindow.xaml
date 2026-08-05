@@ -106,7 +106,7 @@
                            Style="{StaticResource Settings.PageDescription}"
                            Margin="0,-4,0,9" />
 
-                <UniformGrid Columns="2" Rows="2" Margin="0,0,0,4">
+                <UniformGrid Columns="2" Rows="3" Margin="0,0,0,4">
                   <RadioButton AutomationProperties.AutomationId="SoftBellSoundRadio"
                                GroupName="BreakSoundTheme"
                                Content="Soft bell"
@@ -126,6 +126,16 @@
                                GroupName="BreakSoundTheme"
                                Content="Calm piano"
                                IsChecked="{Binding IsCalmPianoSelected}"
+                               Style="{StaticResource Settings.SoundRadio}" />
+                  <RadioButton AutomationProperties.AutomationId="MorningDewSoundRadio"
+                               GroupName="BreakSoundTheme"
+                               Content="Morning dew"
+                               IsChecked="{Binding IsMorningDewSelected}"
+                               Style="{StaticResource Settings.SoundRadio}" />
+                  <RadioButton AutomationProperties.AutomationId="StillWaterSoundRadio"
+                               GroupName="BreakSoundTheme"
+                               Content="Still water"
+                               IsChecked="{Binding IsStillWaterSelected}"
                                Style="{StaticResource Settings.SoundRadio}" />
                 </UniformGrid>
 

@@ -98,13 +98,13 @@ public sealed class BreakSoundServiceTests
     }
 
     [TestMethod]
-    public void ToneGenerator_ProducesFourDistinctValidWaveFiles()
+    public void ToneGenerator_ProducesDistinctValidWaveFilesForEveryTheme()
     {
         var generated = Enum.GetValues<BreakSoundTheme>()
             .Select(BreakToneGenerator.GenerateWaveBytes)
             .ToArray();
 
-        Assert.AreEqual(4, generated.Length);
+        Assert.AreEqual(6, generated.Length);
         foreach (var wave in generated)
         {
             Assert.IsTrue(wave.Length > 44);
@@ -133,6 +133,48 @@ public sealed class BreakSoundServiceTests
 
         Assert.IsTrue(durationSeconds >= 1.79 && durationSeconds <= 1.81);
         Assert.IsTrue(wave.Skip(44).Any(value => value != 0));
+    }
+
+    [TestMethod]
+    [DataRow(BreakSoundTheme.MorningDew, 3.2)]
+    [DataRow(BreakSoundTheme.StillWater, 4.0)]
+    public void MelodicThemes_StartFromSilenceAndReturnToIt(BreakSoundTheme theme, double expectedSeconds)
+    {
+        var samples = ReadSamples(BreakToneGenerator.GenerateWaveBytes(theme));
+        var duration = samples.Length / 44_100d;
+        Assert.IsTrue(
+            Math.Abs(duration - expectedSeconds) < 0.02,
+            $"{theme} should last {expectedSeconds}s but lasted {duration:0.000}s.");
+
+        // A startling sound is one that is already loud in its first few milliseconds. These two
+        // must swell in from silence instead.
+        var peak = samples.Max(Math.Abs);
+        var firstTenMs = samples.Take(441).Max(Math.Abs);
+        Assert.IsTrue(
+            firstTenMs < peak * 0.06,
+            $"{theme} opens at {firstTenMs / (double)peak:P1} of peak, which is an abrupt onset.");
+
+        // ...and recede again rather than being cut off mid-note.
+        var lastFiftyMs = samples.Skip(samples.Length - 2205).Max(Math.Abs);
+        Assert.IsTrue(
+            lastFiftyMs < peak * 0.12,
+            $"{theme} ends at {lastFiftyMs / (double)peak:P1} of peak, which is an abrupt cut.");
+
+        // Deliberately quieter than the alert themes.
+        var bellPeak = ReadSamples(BreakToneGenerator.GenerateWaveBytes(BreakSoundTheme.SoftBell)).Max(Math.Abs);
+        Assert.IsTrue(peak < bellPeak, $"{theme} should be softer than Soft bell.");
+    }
+
+    private static short[] ReadSamples(byte[] wave)
+    {
+        var dataLength = BitConverter.ToInt32(wave, 40);
+        var samples = new short[dataLength / sizeof(short)];
+        for (var i = 0; i < samples.Length; i++)
+        {
+            samples[i] = BitConverter.ToInt16(wave, 44 + (i * sizeof(short)));
+        }
+
+        return samples;
     }
 
     private sealed class RecordingTonePlayer : IBreakTonePlayer

@@ -221,7 +221,7 @@ public sealed class XamlViewInstantiationTests
             var move = (MoveExerciseView)overlay.FindName("MoveExercise");
             var caption = (System.Windows.Controls.TextBlock)move.FindName("MoveCaptionText");
 
-            Assert.AreEqual("Stand up, walk a little, stretch, then sit back down", caption.Text);
+            Assert.AreEqual("Stand up, walk, stretch, three squats, then sit back down", caption.Text);
 
             overlay.CloseSafely();
             host.Dispose();

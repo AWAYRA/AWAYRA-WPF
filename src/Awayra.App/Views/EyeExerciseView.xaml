@@ -18,26 +18,40 @@
         One blink every two seconds. Over a default 20-second Eye Reset this delivers exactly the
         ten complete blinks the instruction asks for, and it stays correct for any other duration
         because the cycle simply repeats.
+
+        The eye does not squash. Real lids sweep across a stationary eyeball, the upper lid travels
+        roughly twice as far as the lower one, and closing (~90 ms) is markedly faster than opening
+        (~180 ms). Getting that asymmetry right is most of what makes a blink read as real.
       -->
       <Storyboard x:Key="Eye.BlinkStoryboard" RepeatBehavior="Forever">
-        <DoubleAnimationUsingKeyFrames Storyboard.TargetName="EyeLidScale"
-                                       Storyboard.TargetProperty="ScaleY"
+        <DoubleAnimationUsingKeyFrames Storyboard.TargetName="UpperLidTranslate"
+                                       Storyboard.TargetProperty="Y"
                                        Duration="0:0:2">
-          <LinearDoubleKeyFrame KeyTime="0:0:1.15" Value="1" />
-          <SplineDoubleKeyFrame KeyTime="0:0:1.32" Value="0.06" KeySpline="0.4,0,1,1" />
-          <SplineDoubleKeyFrame KeyTime="0:0:1.40" Value="0.06" KeySpline="0,0,1,1" />
-          <SplineDoubleKeyFrame KeyTime="0:0:1.62" Value="1" KeySpline="0,0,0.3,1" />
-          <LinearDoubleKeyFrame KeyTime="0:0:2" Value="1" />
+          <LinearDoubleKeyFrame KeyTime="0:0:1.20" Value="-36" />
+          <SplineDoubleKeyFrame KeyTime="0:0:1.29" Value="46" KeySpline="0.3,0,0.7,1" />
+          <LinearDoubleKeyFrame KeyTime="0:0:1.34" Value="46" />
+          <SplineDoubleKeyFrame KeyTime="0:0:1.52" Value="-36" KeySpline="0,0,0.35,1" />
+          <LinearDoubleKeyFrame KeyTime="0:0:2" Value="-36" />
         </DoubleAnimationUsingKeyFrames>
 
-        <!-- The lash line stays visible while the eye is shut so a closed eye still reads as an eye. -->
-        <DoubleAnimationUsingKeyFrames Storyboard.TargetName="LashLine"
-                                       Storyboard.TargetProperty="Opacity"
+        <DoubleAnimationUsingKeyFrames Storyboard.TargetName="LowerLidTranslate"
+                                       Storyboard.TargetProperty="Y"
                                        Duration="0:0:2">
-          <LinearDoubleKeyFrame KeyTime="0:0:1.15" Value="0" />
-          <LinearDoubleKeyFrame KeyTime="0:0:1.32" Value="1" />
-          <LinearDoubleKeyFrame KeyTime="0:0:1.40" Value="1" />
-          <LinearDoubleKeyFrame KeyTime="0:0:1.62" Value="0" />
+          <LinearDoubleKeyFrame KeyTime="0:0:1.20" Value="20" />
+          <SplineDoubleKeyFrame KeyTime="0:0:1.29" Value="-26" KeySpline="0.3,0,0.7,1" />
+          <LinearDoubleKeyFrame KeyTime="0:0:1.34" Value="-26" />
+          <SplineDoubleKeyFrame KeyTime="0:0:1.52" Value="20" KeySpline="0,0,0.35,1" />
+          <LinearDoubleKeyFrame KeyTime="0:0:2" Value="20" />
+        </DoubleAnimationUsingKeyFrames>
+
+        <!-- Bell's phenomenon: the eyeball rolls up slightly behind the closing lid. -->
+        <DoubleAnimationUsingKeyFrames Storyboard.TargetName="IrisTranslate"
+                                       Storyboard.TargetProperty="Y"
+                                       Duration="0:0:2">
+          <LinearDoubleKeyFrame KeyTime="0:0:1.20" Value="0" />
+          <SplineDoubleKeyFrame KeyTime="0:0:1.31" Value="-5" KeySpline="0.3,0,0.7,1" />
+          <SplineDoubleKeyFrame KeyTime="0:0:1.56" Value="0" KeySpline="0,0,0.35,1" />
+          <LinearDoubleKeyFrame KeyTime="0:0:2" Value="0" />
         </DoubleAnimationUsingKeyFrames>
       </Storyboard>
 
@@ -136,19 +150,18 @@
         </Ellipse.RenderTransform>
       </Ellipse>
 
-      <!-- The eye itself. ScaleY on this group is the blink. -->
-      <Grid x:Name="EyeGroup" Width="200" Height="124" RenderTransformOrigin="0.5,0.5">
-        <Grid.RenderTransform>
-          <ScaleTransform x:Name="EyeLidScale" ScaleX="1" ScaleY="1" />
-        </Grid.RenderTransform>
-
+      <!-- The eye. The eyeball is fixed; only the lids move. -->
+      <Grid x:Name="EyeGroup" Width="200" Height="124">
         <Canvas Width="200" Height="124" Clip="{StaticResource Eye.OutlineGeometry}">
           <Path Data="{StaticResource Eye.OutlineGeometry}" Fill="#FFEDF3F9" />
 
           <Grid Canvas.Left="74" Canvas.Top="36" Width="52" Height="52"
                 RenderTransformOrigin="0.5,0.5">
             <Grid.RenderTransform>
-              <ScaleTransform x:Name="IrisScale" ScaleX="1" ScaleY="1" />
+              <TransformGroup>
+                <ScaleTransform x:Name="IrisScale" ScaleX="1" ScaleY="1" />
+                <TranslateTransform x:Name="IrisTranslate" X="0" Y="0" />
+              </TransformGroup>
             </Grid.RenderTransform>
             <Ellipse Width="52" Height="52">
               <Ellipse.Fill>
@@ -165,6 +178,33 @@
                      HorizontalAlignment="Left" VerticalAlignment="Top"
                      Margin="11,9,0,0" />
           </Grid>
+
+          <!--
+            Each lid edge is the eye's own outline curve, so the two nest against the almond
+            exactly and the eye closes across its whole width. A lid drawn with its own arbitrary
+            curvature leaves slivers of white at the corners when it meets in the middle.
+          -->
+
+          <!-- Lower lid first, so the upper lid's lash edge stays on top when they meet. -->
+          <Canvas>
+            <Canvas.RenderTransform>
+              <TranslateTransform x:Name="LowerLidTranslate" Y="20" />
+            </Canvas.RenderTransform>
+            <Path Fill="#FF33414F"
+                  Data="M -30,62 L 18,62 C 60,110 140,110 182,62 L 230,62 L 230,320 L -30,320 Z" />
+            <Path Stroke="#FF1E2733" StrokeThickness="2" StrokeLineJoin="Round"
+                  Data="M -30,62 L 18,62 C 60,110 140,110 182,62 L 230,62" />
+          </Canvas>
+
+          <Canvas>
+            <Canvas.RenderTransform>
+              <TranslateTransform x:Name="UpperLidTranslate" Y="-36" />
+            </Canvas.RenderTransform>
+            <Path Fill="#FF3B4B5E"
+                  Data="M -30,-260 L 230,-260 L 230,62 L 182,62 C 140,14 60,14 18,62 L -30,62 Z" />
+            <Path Stroke="#FF1E2733" StrokeThickness="2.5" StrokeLineJoin="Round"
+                  Data="M -30,62 L 18,62 C 60,14 140,14 182,62 L 230,62" />
+          </Canvas>
         </Canvas>
 
         <Path Data="{StaticResource Eye.OutlineGeometry}"
@@ -172,12 +212,6 @@
               StrokeThickness="3"
               StrokeLineJoin="Round" />
       </Grid>
-
-      <!-- Shown only while the eye is shut. -->
-      <Rectangle x:Name="LashLine" Width="164" Height="3.5" RadiusX="1.75" RadiusY="1.75"
-                 Fill="#FF2A3542"
-                 HorizontalAlignment="Center" VerticalAlignment="Center"
-                 Opacity="0" />
     </Grid>
 
     <TextBlock x:Name="FocusHintText"

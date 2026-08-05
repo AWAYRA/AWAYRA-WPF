@@ -7,7 +7,13 @@ public enum BreakSoundTheme
     SoftBell = 0,
     GentleChime = 1,
     CalmDrop = 2,
-    CalmPiano = 3
+    CalmPiano = 3,
+
+    /// <summary>Rising and returning pentatonic phrase. Fades in, so it never startles.</summary>
+    MorningDew = 4,
+
+    /// <summary>Lower, slower and warmer version of the same rise-and-return shape.</summary>
+    StillWater = 5
 }
 
 public sealed class AppSettings
