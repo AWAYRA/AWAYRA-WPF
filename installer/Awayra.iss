@@ -65,8 +65,10 @@ VersionInfoVersion={#MyAppVersionInfo}
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"
 
-[Tasks]
-Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
+; No [Tasks] section on purpose. Inno renders the Select Additional Tasks page with a
+; TNewCheckListBox, whose owner-drawn check and radio glyphs are clipped at fractional display
+; scaling such as 150%. Every option Awayra needs lives on one custom page built from native
+; TNewRadioButton and TNewCheckBox controls, which Windows itself renders correctly at any DPI.
 
 [Files]
 Source: "{#PublishDir}\{#MyAppExeName}"; DestDir: "{app}"; Flags: ignoreversion
@@ -75,7 +77,7 @@ Source: "{#PublishDir}\awayra.ico"; DestDir: "{app}"; Flags: ignoreversion skipi
 [Icons]
 Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\awayra.ico"; Check: IconFileExists()
 Name: "{group}\{cm:UninstallProgram,{#MyAppName}}"; Filename: "{uninstallexe}"
-Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: desktopicon; IconFilename: "{app}\awayra.ico"; Check: IconFileExists()
+Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\awayra.ico"; Check: WantsDesktopIcon() and IconFileExists()
 
 [Run]
 Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; Flags: nowait postinstall skipifsilent
@@ -92,8 +94,12 @@ const
   RunValueName = 'Awayra';
 
 var
-  DataChoicePage: TInputOptionWizardPage;
+  OptionsPage: TWizardPage;
+  KeepDataRadio: TNewRadioButton;
+  ResetDataRadio: TNewRadioButton;
+  DesktopIconCheck: TNewCheckBox;
   ForceCleanData: Boolean;
+  ForceDesktopIcon: Boolean;
   RemoveDataOnUninstall: Boolean;
 
 function IconFileExists(): Boolean;
@@ -152,25 +158,87 @@ begin
     DirExists(ExpandConstant('{userappdata}\Awayra'));
 end;
 
-procedure InitializeWizard();
+{ Every control below is positioned through ScaleX/ScaleY. Controls created from Pascal Script are
+  not scaled automatically, and unscaled coordinates are what makes glyphs and captions collide at
+  125% or 150% display scaling. }
+
+function AddHeading(APage: TWizardPage; const ACaption: String; ATop: Integer): Integer;
+var
+  Heading: TNewStaticText;
 begin
-  DataChoicePage := CreateInputOptionPage(
-    wpSelectTasks,
-    'Your existing Awayra data',
-    'Awayra found settings and statistics from a previous installation.',
-    'Awayra always replaces its program files. Choose what should happen to your personal data.',
-    True,
-    False);
-  DataChoicePage.Add('Keep my settings, statistics and reminder schedule (recommended)');
-  DataChoicePage.Add('Delete my existing data and install a completely fresh copy');
-  DataChoicePage.SelectedValueIndex := 0;
+  Heading := TNewStaticText.Create(APage);
+  Heading.Parent := APage.Surface;
+  Heading.Left := 0;
+  Heading.Top := ATop;
+  Heading.AutoSize := True;
+  Heading.Font.Style := [fsBold];
+  Heading.Caption := ACaption;
+  Result := ATop + Heading.Height + ScaleY(6);
 end;
 
-function ShouldSkipPage(PageID: Integer): Boolean;
+function AddParagraph(APage: TWizardPage; const ACaption: String; ATop: Integer): Integer;
+var
+  Paragraph: TNewStaticText;
 begin
-  Result := False;
-  if (DataChoicePage <> nil) and (PageID = DataChoicePage.ID) then
-    Result := not PreviousDataExists();
+  Paragraph := TNewStaticText.Create(APage);
+  Paragraph.Parent := APage.Surface;
+  Paragraph.Left := 0;
+  Paragraph.Top := ATop;
+  Paragraph.Width := APage.SurfaceWidth;
+  Paragraph.WordWrap := True;
+  Paragraph.AutoSize := True;
+  Paragraph.Caption := ACaption;
+  Result := ATop + Paragraph.Height + ScaleY(10);
+end;
+
+function AddRadio(APage: TWizardPage; const ACaption: String; ATop: Integer): TNewRadioButton;
+begin
+  Result := TNewRadioButton.Create(APage);
+  Result.Parent := APage.Surface;
+  Result.Left := 0;
+  Result.Top := ATop;
+  Result.Width := APage.SurfaceWidth;
+  Result.Height := ScaleY(20);
+  Result.Caption := ACaption;
+end;
+
+procedure InitializeWizard();
+var
+  Y: Integer;
+begin
+  OptionsPage := CreateCustomPage(
+    wpLicense,
+    'Setup options',
+    'Choose how Awayra should handle your data and your shortcuts.');
+
+  Y := 0;
+
+  { The data question is only meaningful when there is something to lose. }
+  if PreviousDataExists() then
+  begin
+    Y := AddHeading(OptionsPage, 'Your existing Awayra data', Y);
+    Y := AddParagraph(
+      OptionsPage,
+      'Awayra always replaces its program files. Your settings, statistics and reminder schedule are yours to keep.',
+      Y);
+
+    KeepDataRadio := AddRadio(OptionsPage, 'Keep my settings, statistics and reminder schedule (recommended)', Y);
+    KeepDataRadio.Checked := True;
+    Y := Y + KeepDataRadio.Height + ScaleY(2);
+
+    ResetDataRadio := AddRadio(OptionsPage, 'Delete my existing data and install a completely fresh copy', Y);
+    Y := Y + ResetDataRadio.Height + ScaleY(22);
+  end;
+
+  Y := AddHeading(OptionsPage, 'Additional shortcuts', Y);
+
+  DesktopIconCheck := TNewCheckBox.Create(OptionsPage);
+  DesktopIconCheck.Parent := OptionsPage.Surface;
+  DesktopIconCheck.Left := 0;
+  DesktopIconCheck.Top := Y;
+  DesktopIconCheck.Width := OptionsPage.SurfaceWidth;
+  DesktopIconCheck.Height := ScaleY(20);
+  DesktopIconCheck.Caption := 'Create a desktop shortcut';
 end;
 
 { Interactive installs follow the wizard choice. Silent installs preserve data unless the caller
@@ -184,7 +252,17 @@ begin
   else if WizardSilent() then
     Result := False
   else
-    Result := DataChoicePage.SelectedValueIndex = 1;
+    Result := (ResetDataRadio <> nil) and ResetDataRadio.Checked;
+end;
+
+function WantsDesktopIcon(): Boolean;
+begin
+  if ForceDesktopIcon then
+    Result := True
+  else if WizardSilent() then
+    Result := False
+  else
+    Result := (DesktopIconCheck <> nil) and DesktopIconCheck.Checked;
 end;
 
 procedure RemoveUserData();
@@ -216,6 +294,7 @@ end;
 function InitializeSetup(): Boolean;
 begin
   ForceCleanData := CompareText(ExpandConstant('{param:cleandata|no}'), 'yes') = 0;
+  ForceDesktopIcon := CompareText(ExpandConstant('{param:desktopicon|no}'), 'yes') = 0;
   Result := True;
 end;
 
