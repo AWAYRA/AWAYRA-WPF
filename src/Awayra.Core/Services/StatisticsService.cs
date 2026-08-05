@@ -1,3 +1,4 @@
+using System.Globalization;
 using Awayra.Core.Abstractions;
 using Awayra.Core.Models;
 
@@ -68,5 +69,11 @@ public sealed class StatisticsService
         }
     }
 
-    public static string GetDayKey(DateTimeOffset time) => time.ToString("yyyy-MM-dd");
+    /// <summary>
+    /// Day keys are storage identifiers, not display text. Without the invariant culture a machine
+    /// on a non-Gregorian calendar such as fa-IR would key the same day as 1405-05-14 and never find
+    /// the statistics it wrote yesterday.
+    /// </summary>
+    public static string GetDayKey(DateTimeOffset time) =>
+        time.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
 }

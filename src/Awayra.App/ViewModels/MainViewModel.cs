@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Threading;
 using System.Windows.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -8,7 +9,7 @@ using Awayra.Core.Models;
 
 namespace Awayra.App.ViewModels;
 
-public partial class MainViewModel : ObservableObject
+public partial class MainViewModel : ObservableObject, IDisposable
 {
     private readonly ApplicationHost _host;
     private readonly Action _openSettings;
@@ -53,6 +54,13 @@ public partial class MainViewModel : ObservableObject
         _host.StateChanged += (_, _) => DispatchRefresh();
         Refresh();
         _uiTimer.Start();
+    }
+
+    public void Dispose()
+    {
+        _uiTimer.Stop();
+        _settingsUpdateGate.Dispose();
+        GC.SuppressFinalize(this);
     }
 
     [RelayCommand]
@@ -172,7 +180,7 @@ public partial class MainViewModel : ObservableObject
         TogglePauseCommand.NotifyCanExecuteChanged();
     }
 
-    private static string FormatCountdown(TimeSpan remaining)
+    internal static string FormatCountdown(TimeSpan remaining)
     {
         if (remaining <= TimeSpan.Zero)
         {
@@ -180,7 +188,11 @@ public partial class MainViewModel : ObservableObject
         }
 
         return remaining.TotalHours >= 1
-            ? $"{(int)remaining.TotalHours:D2}:{remaining.Minutes:D2}:{remaining.Seconds:D2}"
-            : $"{remaining.Minutes:D2}:{remaining.Seconds:D2}";
+            ? string.Create(
+                CultureInfo.InvariantCulture,
+                $"{(int)remaining.TotalHours:D2}:{remaining.Minutes:D2}:{remaining.Seconds:D2}")
+            : string.Create(
+                CultureInfo.InvariantCulture,
+                $"{remaining.Minutes:D2}:{remaining.Seconds:D2}");
     }
 }

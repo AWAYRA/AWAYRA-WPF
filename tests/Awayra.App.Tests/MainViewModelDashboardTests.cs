@@ -65,7 +65,8 @@ public sealed class MainViewModelDashboardTests
             host.Scheduler.Pause();
             viewModel.Refresh();
 
-            Assert.AreEqual(SchedulerStatus.Snoozed, host.Scheduler.GetSnapshot().Status);
+            // The dashboard reports the pause the user chose, not the snooze underneath it.
+            Assert.AreEqual(SchedulerStatus.PausedManual, host.Scheduler.GetSnapshot().Status);
             Assert.IsTrue(viewModel.IsManuallyPaused);
             Assert.AreEqual("Resume", viewModel.PauseResumeText);
             Assert.IsFalse(viewModel.CanPause);

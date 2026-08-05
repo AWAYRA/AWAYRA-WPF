@@ -40,6 +40,8 @@ The installer includes the required .NET runtime. Official executable files are 
 - Reduced-motion setting that replaces every animation with static guidance
 - Offline operation with no account, advertising, telemetry, or cloud dependency
 
+The interface is English only.
+
 ## Break exercises
 
 Each break shows a guided animation instead of a bare countdown.
@@ -79,6 +81,8 @@ All intervals and durations are configurable.
 
 Awayra stores settings, runtime information, and logs locally under `%LocalAppData%\Awayra\`. It does not upload screenshots, browsing history, application usage, or personal information. The application makes no network calls of any kind.
 
+When a break starts, Awayra captures the display your cursor is on and blurs it behind the break card, so the overlay reads as frosted glass rather than a black wall. That image exists only in memory for the length of the break. It is never written to disk, never leaves your computer, and is discarded when the overlay closes. If you would rather no capture happened at all, set **Overlay appearance** to *Solid*.
+
 ## Installation behavior
 
 Awayra uses a per-user installation at `%LocalAppData%\Programs\Awayra` and does not require administrator access.
@@ -91,7 +95,11 @@ Program files are always replaced: the installer stops any running Awayra proces
 Awayra-Setup-x64.exe /VERYSILENT /CLEANDATA=yes
 ```
 
-Uninstall asks whether to remove your settings and statistics, and keeps them by default so a reinstall picks up where you left off. A silent uninstall removes everything.
+Uninstall asks whether to remove your settings and statistics, and keeps them by default so a reinstall picks up where you left off. From version 1.3.0 a silent uninstall keeps them too, so removing Awayra through a package manager or management tool does not destroy your data. Add `/CLEANDATA=yes` to remove it deliberately:
+
+```bash
+unins000.exe /VERYSILENT /CLEANDATA=yes
+```
 
 ## Development
 

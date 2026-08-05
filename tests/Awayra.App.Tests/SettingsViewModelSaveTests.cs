@@ -81,31 +81,9 @@ public sealed class SettingsViewModelSaveTests
         return host;
     }
 
-    private static AppSettings CloneSettings(AppSettings source) =>
-        new()
-        {
-            SchemaVersion = source.SchemaVersion,
-            EyeResetEnabled = source.EyeResetEnabled,
-            EyeResetIntervalMinutes = source.EyeResetIntervalMinutes,
-            EyeResetDurationSeconds = source.EyeResetDurationSeconds,
-            MoveBreakEnabled = source.MoveBreakEnabled,
-            MoveBreakIntervalMinutes = source.MoveBreakIntervalMinutes,
-            MoveBreakDurationSeconds = source.MoveBreakDurationSeconds,
-            AllowSkip = source.AllowSkip,
-            AllowSnooze = source.AllowSnooze,
-            SnoozeDurationMinutes = source.SnoozeDurationMinutes,
-            PauseWhileIdle = source.PauseWhileIdle,
-            IdleThresholdMinutes = source.IdleThresholdMinutes,
-            WorkHoursEnabled = source.WorkHoursEnabled,
-            WorkStart = source.WorkStart,
-            WorkEnd = source.WorkEnd,
-            RunAtStartup = source.RunAtStartup,
-            StartMinimized = source.StartMinimized,
-            CloseToTray = source.CloseToTray,
-            GlassClarity = source.GlassClarity,
-            BreakAnimationEnabled = source.BreakAnimationEnabled,
-            ReducedMotion = source.ReducedMotion
-        };
+    // AppSettings.Copy() rather than a hand-written field list: the previous one silently dropped
+    // every sound setting, and would have dropped each new setting added after it.
+    private static AppSettings CloneSettings(AppSettings source) => source.Copy();
 
     private sealed class NullIdleMonitor : IIdleMonitor
     {

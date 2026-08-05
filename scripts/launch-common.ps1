@@ -2,13 +2,8 @@ function Get-RepoRoot {
     Resolve-Path (Join-Path $PSScriptRoot "..")
 }
 
-function Stop-AllAwayraProcesses {
-    Get-Process -Name "Awayra" -ErrorAction SilentlyContinue | ForEach-Object {
-        try { Stop-Process -Id $_.Id -Force -ErrorAction Stop } catch { }
-    }
-    Start-Sleep -Milliseconds 500
-}
-
+# Stops only the Awayra built from this checkout. Scripts must never terminate the copy the
+# developer has installed and is relying on while they work.
 function Stop-AwayraProcessesUnderRoot {
     param([Parameter(Mandatory = $true)][string]$RootPath)
 

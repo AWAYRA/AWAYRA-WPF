@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Awayra.Core.Abstractions;
@@ -25,14 +26,27 @@ public static class JsonOptions
 
 public sealed class TimeOnlyJsonConverter : JsonConverter<TimeOnly>
 {
+    // Persisted times are a wire format, not a display format. "HH:mm" resolves ":" through the
+    // ambient culture's time separator, so a locale that writes 09.00 could not read its own file
+    // back once the UI thread had forced the culture to English.
+    private const string Format = "HH\\:mm";
+
     public override TimeOnly Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
     {
         var value = reader.GetString();
-        return string.IsNullOrWhiteSpace(value) ? TimeOnly.MinValue : TimeOnly.Parse(value);
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return TimeOnly.MinValue;
+        }
+
+        return TimeOnly.TryParse(value, CultureInfo.InvariantCulture, out var parsed)
+            || TimeOnly.TryParse(value, CultureInfo.CurrentCulture, out parsed)
+                ? parsed
+                : TimeOnly.MinValue;
     }
 
     public override void Write(Utf8JsonWriter writer, TimeOnly value, JsonSerializerOptions options) =>
-        writer.WriteStringValue(value.ToString("HH:mm"));
+        writer.WriteStringValue(value.ToString(Format, CultureInfo.InvariantCulture));
 }
 
 public sealed class InMemorySettingsStore : ISettingsStore
@@ -79,9 +93,6 @@ public sealed class InMemoryStatisticsStore : IStatisticsStore
 
 public sealed class SettingsRecovery
 {
-    public static void ApplyDocumentProperties(JsonElement root, AppSettings settings) =>
-        ApplyPartialProperties(root, settings);
-
     public static AppSettings LoadWithRecovery(string json, IAppLogger? logger = null)
     {
         var settings = AppSettings.CreateDefault();
@@ -98,15 +109,18 @@ public sealed class SettingsRecovery
         try
         {
             using var doc = JsonDocument.Parse(json);
-            ApplyPartialProperties(doc.RootElement, settings);
-            ApplyMigrations(doc.RootElement, settings);
+            if (doc.RootElement.ValueKind == JsonValueKind.Object)
+            {
+                ApplyPartialProperties(doc.RootElement, settings);
+                ApplyMigrations(doc.RootElement, settings);
+            }
         }
         catch (Exception ex)
         {
             logger?.Warning($"Settings document parse failed: {ex.Message}");
         }
 
-        return MergeWithDefaults(settings);
+        return Repair(settings, logger);
     }
 
     private static void ApplyMigrations(JsonElement root, AppSettings settings)
@@ -146,9 +160,10 @@ public sealed class SettingsRecovery
 
                     break;
                 case "overlayopacity":
-                    if (property.Value.ValueKind == JsonValueKind.Number)
+                    if (property.Value.ValueKind == JsonValueKind.Number &&
+                        property.Value.TryGetDouble(out var opacity))
                     {
-                        legacyOpacity = property.Value.GetDouble();
+                        legacyOpacity = opacity;
                     }
 
                     break;
@@ -163,12 +178,19 @@ public sealed class SettingsRecovery
 
     private static void ApplyPartialProperties(JsonElement root, AppSettings settings)
     {
+        // Every branch checks ValueKind before reading. An unguarded read used to throw out of the
+        // whole loop, so a single mistyped value silently skipped every later property and the
+        // legacy migrations that run after it.
         foreach (var property in root.EnumerateObject())
         {
             switch (property.Name.ToLowerInvariant())
             {
                 case "eyeresetenabled":
-                    settings.EyeResetEnabled = property.Value.GetBoolean();
+                    if (TryGetBoolean(property.Value, out var eyeEnabled))
+                    {
+                        settings.EyeResetEnabled = eyeEnabled;
+                    }
+
                     break;
                 case "eyeresetintervalminutes":
                     if (property.Value.ValueKind == JsonValueKind.Number &&
@@ -179,12 +201,17 @@ public sealed class SettingsRecovery
 
                     break;
                 case "movebreakenabled":
-                    settings.MoveBreakEnabled = property.Value.GetBoolean();
+                    if (TryGetBoolean(property.Value, out var moveEnabled))
+                    {
+                        settings.MoveBreakEnabled = moveEnabled;
+                    }
+
                     break;
                 case "overlayopacity":
-                    if (property.Value.ValueKind == JsonValueKind.Number)
+                    if (property.Value.ValueKind == JsonValueKind.Number &&
+                        property.Value.TryGetDouble(out var legacyOpacity))
                     {
-                        settings.GlassClarity = OverlayGlassSettings.MigrateFromLegacyOpacity(property.Value.GetDouble());
+                        settings.GlassClarity = OverlayGlassSettings.MigrateFromLegacyOpacity(legacyOpacity);
                     }
 
                     break;
@@ -216,38 +243,103 @@ public sealed class SettingsRecovery
         }
     }
 
-    private static AppSettings MergeWithDefaults(AppSettings loaded)
+    private static bool TryGetBoolean(JsonElement element, out bool value)
     {
+        switch (element.ValueKind)
+        {
+            case JsonValueKind.True:
+                value = true;
+                return true;
+            case JsonValueKind.False:
+                value = false;
+                return true;
+            case JsonValueKind.String:
+                return bool.TryParse(element.GetString(), out value);
+            default:
+                value = false;
+                return false;
+        }
+    }
+
+    /// <summary>
+    /// Brings every field back inside its validated range, in place. One unusable number must never
+    /// cost the user the rest of their configuration: each field is clamped on its own, so a broken
+    /// duration cannot take work hours, sound choice or Windows preferences down with it.
+    /// </summary>
+    public static AppSettings Repair(AppSettings loaded, IAppLogger? logger = null)
+    {
+        ArgumentNullException.ThrowIfNull(loaded);
+
         var defaults = AppSettings.CreateDefault();
+        var before = SettingsValidator.Validate(loaded);
+
         if (loaded.SchemaVersion <= 0)
         {
             loaded.SchemaVersion = AppSettings.CurrentSchemaVersion;
         }
 
-        if (!SettingsValidator.IsValid(loaded))
-        {
-            if (loaded.EyeResetIntervalMinutes < SettingsValidator.MinIntervalMinutes)
-            {
-                loaded.EyeResetIntervalMinutes = defaults.EyeResetIntervalMinutes;
-            }
+        loaded.EyeResetIntervalMinutes = Math.Clamp(
+            loaded.EyeResetIntervalMinutes,
+            SettingsValidator.MinIntervalMinutes,
+            SettingsValidator.MaxIntervalMinutes);
+        loaded.MoveBreakIntervalMinutes = Math.Clamp(
+            loaded.MoveBreakIntervalMinutes,
+            SettingsValidator.MinIntervalMinutes,
+            SettingsValidator.MaxIntervalMinutes);
 
-            if (loaded.MoveBreakIntervalMinutes < SettingsValidator.MinIntervalMinutes)
-            {
-                loaded.MoveBreakIntervalMinutes = defaults.MoveBreakIntervalMinutes;
-            }
+        // A break can never outlast the gap it interrupts, so the upper bound is whichever of the
+        // absolute maximum and the reminder's own interval is smaller.
+        loaded.EyeResetDurationSeconds = ClampDuration(
+            loaded.EyeResetDurationSeconds,
+            loaded.EyeResetIntervalMinutes);
+        loaded.MoveBreakDurationSeconds = ClampDuration(
+            loaded.MoveBreakDurationSeconds,
+            loaded.MoveBreakIntervalMinutes);
+
+        loaded.SnoozeDurationMinutes = Math.Clamp(
+            loaded.SnoozeDurationMinutes,
+            SettingsValidator.MinSnoozeMinutes,
+            SettingsValidator.MaxSnoozeMinutes);
+        loaded.IdleThresholdMinutes = Math.Clamp(
+            loaded.IdleThresholdMinutes,
+            SettingsValidator.MinIdleMinutes,
+            SettingsValidator.MaxIdleMinutes);
+        loaded.BreakSoundVolume = Math.Clamp(
+            loaded.BreakSoundVolume,
+            SettingsValidator.MinBreakSoundVolume,
+            SettingsValidator.MaxBreakSoundVolume);
+        loaded.BreakSoundRepeatSeconds = Math.Clamp(
+            loaded.BreakSoundRepeatSeconds,
+            SettingsValidator.MinBreakSoundRepeatSeconds,
+            SettingsValidator.MaxBreakSoundRepeatSeconds);
+        loaded.GlassClarity = OverlayGlassSettings.NormalizeGlassClarity(loaded.GlassClarity);
+
+        if (!Enum.IsDefined(loaded.BreakSoundTheme))
+        {
+            loaded.BreakSoundTheme = defaults.BreakSoundTheme;
         }
 
-        if (loaded.GlassClarity < OverlayGlassSettings.MinGlassClarity ||
-            loaded.GlassClarity > OverlayGlassSettings.MaxGlassClarity)
+        if (loaded.WorkHoursEnabled && loaded.WorkStart == loaded.WorkEnd)
         {
-            loaded.GlassClarity = OverlayGlassSettings.DefaultGlassClarity;
+            loaded.WorkStart = defaults.WorkStart;
+            loaded.WorkEnd = defaults.WorkEnd;
         }
-        else
+
+        if (before.Count > 0)
         {
-            loaded.GlassClarity = OverlayGlassSettings.NormalizeGlassClarity(loaded.GlassClarity);
+            logger?.Warning(
+                $"Repaired out-of-range settings instead of resetting them: {string.Join(", ", before)}");
         }
 
         return loaded;
+    }
+
+    private static int ClampDuration(int durationSeconds, int intervalMinutes)
+    {
+        // intervalMinutes is already clamped to at least one minute, so the ceiling can never fall
+        // below MinDurationSeconds.
+        var maximum = Math.Min(SettingsValidator.MaxDurationSeconds, intervalMinutes * 60);
+        return Math.Clamp(durationSeconds, SettingsValidator.MinDurationSeconds, maximum);
     }
 }
 

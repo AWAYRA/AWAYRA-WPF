@@ -1,6 +1,7 @@
 using System.IO.Pipes;
 using System.Text;
 using System.Text.Json;
+using Awayra.App.Services;
 using Awayra.Core.Abstractions;
 using Awayra.Core.Services;
 
@@ -13,7 +14,9 @@ public sealed class UiTestDiagnosticsPipe : IDisposable
     private readonly CancellationTokenSource _cts = new();
     private Task? _listenTask;
 
-    public const string PipeName = "Awayra.UiTest.Diagnostics";
+    // Scoped to the current account. A fixed machine-wide name left an unauthenticated local
+    // channel that could drive or quit the application whenever --ui-test was passed.
+    public static readonly string PipeName = LocalPipe.NameFor("Awayra.UiTest.Diagnostics");
 
     public UiTestDiagnosticsPipe(Func<SchedulerDiagnostics> diagnosticsProvider, IAppLogger logger)
     {
@@ -29,12 +32,7 @@ public sealed class UiTestDiagnosticsPipe : IDisposable
         {
             try
             {
-                await using var server = new NamedPipeServerStream(
-                    PipeName,
-                    PipeDirection.InOut,
-                    1,
-                    PipeTransmissionMode.Byte,
-                    PipeOptions.Asynchronous);
+                await using var server = LocalPipe.CreateServer(PipeName, PipeDirection.InOut);
                 await server.WaitForConnectionAsync(_cts.Token).ConfigureAwait(false);
 
                 using var reader = new StreamReader(server, Encoding.UTF8, leaveOpen: true);

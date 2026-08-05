@@ -56,11 +56,4 @@ public sealed class DashboardRestorePlannerTests
         Assert.AreEqual(DashboardPresentation.Minimized, DashboardRestorePlanner.Classify(true, false, true));
         Assert.AreEqual(DashboardPresentation.Visible, DashboardRestorePlanner.Classify(true, true, false));
     }
-
-    [TestMethod]
-    public void SecondInstanceSignal_RequestsDashboardRestore()
-    {
-        Assert.IsTrue(DashboardRestorePlanner.RequestsSecondInstanceDashboardRestore("SHOW"));
-        Assert.IsFalse(DashboardRestorePlanner.RequestsSecondInstanceDashboardRestore("QUIT"));
-    }
 }

@@ -13,7 +13,7 @@ using Microsoft.Win32;
 
 namespace Awayra.App;
 
-public partial class App : System.Windows.Application
+public partial class App : System.Windows.Application, IDisposable
 {
     private ApplicationHost? _host;
     private TrayService? _tray;
@@ -32,16 +32,23 @@ public partial class App : System.Windows.Application
     private bool _repositionOverlaysAfterTransition;
     private bool _sessionLocked;
     private bool _powerSuspended;
+    private bool _disposed;
 
     protected override async void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
         UiTestMode.Configure(e.Args);
         BuildIdentity.Initialize();
+
+        // Windows Forms hosts the tray icon, so it is told which mode the process is in. Awareness
+        // itself comes from app.manifest: WPF has already fixed it by the time OnStartup runs, which
+        // is why the runtime call alone left the process DPI-unaware.
         System.Windows.Forms.Application.SetHighDpiMode(System.Windows.Forms.HighDpiMode.PerMonitorV2);
+
         AppPaths.EnsureDataRoot();
         _logger = new FileLogger(AppPaths.LogFilePath);
         _logger.Info("Awayra starting.");
+        _logger.Info($"DPI awareness: {System.Windows.Forms.Application.HighDpiMode}");
         BuildIdentity.Log(_logger);
 
         _singleInstance = new NamedPipeSingleInstance();
@@ -52,8 +59,6 @@ public partial class App : System.Windows.Application
             Shutdown(0);
             return;
         }
-
-        _singleInstance.ListenForSignals(ShowDashboard);
 
         DispatcherUnhandledException += (_, args) =>
         {
@@ -169,6 +174,12 @@ public partial class App : System.Windows.Application
 
         var mainViewModel = new MainViewModel(_host, ShowSettings);
         _mainViewModel = mainViewModel;
+
+        // Listening starts only now that ShowDashboard can actually do something. Started earlier it
+        // dropped any signal that arrived while the host was still initialising, so relaunching
+        // Awayra during startup appeared to do nothing at all.
+        _singleInstance.ListenForSignals(ShowDashboard);
+
         if (!TryCreateMainWindow())
         {
             _logger.Error("Dashboard window creation failed at startup; tray remains available.");
@@ -219,7 +230,29 @@ public partial class App : System.Windows.Application
         SystemEvents.PowerModeChanged -= OnPowerModeChanged;
         SystemEvents.DisplaySettingsChanged -= OnDisplaySettingsChanged;
         _systemTransitionTimer?.Stop();
+
+        // Also runs for exits that never reach QuitFromTray, such as a Windows sign-out. Without it
+        // the tray icon survived as a ghost until the user moved the mouse over it.
+        Dispose();
         base.OnExit(e);
+    }
+
+    public void Dispose()
+    {
+        if (_disposed)
+        {
+            return;
+        }
+
+        _disposed = true;
+        _tray?.Dispose();
+        _host?.Dispose();
+        _uiTestPipe?.Dispose();
+        _uiTestDiagnosticsPipe?.Dispose();
+        _mainViewModel?.Dispose();
+        _singleInstance?.Dispose();
+        _logger?.Dispose();
+        GC.SuppressFinalize(this);
     }
 
     private void DispatchUiTestCommand(string command)
@@ -485,9 +518,8 @@ public partial class App : System.Windows.Application
         }
 
         await (_logger?.FlushAsync() ?? Task.CompletedTask).ConfigureAwait(true);
-        _uiTestPipe?.Dispose();
-        _uiTestDiagnosticsPipe?.Dispose();
-        _singleInstance?.Release();
+
+        // Everything else is released by Dispose, which OnExit calls on the way out.
         Shutdown(0);
     }
 
@@ -509,11 +541,11 @@ public partial class App : System.Windows.Application
             ? (snapshot.EyeRemaining <= snapshot.MoveRemaining ? snapshot.EyeRemaining : snapshot.MoveRemaining)
             : snapshot.EyeEnabled ? snapshot.EyeRemaining : snapshot.MoveRemaining;
 
-        var formatted = next.TotalHours >= 1
-            ? $"{(int)next.TotalHours:D2}:{next.Minutes:D2}:{next.Seconds:D2}"
-            : $"{next.Minutes:D2}:{next.Seconds:D2}";
-
-        return $"{status} - {string.Format(_host.Localization.Get(StringKeys.TrayTooltipNextBreak), formatted)}";
+        var formatted = MainViewModel.FormatCountdown(next);
+        return $"{status} - {string.Format(
+            System.Globalization.CultureInfo.CurrentCulture,
+            _host.Localization.Get(StringKeys.TrayTooltipNextBreak),
+            formatted)}";
     }
 
     private void UpdateTray()

@@ -8,6 +8,7 @@
         Topmost="True"
         AllowsTransparency="False"
         Background="#FF000000"
+        Foreground="#FFF7F9FC"
         Opacity="1"
         Focusable="True"
         KeyDown="Window_OnKeyDown">
@@ -91,20 +92,23 @@
                   Style="{StaticResource Overlay.SecondaryButton}"
                   Margin="0,0,8,0" />
           <Button x:Name="SkipButton"
-                  Content="Skip"
+                  Content="{Binding SkipText}"
                   Command="{Binding SkipCommand}"
                   Style="{StaticResource Overlay.SecondaryButton}"
                   Margin="0,0,8,0"
                   Visibility="{Binding ShowSkip, Converter={StaticResource BoolToVisibility}}" />
           <Button x:Name="SnoozeButton"
-                  Content="Snooze"
+                  Content="{Binding SnoozeText}"
                   Command="{Binding SnoozeCommand}"
                   Style="{StaticResource Overlay.SecondaryButton}"
                   Margin="0,0,8,0"
                   Visibility="{Binding ShowSnooze, Converter={StaticResource BoolToVisibility}}" />
+          <!-- Disabled until the countdown ends when skipping is off, so Complete cannot be used as
+               a way around a break the user asked not to be able to skip. -->
           <Button x:Name="CompleteButton"
-                  Content="Complete"
+                  Content="{Binding CompleteText}"
                   Command="{Binding CompleteCommand}"
+                  IsEnabled="{Binding CanComplete}"
                   Style="{StaticResource Overlay.PrimaryButton}" />
         </StackPanel>
       </StackPanel>

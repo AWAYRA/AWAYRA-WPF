@@ -107,12 +107,16 @@ public sealed class SettingsTests
     }
 
     [TestMethod]
-    public void OutOfRangeGlassClarity_FallsBackToDefault()
+    public void OutOfRangeGlassClarity_IsClampedToRange()
     {
-        const string json = "{ \"glassClarity\": 200 }";
-        var recovered = SettingsRecovery.LoadWithRecovery(json);
-
-        Assert.AreEqual(OverlayGlassSettings.DefaultGlassClarity, recovered.GlassClarity);
+        // Repair clamps rather than resets, so a value that simply overshoots keeps the user's
+        // intent ("as clear as possible") instead of snapping back to the middle of the scale.
+        Assert.AreEqual(
+            OverlayGlassSettings.MaxGlassClarity,
+            SettingsRecovery.LoadWithRecovery("{ \"glassClarity\": 200 }").GlassClarity);
+        Assert.AreEqual(
+            OverlayGlassSettings.MinGlassClarity,
+            SettingsRecovery.LoadWithRecovery("{ \"glassClarity\": -40 }").GlassClarity);
     }
 
     [TestMethod]

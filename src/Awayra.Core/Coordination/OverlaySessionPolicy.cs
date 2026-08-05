@@ -25,10 +25,4 @@ public static class OverlaySessionPolicy
             _ => throw new ArgumentOutOfRangeException(nameof(breakType), breakType, null)
         };
     }
-
-    public static bool AllowsSimultaneousOverlays(OverlaySessionState state) =>
-        !state.BothVisible;
-
-    public static bool RequiresCloseBeforeShow(OverlaySessionState state, BreakType requested) =>
-        state.HasAnyVisible;
 }

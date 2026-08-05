@@ -1,5 +1,6 @@
 using System.IO.Pipes;
 using System.Text;
+using Awayra.App.Services;
 using Awayra.Core.Abstractions;
 
 namespace Awayra.App;
@@ -11,7 +12,9 @@ public sealed class UiTestCommandPipe : IDisposable
     private readonly CancellationTokenSource _cts = new();
     private Task? _listenTask;
 
-    public const string PipeName = "Awayra.UiTest.Commands";
+    // Scoped to the current account. A fixed machine-wide name left an unauthenticated local
+    // channel that could drive or quit the application whenever --ui-test was passed.
+    public static readonly string PipeName = LocalPipe.NameFor("Awayra.UiTest.Commands");
 
     public UiTestCommandPipe(Action<string> dispatch, IAppLogger logger)
     {
@@ -30,7 +33,7 @@ public sealed class UiTestCommandPipe : IDisposable
         {
             try
             {
-                await using var server = new NamedPipeServerStream(PipeName, PipeDirection.In, 1, PipeTransmissionMode.Byte, PipeOptions.Asynchronous);
+                await using var server = LocalPipe.CreateServer(PipeName, PipeDirection.In);
                 await server.WaitForConnectionAsync(_cts.Token).ConfigureAwait(false);
                 using var reader = new StreamReader(server, Encoding.UTF8);
                 var command = await reader.ReadLineAsync(_cts.Token).ConfigureAwait(false);

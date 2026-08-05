@@ -10,7 +10,8 @@
         WindowStartupLocation="CenterOwner"
         Background="#0E1319"
         Foreground="#F7F9FC"
-        FontFamily="Segoe UI Variable, Segoe UI, Tahoma">
+        FontFamily="Segoe UI Variable, Segoe UI, Tahoma"
+        Validation.Error="OnFieldValidationError">
   <Window.Resources>
     <ResourceDictionary>
       <ResourceDictionary.MergedDictionaries>
@@ -174,7 +175,7 @@
                   <TextBox AutomationProperties.AutomationId="BreakSoundRepeatInput"
                            Grid.Column="1"
                            Width="58"
-                           Text="{Binding BreakSoundRepeatSeconds, UpdateSourceTrigger=PropertyChanged}"
+                           Text="{Binding BreakSoundRepeatSeconds, UpdateSourceTrigger=PropertyChanged, NotifyOnValidationError=True}"
                            Style="{StaticResource Settings.InputTextBox}" />
                   <TextBlock Grid.Column="2" Text="sec" Style="{StaticResource Settings.FieldUnit}" Margin="7,0,0,0" />
                   <Button AutomationProperties.AutomationId="PreviewBreakSoundButton"
@@ -228,7 +229,7 @@
                       </Grid.ColumnDefinitions>
                       <TextBlock Grid.Column="0" Text="Interval" Style="{StaticResource Settings.FieldLabel}" />
                       <TextBox Grid.Column="1" Width="60"
-                               Text="{Binding EyeResetIntervalMinutes, UpdateSourceTrigger=PropertyChanged}"
+                               Text="{Binding EyeResetIntervalMinutes, UpdateSourceTrigger=PropertyChanged, NotifyOnValidationError=True}"
                                Style="{StaticResource Settings.InputTextBox}" />
                       <TextBlock Grid.Column="2" Text="min" Style="{StaticResource Settings.FieldUnit}" Margin="7,0,0,0" />
                     </Grid>
@@ -240,7 +241,7 @@
                       </Grid.ColumnDefinitions>
                       <TextBlock Grid.Column="0" Text="Duration" Style="{StaticResource Settings.FieldLabel}" />
                       <TextBox Grid.Column="1" Width="60"
-                               Text="{Binding EyeResetDurationSeconds, UpdateSourceTrigger=PropertyChanged}"
+                               Text="{Binding EyeResetDurationSeconds, UpdateSourceTrigger=PropertyChanged, NotifyOnValidationError=True}"
                                Style="{StaticResource Settings.InputTextBox}" />
                       <TextBlock Grid.Column="2" Text="sec" Style="{StaticResource Settings.FieldUnit}" Margin="7,0,0,0" />
                     </Grid>
@@ -265,7 +266,7 @@
                       </Grid.ColumnDefinitions>
                       <TextBlock Grid.Column="0" Text="Interval" Style="{StaticResource Settings.FieldLabel}" />
                       <TextBox Grid.Column="1" Width="60"
-                               Text="{Binding MoveBreakIntervalMinutes, UpdateSourceTrigger=PropertyChanged}"
+                               Text="{Binding MoveBreakIntervalMinutes, UpdateSourceTrigger=PropertyChanged, NotifyOnValidationError=True}"
                                Style="{StaticResource Settings.InputTextBox}" />
                       <TextBlock Grid.Column="2" Text="min" Style="{StaticResource Settings.FieldUnit}" Margin="7,0,0,0" />
                     </Grid>
@@ -277,7 +278,7 @@
                       </Grid.ColumnDefinitions>
                       <TextBlock Grid.Column="0" Text="Duration" Style="{StaticResource Settings.FieldLabel}" />
                       <TextBox Grid.Column="1" Width="60"
-                               Text="{Binding MoveBreakDurationSeconds, UpdateSourceTrigger=PropertyChanged}"
+                               Text="{Binding MoveBreakDurationSeconds, UpdateSourceTrigger=PropertyChanged, NotifyOnValidationError=True}"
                                Style="{StaticResource Settings.InputTextBox}" />
                       <TextBlock Grid.Column="2" Text="sec" Style="{StaticResource Settings.FieldUnit}" Margin="7,0,0,0" />
                     </Grid>
@@ -320,7 +321,7 @@
                       <TextBlock Grid.Column="0" Text="Snooze" Style="{StaticResource Settings.FieldLabel}" />
                       <TextBox AutomationProperties.AutomationId="SnoozeDurationInput"
                                Grid.Column="1" Width="60"
-                               Text="{Binding SnoozeDurationMinutes, UpdateSourceTrigger=PropertyChanged}"
+                               Text="{Binding SnoozeDurationMinutes, UpdateSourceTrigger=PropertyChanged, NotifyOnValidationError=True}"
                                Style="{StaticResource Settings.InputTextBox}" />
                       <TextBlock Grid.Column="2" Text="min" Style="{StaticResource Settings.FieldUnit}" Margin="7,0,0,0" />
                     </Grid>
@@ -336,7 +337,7 @@
                       </Grid.ColumnDefinitions>
                       <TextBlock Grid.Column="0" Text="Idle after" Style="{StaticResource Settings.FieldLabel}" />
                       <TextBox Grid.Column="1" Width="60"
-                               Text="{Binding IdleThresholdMinutes, UpdateSourceTrigger=PropertyChanged}"
+                               Text="{Binding IdleThresholdMinutes, UpdateSourceTrigger=PropertyChanged, NotifyOnValidationError=True}"
                                Style="{StaticResource Settings.InputTextBox}" />
                       <TextBlock Grid.Column="2" Text="min" Style="{StaticResource Settings.FieldUnit}" Margin="7,0,0,0" />
                     </Grid>

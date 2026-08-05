@@ -3,11 +3,12 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:conv="clr-namespace:Awayra.App.Converters"
              ShutdownMode="OnExplicitShutdown">
+  <!-- Every window merges its own scoped palette (DashboardStyles, SettingsStyles, OverlayStyles,
+       AboutStyles). There is deliberately no global theme dictionary here: the previous one was
+       consumed by nothing except an implicit Window style that pushed a light background and dark
+       foreground onto any window that forgot to set both. -->
   <Application.Resources>
     <ResourceDictionary>
-      <ResourceDictionary.MergedDictionaries>
-        <ResourceDictionary Source="Resources/Theme.xaml" />
-      </ResourceDictionary.MergedDictionaries>
       <conv:BoolToVisibilityConverter x:Key="BoolToVisibility" />
     </ResourceDictionary>
   </Application.Resources>

@@ -40,7 +40,7 @@ public sealed class MonitorSnapshotService : IMonitorSnapshotService
             }
             finally
             {
-                DeleteObject(handle);
+                NativeMethods.DeleteObject(handle);
             }
         }
         catch (Exception ex)
@@ -49,7 +49,4 @@ public sealed class MonitorSnapshotService : IMonitorSnapshotService
             return null;
         }
     }
-
-    [DllImport("gdi32.dll")]
-    private static extern bool DeleteObject(IntPtr hObject);
 }

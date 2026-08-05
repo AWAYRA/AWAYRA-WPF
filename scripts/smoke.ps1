@@ -3,6 +3,7 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
+. (Join-Path $PSScriptRoot "launch-common.ps1")
 $root = Split-Path $PSScriptRoot -Parent
 $exe = Join-Path $root "artifacts\publish\win-x64\Awayra.exe"
 
@@ -11,8 +12,7 @@ if (-not (Test-Path $exe)) {
     exit 1
 }
 
-Get-Process Awayra -ErrorAction SilentlyContinue | Stop-Process -Force
-Start-Sleep -Milliseconds 500
+Stop-AwayraProcessesUnderRoot -RootPath $root
 
 $proc = Start-Process -FilePath $exe -PassThru
 Start-Sleep -Seconds 5
@@ -39,7 +39,7 @@ if (-not (Test-Path $dataRoot)) {
 }
 
 if (-not $KeepRunning) {
-    Get-Process Awayra -ErrorAction SilentlyContinue | Stop-Process -Force
+    Stop-AwayraProcessesUnderRoot -RootPath $root
 }
 
 Write-Host "Smoke test passed."

@@ -61,18 +61,4 @@ public sealed class ApplicationStartupPolicyTests
         Assert.IsFalse(recovered.StartMinimized);
         Assert.IsTrue(ApplicationStartupPolicy.ShouldShowDashboardOnStartup(recovered));
     }
-
-    [TestMethod]
-    public void ShouldCreateDashboard_OnlyWhenMissing()
-    {
-        Assert.IsTrue(ApplicationStartupPolicy.ShouldCreateDashboard(dashboardAlreadyExists: false));
-        Assert.IsFalse(ApplicationStartupPolicy.ShouldCreateDashboard(dashboardAlreadyExists: true));
-    }
-
-    [TestMethod]
-    public void ShouldCreateTrayService_OnlyOnce()
-    {
-        Assert.IsTrue(ApplicationStartupPolicy.ShouldCreateTrayService(trayAlreadyExists: false));
-        Assert.IsFalse(ApplicationStartupPolicy.ShouldCreateTrayService(trayAlreadyExists: true));
-    }
 }

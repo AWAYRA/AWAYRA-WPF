@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text;
 using Awayra.Core.Abstractions;
 
@@ -6,9 +7,13 @@ namespace Awayra.App.Services;
 public sealed class FileLogger : IAppLogger, IDisposable
 {
     private const long MaxFileSize = 1_048_576;
-    private const int MaxFiles = 3;
+
+    /// <summary>Archived files kept beside the active log, so at most four files in total.</summary>
+    private const int MaxArchiveFiles = 3;
+
     private readonly SemaphoreSlim _gate = new(1, 1);
     private readonly string _logPath;
+    private volatile bool _disposed;
 
     public FileLogger(string logPath)
     {
@@ -36,16 +41,38 @@ public sealed class FileLogger : IAppLogger, IDisposable
         _gate.Release();
     }
 
-    public void Dispose() => _gate.Dispose();
+    /// <summary>
+    /// Stops accepting writes and releases the gate. The semaphore itself is deliberately left alone:
+    /// logging happens from timers and background listeners that can still be unwinding, and
+    /// disposing it under them would turn a shutdown into an ObjectDisposedException.
+    /// </summary>
+    public void Dispose() => _disposed = true;
 
     private void Write(string level, string message)
     {
+        if (_disposed)
+        {
+            return;
+        }
+
         _gate.Wait();
         try
         {
             RollIfNeeded();
-            var line = $"{DateTimeOffset.Now:yyyy-MM-dd HH:mm:ss.fff} [{level}] {message}{Environment.NewLine}";
-            File.AppendAllText(_logPath, line, Encoding.UTF8);
+
+            // Invariant culture: log timestamps are diagnostic records, and a machine on a
+            // non-Gregorian calendar would otherwise stamp them in that calendar's year.
+            var timestamp = DateTimeOffset.Now.ToString(
+                "yyyy-MM-dd HH:mm:ss.fff",
+                CultureInfo.InvariantCulture);
+            File.AppendAllText(_logPath, $"{timestamp} [{level}] {message}{Environment.NewLine}", Encoding.UTF8);
+        }
+        catch (IOException)
+        {
+            // Logging must never take the application down with it.
+        }
+        catch (UnauthorizedAccessException)
+        {
         }
         finally
         {
@@ -66,7 +93,7 @@ public sealed class FileLogger : IAppLogger, IDisposable
             return;
         }
 
-        for (var i = MaxFiles - 1; i >= 1; i--)
+        for (var i = MaxArchiveFiles - 1; i >= 1; i--)
         {
             var source = $"{_logPath}.{i}";
             var target = $"{_logPath}.{i + 1}";

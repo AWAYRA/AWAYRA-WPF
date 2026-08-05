@@ -57,6 +57,8 @@ public sealed class LocalizationService
         "BreakSoundRepeatInvalid" => "Sound repeat interval must be between 1 and 60 seconds.",
         "BreakSoundThemeInvalid" => "Select a valid break sound.",
         "WorkHoursFormatInvalid" => "Work hours must use 24-hour HH:mm format, for example 09:00.",
+        "NumericFieldFormatInvalid" => "These fields need a whole number and were not saved: {0}.",
+        "SettingsSaveFailed" => "Your settings could not be saved: {0}",
         _ => errorKey
     };
 }

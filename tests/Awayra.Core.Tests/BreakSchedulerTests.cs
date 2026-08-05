@@ -500,14 +500,65 @@ public sealed class BreakSchedulerTests
     }
 
     [TestMethod]
-    public void RestartRecovery_OverdueBreakStartsOnTick()
+    public void RestartRecovery_LongOverdueBreakIsRebasedInsteadOfSeizingTheScreen()
     {
         var state = SchedulerState.CreateDefault(Start);
         state.EyeNextDue = Start.AddMinutes(-5);
         var scheduler = CreateScheduler(Start.AddHours(1), state: state);
 
         scheduler.Tick();
+
+        var snapshot = scheduler.GetSnapshot();
+        Assert.IsNull(snapshot.ActiveBreak, "Launching after an absence must not open with a break.");
+        Assert.AreEqual(TimeSpan.FromMinutes(20).TotalSeconds, snapshot.EyeRemaining.TotalSeconds, 1);
+    }
+
+    [TestMethod]
+    public void RestartRecovery_BreakOverdueWithinGraceStillFires()
+    {
+        var state = SchedulerState.CreateDefault(Start);
+        state.EyeNextDue = Start.AddSeconds(-30);
+        var scheduler = CreateScheduler(Start, state: state);
+
+        scheduler.Tick();
+
         Assert.AreEqual(BreakType.Eye, scheduler.GetSnapshot().ActiveBreak);
+    }
+
+    [TestMethod]
+    public void RestartRecovery_PersistedActiveBreakIsNotResurrected()
+    {
+        var state = SchedulerState.CreateDefault(Start);
+        state.ActiveBreak = BreakType.Move;
+        state.BreakEndsAt = Start.AddSeconds(30);
+        var scheduler = CreateScheduler(Start.AddDays(2), state: state);
+
+        var completed = 0;
+        scheduler.BreakEnded += (_, args) =>
+        {
+            if (args.Completed)
+            {
+                completed++;
+            }
+        };
+
+        scheduler.Tick();
+
+        Assert.IsNull(scheduler.GetSnapshot().ActiveBreak);
+        Assert.AreEqual(0, completed, "A break the process never showed must not be credited as completed.");
+    }
+
+    [TestMethod]
+    public void RebaseOverdueSchedules_LeavesFutureSchedulesAlone()
+    {
+        var scheduler = CreateScheduler();
+        var before = scheduler.GetSnapshot();
+
+        scheduler.RebaseOverdueSchedules();
+
+        var after = scheduler.GetSnapshot();
+        Assert.AreEqual(before.EyeRemaining, after.EyeRemaining);
+        Assert.AreEqual(before.MoveRemaining, after.MoveRemaining);
     }
 
     [TestMethod]

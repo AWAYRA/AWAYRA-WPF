@@ -2,7 +2,6 @@ using System.Windows;
 using Awayra.App.Converters;
 using Awayra.App.Services;
 using Awayra.Core.Abstractions;
-using Awayra.Core.Coordination;
 using Awayra.Core.Models;
 using Awayra.Core.Persistence;
 using Awayra.Core.Services;
@@ -21,31 +20,26 @@ internal static class WpfTestHost
             };
         }
 
-        if (!Application.Current!.Resources.Contains(ThemeResourceContract.RequiredBrushKeys[0]))
-        {
-            var themePath = Path.GetFullPath(Path.Combine(
-                AppContext.BaseDirectory,
-                "..", "..", "..", "..", "..",
-                "src", "Awayra.App", "Resources", "Theme.xaml"));
-
-            Application.Current.Resources.MergedDictionaries.Add(new ResourceDictionary
-            {
-                Source = new Uri(themePath, UriKind.Absolute)
-            });
-        }
-
-        if (!Application.Current.Resources.Contains("BoolToVisibility"))
+        // Mirrors App.xaml: the only application-scoped resource is the converter. Views bring
+        // their own scoped palettes.
+        if (!Application.Current!.Resources.Contains("BoolToVisibility"))
         {
             Application.Current.Resources["BoolToVisibility"] = new BoolToVisibilityConverter();
         }
     }
 
-    public static ApplicationHost CreateHost()
+    public static ApplicationHost CreateHost(AppSettings? storedSettings = null)
     {
+        var settingsStore = new InMemorySettingsStore();
+        if (storedSettings is not null)
+        {
+            settingsStore.SaveAsync(storedSettings).ConfigureAwait(false).GetAwaiter().GetResult();
+        }
+
         var host = new ApplicationHost(
             new NullLogger(),
             new SystemClock(),
-            new InMemorySettingsStore(),
+            settingsStore,
             new InMemoryStateStore(),
             new InMemoryStatisticsStore(),
             new NullIdleMonitor(),

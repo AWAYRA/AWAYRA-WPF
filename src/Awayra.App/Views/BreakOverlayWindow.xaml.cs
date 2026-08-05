@@ -16,10 +16,19 @@ public partial class BreakOverlayWindow : Window
 {
     private const int RenderFramesRequiredAfterPosition = 2;
 
+    /// <summary>
+    /// How long the overlay may stay invisible while it waits for the render frames that confirm its
+    /// final position. If those frames never arrive the window would sit at zero opacity for the
+    /// whole break: the user sees nothing while the scheduler counts the break as delivered. Showing
+    /// a possibly imperfect overlay beats showing none.
+    /// </summary>
+    private static readonly TimeSpan RevealTimeout = TimeSpan.FromMilliseconds(1_500);
+
     private readonly ApplicationHost _host;
     private readonly OverlayViewModel _viewModel;
     private readonly IMonitorSnapshotService _snapshotService;
     private readonly DispatcherTimer _monitorRecoveryTimer;
+    private readonly DispatcherTimer _revealFallbackTimer;
     private readonly DisplayBoundsStabilizer _displayBoundsStabilizer = new();
     private Storyboard? _pulseStoryboard;
     private System.Drawing.Rectangle? _pendingRevealBounds;
@@ -47,6 +56,11 @@ public partial class BreakOverlayWindow : Window
             Interval = TimeSpan.FromMilliseconds(250)
         };
         _monitorRecoveryTimer.Tick += OnMonitorRecoveryTick;
+        _revealFallbackTimer = new DispatcherTimer(DispatcherPriority.Send, Dispatcher)
+        {
+            Interval = RevealTimeout
+        };
+        _revealFallbackTimer.Tick += OnRevealTimedOut;
         _host.BreakSound.StateChanged += OnSoundStateChanged;
         Loaded += OnLoaded;
         ContentRendered += OnFirstContentRendered;
@@ -153,6 +167,7 @@ public partial class BreakOverlayWindow : Window
         _ = MonitorLocator.PositionWindowOnBounds(this, targetBounds);
         _host.Logger.Info($"Overlay prepared invisibly before first render: {targetBounds}.");
         Show();
+        _revealFallbackTimer.Start();
     }
 
     public void RepositionOnActiveMonitor()
@@ -194,6 +209,7 @@ public partial class BreakOverlayWindow : Window
         }
 
         _monitorRecoveryTimer.Stop();
+        _revealFallbackTimer.Stop();
         StopWaitingForRevealRender();
         _pulseStoryboard?.Stop();
         StopExerciseAnimation();
@@ -275,6 +291,26 @@ public partial class BreakOverlayWindow : Window
         RevealPreparedOverlay();
     }
 
+    private void OnRevealTimedOut(object? sender, EventArgs e)
+    {
+        _revealFallbackTimer.Stop();
+        if (_isClosed || !IsVisible || _firstFrameRevealed)
+        {
+            return;
+        }
+
+        _host.Logger.Warning(
+            $"Overlay reveal render did not arrive within {RevealTimeout.TotalMilliseconds:F0} ms; showing it anyway.");
+
+        if (_pendingRevealBounds is not null)
+        {
+            ApplyPendingRevealBounds();
+        }
+
+        StopWaitingForRevealRender();
+        RevealPreparedOverlay();
+    }
+
     private void RevealPreparedOverlay()
     {
         if (_isClosed || !IsVisible || _firstFrameRevealed)
@@ -282,6 +318,7 @@ public partial class BreakOverlayWindow : Window
             return;
         }
 
+        _revealFallbackTimer.Stop();
         _firstFrameRevealed = true;
         Opacity = 1;
         ShowActivated = true;
@@ -358,6 +395,8 @@ public partial class BreakOverlayWindow : Window
         _pendingRevealBounds = null;
         _monitorRecoveryTimer.Stop();
         _monitorRecoveryTimer.Tick -= OnMonitorRecoveryTick;
+        _revealFallbackTimer.Stop();
+        _revealFallbackTimer.Tick -= OnRevealTimedOut;
         StopWaitingForRevealRender();
         _displayBoundsStabilizer.Reset();
         _pulseStoryboard?.Stop();

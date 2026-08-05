@@ -5,7 +5,7 @@ param(
 $ErrorActionPreference = "Stop"
 . (Join-Path $PSScriptRoot "launch-common.ps1")
 
-Stop-AllAwayraProcesses
+Stop-AwayraProcessesUnderRoot -RootPath (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
 if (-not (Test-Path $ExePath)) { throw "Release executable not found: $ExePath" }
 
 Write-LaunchReport $ExePath

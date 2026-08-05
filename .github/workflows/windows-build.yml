@@ -43,6 +43,29 @@ jobs:
             throw "Generated installers, executables, or signing certificates must not be committed."
           }
 
+      # The version lives in Directory.Build.props. app.manifest and the installer's fallback cannot
+      # read it, so this proves they were bumped with it instead of drifting silently.
+      - name: Validate version consistency
+        shell: pwsh
+        run: |
+          [xml]$props = Get-Content "Directory.Build.props"
+          $version = [string](@($props.Project.PropertyGroup.Version | Where-Object { $_ })[0]).Trim()
+          if ($version -notmatch '^\d+\.\d+\.\d+$') {
+            throw "Directory.Build.props Version must use semantic version format x.y.z. Found: $version"
+          }
+
+          [xml]$manifest = Get-Content "src/Awayra.App/app.manifest"
+          if ($manifest.assembly.assemblyIdentity.version -ne "$version.0") {
+            throw "app.manifest declares $($manifest.assembly.assemblyIdentity.version) but the product version is $version."
+          }
+
+          $iss = Get-Content "installer/Awayra.iss" -Raw
+          if ($iss -notmatch '#define\s+MyAppVersion\s+"([^"]+)"' -or $Matches[1] -ne $version) {
+            throw "installer/Awayra.iss MyAppVersion does not match $version."
+          }
+
+          Write-Host "Version $version is consistent across props, manifest and installer."
+
       - name: Restore solution
         run: dotnet restore Awayra.sln
 

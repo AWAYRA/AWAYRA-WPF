@@ -1,7 +1,7 @@
 <ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
-  <!-- Settings palette (scoped; does not alter global Theme.xaml) -->
+  <!-- Settings palette. Each window owns its own; there is no global theme dictionary. -->
   <Color x:Key="Settings.WindowBackgroundColor">#FF0E1319</Color>
   <Color x:Key="Settings.CardColor">#FF181F28</Color>
   <Color x:Key="Settings.CardElevatedColor">#FF202833</Color>

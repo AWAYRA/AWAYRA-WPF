@@ -9,10 +9,4 @@ public static class ApplicationStartupPolicy
 
     public static bool ShouldHideDashboardToTrayOnClose(AppSettings settings, bool isQuitting) =>
         !isQuitting && settings.CloseToTray;
-
-    public static bool ShouldCreateTrayService(bool trayAlreadyExists) =>
-        !trayAlreadyExists;
-
-    public static bool ShouldCreateDashboard(bool dashboardAlreadyExists) =>
-        !dashboardAlreadyExists;
 }

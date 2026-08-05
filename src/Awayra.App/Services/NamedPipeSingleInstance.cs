@@ -1,6 +1,5 @@
 using System.IO;
 using System.IO.Pipes;
-using System.Security.Principal;
 using Awayra.Core.Abstractions;
 
 namespace Awayra.App.Services;
@@ -14,8 +13,7 @@ public sealed class NamedPipeSingleInstance : ISingleInstanceCoordinator, IDispo
 
     public NamedPipeSingleInstance()
     {
-        var sid = WindowsIdentity.GetCurrent().User?.Value ?? "default";
-        _pipeName = PipeNamePrefix + sid;
+        _pipeName = LocalPipe.NameFor(PipeNamePrefix.TrimEnd('.'));
     }
 
     public bool TryAcquire()
@@ -25,19 +23,37 @@ public sealed class NamedPipeSingleInstance : ISingleInstanceCoordinator, IDispo
         return createdNew;
     }
 
+    /// <summary>
+    /// Retries, because the listener recreates its server stream between connections and the first
+    /// instance may still be starting up. A single attempt meant launching Awayra again could
+    /// silently do nothing instead of bringing the dashboard forward.
+    /// </summary>
     public void SignalExistingInstance()
     {
-        try
+        var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(5);
+        while (DateTime.UtcNow < deadline)
         {
-            using var client = new NamedPipeClientStream(".", _pipeName, PipeDirection.Out);
-            client.Connect(1000);
-            using var writer = new StreamWriter(client);
-            writer.WriteLine("SHOW");
-            writer.Flush();
-        }
-        catch
-        {
-            // First instance may be starting; ignore.
+            try
+            {
+                using var client = new NamedPipeClientStream(".", _pipeName, PipeDirection.Out);
+                client.Connect(500);
+                using var writer = new StreamWriter(client);
+                writer.WriteLine("SHOW");
+                writer.Flush();
+                return;
+            }
+            catch (TimeoutException)
+            {
+                // The listener is between connections or not up yet; try again.
+            }
+            catch (IOException)
+            {
+                Thread.Sleep(100);
+            }
+            catch
+            {
+                return;
+            }
         }
     }
 
@@ -51,10 +67,13 @@ public sealed class NamedPipeSingleInstance : ISingleInstanceCoordinator, IDispo
             {
                 try
                 {
-                    using var server = new NamedPipeServerStream(_pipeName, PipeDirection.In, 1, PipeTransmissionMode.Byte, PipeOptions.Asynchronous);
+                    using var server = LocalPipe.CreateServer(_pipeName, PipeDirection.In);
                     await server.WaitForConnectionAsync(token).ConfigureAwait(false);
-                    using var reader = new StreamReader(server);
-                    await reader.ReadLineAsync(token).ConfigureAwait(false);
+                    using (var reader = new StreamReader(server))
+                    {
+                        await reader.ReadLineAsync(token).ConfigureAwait(false);
+                    }
+
                     onSignal();
                 }
                 catch (OperationCanceledException)

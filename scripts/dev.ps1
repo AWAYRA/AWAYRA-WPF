@@ -4,7 +4,7 @@ $root = Get-RepoRoot
 Push-Location $root.Path
 
 try {
-    Stop-AllAwayraProcesses
+    Stop-AwayraProcessesUnderRoot -RootPath $root.Path
     dotnet build src/Awayra.App/Awayra.App.csproj -c Debug
     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 

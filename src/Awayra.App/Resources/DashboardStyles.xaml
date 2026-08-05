@@ -1,7 +1,7 @@
 <ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
-  <!-- Dashboard palette (scoped; does not alter global Theme.xaml) -->
+  <!-- Dashboard palette. Each window owns its own; there is no global theme dictionary. -->
   <Color x:Key="Dashboard.WindowBackground">#FF0E1319</Color>
   <Color x:Key="Dashboard.CardColor">#FF181F28</Color>
   <Color x:Key="Dashboard.CardElevated">#FF202833</Color>

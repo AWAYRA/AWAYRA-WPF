@@ -1,12 +1,15 @@
 ; Awayra Windows x64 per-user installer (self-contained publish payload).
 ; Build with: powershell -ExecutionPolicy Bypass -File .\scripts\build-installer.ps1
 
+; Both are normally supplied by scripts/build-installer.ps1, which reads them from the published
+; executable. The fallbacks only apply when ISCC is invoked by hand and must track
+; Directory.Build.props; CI fails the build if they drift.
 #ifndef MyAppVersion
-  #define MyAppVersion "1.2.0"
+  #define MyAppVersion "1.3.0"
 #endif
 
 #ifndef MyAppVersionInfo
-  #define MyAppVersionInfo "1.2.0.0"
+  #define MyAppVersionInfo "1.3.0.0"
 #endif
 
 #ifndef PublishDir
@@ -32,7 +35,11 @@ DefaultDirName={localappdata}\Programs\Awayra
 DefaultGroupName={#MyAppName}
 UninstallDisplayName={#MyAppName}
 UninstallDisplayIcon={app}\{#MyAppExeName}
-AllowNoIcons=yes
+; AllowNoIcons is deliberately off. With it on, /NOICONS makes {group} expand to the Start Menu
+; Programs folder itself, and the upgrade cleanup below would then recurse through every shortcut
+; the user owns instead of Awayra's own folder. The group page is hidden anyway, so the option was
+; unreachable in the wizard and only ever reachable from a command line.
+AllowNoIcons=no
 OutputDir=..\artifacts\installer
 OutputBaseFilename=Awayra-Setup-{#MyAppVersion}-x64
 SetupIconFile=..\src\Awayra.App\Assets\awayra.ico
@@ -106,6 +113,7 @@ var
   ForceCleanData: Boolean;
   ForceDesktopIcon: Boolean;
   RemoveDataOnUninstall: Boolean;
+  ForceCleanDataOnUninstall: Boolean;
 
 function IconFileExists(): Boolean;
 begin
@@ -292,13 +300,35 @@ begin
   RegDeleteValue(HKCU, RunKeyPath, RunValueName);
 end;
 
+// Removes Awayra's own Start Menu folder, never the Start Menu itself. The group constant collapses
+// to the Programs folder whenever no program group was chosen, and deleting that recursively would
+// take every other application's shortcuts with it. AllowNoIcons is off so this should be
+// unreachable; the guard stays because the cost of being wrong is the user's entire Start Menu.
+procedure RemoveStartMenuGroup();
+var
+  GroupPath: String;
+begin
+  GroupPath := RemoveBackslash(ExpandConstant('{group}'));
+
+  if (CompareText(GroupPath, RemoveBackslash(ExpandConstant('{userprograms}'))) = 0) or
+     (CompareText(GroupPath, RemoveBackslash(ExpandConstant('{commonprograms}'))) = 0) then
+  begin
+    Log('Start menu group resolved to the Programs root; removing only Awayra shortcuts.');
+    DeleteFileIfPresent(AddBackslash(GroupPath) + 'Awayra.lnk');
+    DeleteFileIfPresent(AddBackslash(GroupPath) + ExpandConstant('{cm:UninstallProgram,Awayra}') + '.lnk');
+    Exit;
+  end;
+
+  DeleteDirectoryOrAbort(GroupPath, 'Start menu shortcuts');
+end;
+
 procedure CleanPreviousInstallation();
 begin
   StopRunningAwayra();
 
   { Program files and shortcuts are always replaced so a new build never runs against stale binaries. }
   DeleteDirectoryOrAbort(ExpandConstant('{localappdata}\Programs\Awayra'), 'program files');
-  DeleteDirectoryOrAbort(ExpandConstant('{group}'), 'Start menu shortcuts');
+  RemoveStartMenuGroup();
   DeleteFileIfPresent(ExpandConstant('{autodesktop}\Awayra.lnk'));
   DeleteFileIfPresent(ExpandConstant('{userstartup}\Awayra.lnk'));
 
@@ -326,9 +356,14 @@ end;
 
 function InitializeUninstall(): Boolean;
 begin
-  { Silent uninstall keeps the historical behaviour of a complete removal so automation stays
-    deterministic. An interactive uninstall asks, and defaults to keeping personal data. }
+  ForceCleanDataOnUninstall := CompareText(ExpandConstant('{param:cleandata|no}'), 'yes') = 0;
+
+  { A silent uninstall preserves personal data, matching the silent install. Package managers and
+    management tools always uninstall silently, so the old unconditional wipe destroyed settings and
+    statistics during routine maintenance. Pass /CLEANDATA=yes to remove them on purpose. }
   if UninstallSilent() then
+    RemoveDataOnUninstall := ForceCleanDataOnUninstall
+  else if ForceCleanDataOnUninstall then
     RemoveDataOnUninstall := True
   else if not PreviousDataExists() then
     RemoveDataOnUninstall := False

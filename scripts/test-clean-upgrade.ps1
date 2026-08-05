@@ -1,13 +1,32 @@
+<#
+.SYNOPSIS
+    Verifies that installing, upgrading and uninstalling Awayra treats user data correctly.
+
+.DESCRIPTION
+    DESTRUCTIVE. This installs and uninstalls Awayra for real and, on the way out, deletes
+    %LOCALAPPDATA%\Awayra and %APPDATA%\Awayra. On a developer machine that is the real settings,
+    statistics and reminder schedule. It runs unattended on CI; anywhere else it refuses to start
+    without -AcceptDataLoss.
+#>
 param(
     [Parameter(Mandatory = $true)]
     [string]$InstallerPath,
 
     [Parameter(Mandatory = $true)]
-    [string]$ExpectedVersion
+    [string]$ExpectedVersion,
+
+    [switch]$AcceptDataLoss
 )
 
 $ErrorActionPreference = "Stop"
 Set-StrictMode -Version Latest
+
+if (-not $AcceptDataLoss -and $env:CI -ne 'true') {
+    throw @"
+This test deletes your real Awayra settings, statistics and logs.
+Run it on CI, or pass -AcceptDataLoss if you genuinely want that on this machine.
+"@
+}
 
 function Assert-PathExists {
     param(
@@ -64,6 +83,26 @@ function Invoke-AwayraInstaller {
     if ($process.ExitCode -ne 0) {
         $log = if (Test-Path $logPath) { Get-Content $logPath -Raw } else { "Installer log missing." }
         throw "Awayra installer failed with exit code $($process.ExitCode).`n$log"
+    }
+}
+
+function Invoke-AwayraUninstaller {
+    param([string[]]$ExtraArguments = @())
+
+    $uninstaller = Get-ChildItem $script:AppDir -Filter "unins*.exe" -File | Select-Object -First 1
+    if (-not $uninstaller) {
+        throw "Awayra uninstaller was not created."
+    }
+
+    $arguments = @("/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART") + $ExtraArguments
+    $process = Start-Process -FilePath $uninstaller.FullName -ArgumentList $arguments -Wait -PassThru
+    if ($process.ExitCode -ne 0) {
+        throw "Awayra uninstaller failed with exit code $($process.ExitCode)."
+    }
+
+    # The uninstaller relaunches itself from a temporary copy, so the directory can linger briefly.
+    for ($attempt = 0; $attempt -lt 40 -and (Test-Path $script:AppDir); $attempt++) {
+        Start-Sleep -Milliseconds 250
     }
 }
 
@@ -172,28 +211,37 @@ try {
     Write-Host "      OK - fresh install removed data and startup registration."
 
     # ---------------------------------------------------------------------------------------------
-    # 4. Silent uninstall must remove everything Awayra owns.
+    # 4. A silent uninstall removes the application but KEEPS personal data, matching the silent
+    #    install. Package managers and management tools always uninstall silently, so an
+    #    unconditional wipe destroyed settings during routine maintenance.
     # ---------------------------------------------------------------------------------------------
-    Write-Host "[4/4] Silent uninstall must remove application and data directories."
+    Write-Host "[4/5] Silent uninstall must remove the application but preserve user data."
+    Invoke-AwayraInstaller -Path $InstallerPath
     Set-UserDataFixtures -Generation "before-uninstall"
+    Invoke-AwayraUninstaller
 
-    $uninstaller = Get-ChildItem $AppDir -Filter "unins*.exe" -File | Select-Object -First 1
-    if (-not $uninstaller) {
-        throw "Awayra uninstaller was not created."
-    }
+    Assert-PathMissing $AppDir "the application itself is always removed"
+    Assert-UserDataPreserved -Generation "before-uninstall"
 
-    $uninstallProcess = Start-Process -FilePath $uninstaller.FullName `
-        -ArgumentList @("/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART") `
-        -Wait `
-        -PassThru
-    if ($uninstallProcess.ExitCode -ne 0) {
-        throw "Awayra uninstaller failed with exit code $($uninstallProcess.ExitCode)."
+    $runKeyProperties = Get-ItemProperty -Path $RunKey -ErrorAction SilentlyContinue
+    $runValueProperty = if ($null -ne $runKeyProperties) { $runKeyProperties.PSObject.Properties["Awayra"] } else { $null }
+    if ($null -ne $runValueProperty) {
+        throw "Startup registry value was not removed by uninstall: $($runValueProperty.Value)"
     }
+    Write-Host "      OK - settings and statistics survived a silent uninstall."
+
+    # ---------------------------------------------------------------------------------------------
+    # 5. /CLEANDATA=yes on uninstall still performs the complete removal, for anyone who wants it.
+    # ---------------------------------------------------------------------------------------------
+    Write-Host "[5/5] Silent uninstall with /CLEANDATA=yes must remove everything."
+    Invoke-AwayraInstaller -Path $InstallerPath
+    Set-UserDataFixtures -Generation "before-full-uninstall"
+    Invoke-AwayraUninstaller -ExtraArguments @("/CLEANDATA=yes")
 
     Assert-PathMissing $AppDir
     Assert-PathMissing $DataDir
     Assert-PathMissing $RoamingDataDir
-    Write-Host "      OK - uninstall removed everything."
+    Write-Host "      OK - explicit clean uninstall removed everything."
 
     Write-Host ""
     Write-Host "INSTALLER UPGRADE TEST: PASSED"

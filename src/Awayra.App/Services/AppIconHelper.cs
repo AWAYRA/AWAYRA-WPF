@@ -10,10 +10,16 @@ namespace Awayra.App.Services;
 public static class AppIconHelper
 {
     private static Icon? _applicationIcon;
+    private static ImageSource? _applicationImageSource;
 
     public static Icon ApplicationIcon => _applicationIcon ??= LoadApplicationIcon();
 
-    public static ImageSource ApplicationImageSource => CreateImageSource(ApplicationIcon);
+    /// <summary>
+    /// Built once and frozen. It used to allocate a fresh unfrozen BitmapSource, and leak a GDI
+    /// bitmap handle through it, on every window that asked for an icon.
+    /// </summary>
+    public static ImageSource ApplicationImageSource =>
+        _applicationImageSource ??= CreateImageSource(ApplicationIcon);
 
     public static void ApplyToWindow(Window window)
     {
@@ -44,7 +50,7 @@ public static class AppIconHelper
         var processPath = Environment.ProcessPath;
         if (!string.IsNullOrWhiteSpace(processPath))
         {
-            var embedded = Icon.ExtractAssociatedIcon(processPath);
+            using var embedded = Icon.ExtractAssociatedIcon(processPath);
             if (embedded is not null)
             {
                 return (Icon)embedded.Clone();
@@ -60,17 +66,19 @@ public static class AppIconHelper
         return SystemIcons.Application;
     }
 
-    private static ImageSource CreateImageSource(Icon icon)
+    private static BitmapSource CreateImageSource(Icon icon)
     {
         using var bitmap = icon.ToBitmap();
         var handle = bitmap.GetHbitmap();
         try
         {
-            return Imaging.CreateBitmapSourceFromHBitmap(
+            var source = Imaging.CreateBitmapSourceFromHBitmap(
                 handle,
                 IntPtr.Zero,
                 Int32Rect.Empty,
                 BitmapSizeOptions.FromEmptyOptions());
+            source.Freeze();
+            return source;
         }
         finally
         {

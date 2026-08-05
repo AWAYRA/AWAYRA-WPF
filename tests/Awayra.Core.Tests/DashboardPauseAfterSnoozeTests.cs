@@ -53,7 +53,10 @@ public sealed class DashboardPauseAfterSnoozeTests
         scheduler.Tick();
 
         var paused = scheduler.GetSnapshot();
-        Assert.AreEqual(SchedulerStatus.Snoozed, paused.Status);
+
+        // An explicit pause outranks a snooze that would lapse on its own, so the dashboard reports
+        // the state the user actually chose.
+        Assert.AreEqual(SchedulerStatus.PausedManual, paused.Status);
         Assert.IsTrue(paused.IsPausedManual);
         Assert.AreEqual(beforePause.TotalSeconds, paused.EyeRemaining.TotalSeconds, 1);
     }
@@ -91,7 +94,7 @@ public sealed class DashboardPauseAfterSnoozeTests
         scheduler.Tick();
 
         var paused = scheduler.GetSnapshot();
-        Assert.AreEqual(SchedulerStatus.Snoozed, paused.Status);
+        Assert.AreEqual(SchedulerStatus.PausedManual, paused.Status);
         Assert.IsTrue(paused.IsPausedManual);
         Assert.AreEqual(beforePause.TotalSeconds, paused.MoveRemaining.TotalSeconds, 1);
     }

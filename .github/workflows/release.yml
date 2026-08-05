@@ -31,18 +31,34 @@ jobs:
         with:
           dotnet-version: 10.0.x
 
+      # Directory.Build.props is the single source of the released version; every project, the
+      # installer and app.manifest derive from it, and the consistency check below proves it.
       - name: Read and validate version
         id: version
         shell: pwsh
         run: |
-          [xml]$project = Get-Content "src/Awayra.App/Awayra.App.csproj"
-          $version = [string](@($project.Project.PropertyGroup.Version | Where-Object { $_ })[0])
-          $version = $version.Trim()
+          [xml]$props = Get-Content "Directory.Build.props"
+          $version = [string](@($props.Project.PropertyGroup.Version | Where-Object { $_ })[0]).Trim()
 
           if ($version -notmatch '^\d+\.\d+\.\d+$') {
-            throw "Awayra.App.csproj Version must use semantic version format x.y.z. Found: $version"
+            throw "Directory.Build.props Version must use semantic version format x.y.z. Found: $version"
           }
 
+          [xml]$manifest = Get-Content "src/Awayra.App/app.manifest"
+          $manifestVersion = $manifest.assembly.assemblyIdentity.version
+          if ($manifestVersion -ne "$version.0") {
+            throw "app.manifest declares $manifestVersion but the product version is $version. Update src/Awayra.App/app.manifest."
+          }
+
+          $iss = Get-Content "installer/Awayra.iss" -Raw
+          if ($iss -notmatch '#define\s+MyAppVersion\s+"([^"]+)"') {
+            throw "Could not read the MyAppVersion fallback from installer/Awayra.iss."
+          }
+          if ($Matches[1] -ne $version) {
+            throw "installer/Awayra.iss declares $($Matches[1]) but the product version is $version."
+          }
+
+          Write-Host "Version $version is consistent across props, manifest and installer."
           "version=$version" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
           "tag=v$version" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
 
@@ -165,9 +181,16 @@ jobs:
 
           Write-Host "Using Inno Setup compiler: $compiler"
 
+      # Signing is optional: with no certificate configured the build reports UNSIGNED in
+      # BUILD-INFO.txt. Adding these three repository secrets turns on Authenticode signing for both
+      # the executable and the installer without any further change.
       - name: Build installer and checksums
         if: steps.existing.outputs.release_exists != 'true'
         shell: pwsh
+        env:
+          AWAYRA_SIGN_CERT_PATH: ${{ secrets.AWAYRA_SIGN_CERT_PATH }}
+          AWAYRA_SIGN_CERT_PASSWORD: ${{ secrets.AWAYRA_SIGN_CERT_PASSWORD }}
+          AWAYRA_TIMESTAMP_URL: ${{ secrets.AWAYRA_TIMESTAMP_URL }}
         run: powershell -ExecutionPolicy Bypass -File .\scripts\build-installer.ps1
 
       - name: Test clean install upgrade and uninstall

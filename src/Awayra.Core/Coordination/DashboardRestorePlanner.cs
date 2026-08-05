@@ -66,7 +66,4 @@ public static class DashboardRestorePlanner
                 ShowInTaskbar: true),
             _ => throw new ArgumentOutOfRangeException(nameof(presentation), presentation, null)
         };
-
-    public static bool RequestsSecondInstanceDashboardRestore(string? signalPayload) =>
-        string.Equals(signalPayload?.Trim(), "SHOW", StringComparison.OrdinalIgnoreCase);
 }

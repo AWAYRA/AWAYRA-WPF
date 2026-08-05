@@ -1,6 +1,5 @@
 using System.Reflection;
 using System.Security.Cryptography;
-using System.Text;
 using Awayra.Core.Abstractions;
 using Awayra.Core.Models;
 
@@ -106,24 +105,8 @@ public static class BuildIdentity
         }
     }
 
-    public static string ToReportText(int coreTests, int appTests, int uiTests, string? uiResult = null) =>
-        new StringBuilder()
-            .AppendLine($"GitCommit={GitCommit}")
-            .AppendLine($"WorkingTreeStatus={WorkingTreeStatus}")
-            .AppendLine($"BuildTimestampUtc={BuildTimestampUtc:O}")
-            .AppendLine($"DotNetSdk={Environment.Version}")
-            .AppendLine($"AssemblyVersion={AssemblyVersion}")
-            .AppendLine($"InformationalVersion={InformationalVersion}")
-            .AppendLine($"CoreTests={coreTests}")
-            .AppendLine($"AppTests={appTests}")
-            .AppendLine($"UiTests={uiTests}")
-            .AppendLine($"UiTestResult={uiResult ?? "n/a"}")
-            .AppendLine($"ExecutablePath={ExecutablePath}")
-            .AppendLine($"ExecutableSha256={ExecutableSha256}")
-            .ToString();
-
     private static string? ReadMetadata(string key) =>
-        assembly.GetCustomAttributes<AssemblyMetadataAttribute>()
+        CurrentAssembly.GetCustomAttributes<AssemblyMetadataAttribute>()
             .FirstOrDefault(a => a.Key == key)?.Value;
 
     private static string ComputeSha256(string path)
@@ -137,7 +120,7 @@ public static class BuildIdentity
         return Convert.ToHexString(SHA256.HashData(stream));
     }
 
-    private static Assembly assembly => Assembly.GetExecutingAssembly();
+    private static Assembly CurrentAssembly => Assembly.GetExecutingAssembly();
 }
 
 public sealed class UiTestBridge

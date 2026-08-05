@@ -156,8 +156,8 @@ try {
         -p:PublishSingleFile=true `
         -p:PublishTrimmed=false `
         -p:IncludeNativeLibrariesForSelfExtract=true `
-        -p:DebugType=None `
-        -p:DebugSymbols=false `
+        -p:DebugType=embedded `
+        -p:DebugSymbols=true `
         -o $publishDir
     if ($LASTEXITCODE -ne 0) { throw "dotnet publish failed." }
 
@@ -166,6 +166,8 @@ try {
         throw "Published executable not found: $publishedExe"
     }
 
+    # Symbols are embedded rather than dropped, so a crash report from a released build can still be
+    # symbolicated. No separate .pdb ships, which keeps the check below meaningful.
     $forbiddenArtifacts = @(Get-ChildItem $publishDir -Recurse -Include "*.pdb", "*.Tests.dll" -ErrorAction SilentlyContinue)
     if ($forbiddenArtifacts.Count -gt 0) {
         throw "Publish directory contains forbidden artifacts: $($forbiddenArtifacts.FullName -join ', ')"

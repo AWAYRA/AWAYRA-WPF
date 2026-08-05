@@ -77,6 +77,41 @@ jobs:
           --name github
           'https://nuget.pkg.github.com/AWAYRA/index.json'
 
+      # --skip-duplicate used to turn "this version is already on the feed" into a green run, so a
+      # change to Awayra.Core without a version bump was never published while the restore check
+      # below happily verified the previous package. Fail here instead and say what to do.
+      - name: Fail when this version was already published
+        if: github.event_name != 'pull_request'
+        shell: pwsh
+        run: |
+          $version = (dotnet msbuild src/Awayra.Core/Awayra.Core.csproj -nologo -getProperty:Version | Select-Object -Last 1).Trim()
+          if ($version -notmatch '^\d+\.\d+\.\d+$') {
+            throw "Could not resolve a semantic package version: $version"
+          }
+
+          $probe = 'artifacts/version-probe'
+          New-Item -ItemType Directory -Path $probe -Force | Out-Null
+          @"
+          <Project Sdk="Microsoft.NET.Sdk">
+            <PropertyGroup>
+              <TargetFramework>net10.0</TargetFramework>
+            </PropertyGroup>
+            <ItemGroup>
+              <PackageReference Include="Awayra.Core" Version="[$version]" />
+            </ItemGroup>
+          </Project>
+          "@ | Set-Content "$probe/VersionProbe.csproj" -Encoding UTF8
+
+          dotnet restore "$probe/VersionProbe.csproj" --no-cache *> $null
+          $alreadyPublished = $LASTEXITCODE -eq 0
+          $global:LASTEXITCODE = 0
+
+          if ($alreadyPublished) {
+            throw "Awayra.Core $version is already on the feed. Bump Version in Directory.Build.props; publishing silently skipped changes before."
+          }
+
+          Write-Host "Awayra.Core $version is not published yet."
+
       - name: Publish to GitHub Packages
         if: github.event_name != 'pull_request'
         shell: pwsh
@@ -87,8 +122,7 @@ jobs:
           }
           dotnet nuget push $packages[0].FullName `
             --api-key '${{ secrets.GITHUB_TOKEN }}' `
-            --source github `
-            --skip-duplicate
+            --source github
 
       - name: Verify package can be restored
         if: github.event_name != 'pull_request'

@@ -4,7 +4,7 @@ using Awayra.Core.Persistence;
 
 namespace Awayra.App.Services;
 
-public sealed class JsonFileStore<T> where T : class, new()
+public sealed class JsonFileStore<T> : IDisposable where T : class, new()
 {
     private readonly string _path;
     private readonly IAppLogger _logger;
@@ -89,6 +89,8 @@ public sealed class JsonFileStore<T> where T : class, new()
         }
     }
 
+    public void Dispose() => _gate.Dispose();
+
     private void BackupCorrupt(string json)
     {
         try
@@ -104,7 +106,7 @@ public sealed class JsonFileStore<T> where T : class, new()
     }
 }
 
-public sealed class SettingsFileStore : ISettingsStore
+public sealed class SettingsFileStore : ISettingsStore, IDisposable
 {
     private readonly JsonFileStore<Core.Models.AppSettings> _store;
 
@@ -115,9 +117,11 @@ public sealed class SettingsFileStore : ISettingsStore
 
     public Task SaveAsync(Core.Models.AppSettings settings, CancellationToken cancellationToken = default) =>
         _store.SaveAsync(settings, cancellationToken);
+
+    public void Dispose() => _store.Dispose();
 }
 
-public sealed class StateFileStore : IStateStore
+public sealed class StateFileStore : IStateStore, IDisposable
 {
     private readonly JsonFileStore<Core.Models.SchedulerState> _store;
 
@@ -135,9 +139,11 @@ public sealed class StateFileStore : IStateStore
 
     public Task SaveAsync(Core.Models.SchedulerState state, CancellationToken cancellationToken = default) =>
         _store.SaveAsync(state, cancellationToken);
+
+    public void Dispose() => _store.Dispose();
 }
 
-public sealed class StatisticsFileStore : IStatisticsStore
+public sealed class StatisticsFileStore : IStatisticsStore, IDisposable
 {
     private readonly JsonFileStore<Core.Models.StatisticsData> _store;
 
@@ -148,4 +154,6 @@ public sealed class StatisticsFileStore : IStatisticsStore
 
     public Task SaveAsync(Core.Models.StatisticsData data, CancellationToken cancellationToken = default) =>
         _store.SaveAsync(data, cancellationToken);
+
+    public void Dispose() => _store.Dispose();
 }

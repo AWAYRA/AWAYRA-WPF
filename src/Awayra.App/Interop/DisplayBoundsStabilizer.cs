@@ -10,15 +10,8 @@ public sealed class DisplayBoundsStabilizer
 
     public DisplayBoundsStabilizer(int requiredStableSamples = 2, int maximumSamples = 8)
     {
-        if (requiredStableSamples < 1)
-        {
-            throw new ArgumentOutOfRangeException(nameof(requiredStableSamples));
-        }
-
-        if (maximumSamples < requiredStableSamples)
-        {
-            throw new ArgumentOutOfRangeException(nameof(maximumSamples));
-        }
+        ArgumentOutOfRangeException.ThrowIfLessThan(requiredStableSamples, 1);
+        ArgumentOutOfRangeException.ThrowIfLessThan(maximumSamples, requiredStableSamples);
 
         _requiredStableSamples = requiredStableSamples;
         _maximumSamples = maximumSamples;

@@ -34,37 +34,14 @@ public static class StringKeys
     public const string Skip = nameof(Skip);
     public const string Snooze = nameof(Snooze);
     public const string Complete = nameof(Complete);
-    public const string SecondsRemaining = nameof(SecondsRemaining);
+    public const string SoundMuted = nameof(SoundMuted);
+    public const string SoundOn = nameof(SoundOn);
 
     public const string MoveActivityStand = nameof(MoveActivityStand);
     public const string MoveActivityWalk = nameof(MoveActivityWalk);
     public const string MoveActivityShoulders = nameof(MoveActivityShoulders);
     public const string MoveActivityNeck = nameof(MoveActivityNeck);
     public const string MoveActivityStretch = nameof(MoveActivityStretch);
-
-    public const string SettingsEyeReset = nameof(SettingsEyeReset);
-    public const string SettingsMoveBreak = nameof(SettingsMoveBreak);
-    public const string SettingsBehavior = nameof(SettingsBehavior);
-    public const string SettingsAppearance = nameof(SettingsAppearance);
-    public const string SettingsEnabled = nameof(SettingsEnabled);
-    public const string SettingsIntervalMinutes = nameof(SettingsIntervalMinutes);
-    public const string SettingsDurationSeconds = nameof(SettingsDurationSeconds);
-    public const string SettingsAllowSkip = nameof(SettingsAllowSkip);
-    public const string SettingsAllowSnooze = nameof(SettingsAllowSnooze);
-    public const string SettingsSnoozeDuration = nameof(SettingsSnoozeDuration);
-    public const string SettingsPauseWhileIdle = nameof(SettingsPauseWhileIdle);
-    public const string SettingsIdleThreshold = nameof(SettingsIdleThreshold);
-    public const string SettingsWorkHoursEnabled = nameof(SettingsWorkHoursEnabled);
-    public const string SettingsWorkStart = nameof(SettingsWorkStart);
-    public const string SettingsWorkEnd = nameof(SettingsWorkEnd);
-    public const string SettingsRunAtStartup = nameof(SettingsRunAtStartup);
-    public const string SettingsStartMinimized = nameof(SettingsStartMinimized);
-    public const string SettingsCloseToTray = nameof(SettingsCloseToTray);
-    public const string SettingsGlassClarity = nameof(SettingsGlassClarity);
-    public const string SettingsReducedMotion = nameof(SettingsReducedMotion);
-    public const string SettingsTheme = nameof(SettingsTheme);
-    public const string SettingsSave = nameof(SettingsSave);
-    public const string SettingsClose = nameof(SettingsClose);
 
     public const string ValidationEyeResetIntervalInvalid = nameof(ValidationEyeResetIntervalInvalid);
     public const string ValidationEyeResetDurationInvalid = nameof(ValidationEyeResetDurationInvalid);
@@ -74,29 +51,21 @@ public static class StringKeys
     public const string ValidationIdleThresholdInvalid = nameof(ValidationIdleThresholdInvalid);
     public const string ValidationGlassClarityInvalid = nameof(ValidationGlassClarityInvalid);
     public const string ValidationWorkHoursRangeInvalid = nameof(ValidationWorkHoursRangeInvalid);
-
-    public const string TrayTooltipStatus = nameof(TrayTooltipStatus);
     public const string TrayTooltipNextBreak = nameof(TrayTooltipNextBreak);
     public const string TrayPauseReminders = nameof(TrayPauseReminders);
     public const string TrayResumeReminders = nameof(TrayResumeReminders);
 
     public static IReadOnlyList<string> All { get; } =
     [
-        AppTitle, StatusRunning, StatusPaused, StatusIdle, StatusConfigurationPaused, StatusOutsideWorkHours,
-        StatusBreakActive, StatusSnoozed, StatusDisabled, EyeReset, MoveBreak, Enabled, Disabled,
-        Pause, Resume, EyeResetNow, MoveBreakNow, Settings, Quit, OpenAwayra,
-        TodayEyeCompleted, TodayMoveCompleted, TodaySkipped, TodaySnoozed,
-        EyeResetInstructionDistance, EyeResetInstructionBlink, Skip, Snooze, Complete, SecondsRemaining,
-        MoveActivityStand, MoveActivityWalk, MoveActivityShoulders, MoveActivityNeck, MoveActivityStretch,
-        SettingsEyeReset, SettingsMoveBreak, SettingsBehavior, SettingsAppearance, SettingsEnabled,
-        SettingsIntervalMinutes, SettingsDurationSeconds, SettingsAllowSkip, SettingsAllowSnooze,
-        SettingsSnoozeDuration, SettingsPauseWhileIdle, SettingsIdleThreshold, SettingsWorkHoursEnabled,
-        SettingsWorkStart, SettingsWorkEnd, SettingsRunAtStartup, SettingsStartMinimized, SettingsCloseToTray,
-        SettingsGlassClarity, SettingsReducedMotion, SettingsTheme, SettingsSave, SettingsClose,
+        AppTitle, StatusRunning, StatusPaused, StatusIdle, StatusConfigurationPaused,
+        StatusOutsideWorkHours, StatusBreakActive, StatusSnoozed, StatusDisabled, EyeReset, MoveBreak,
+        Enabled, Disabled, Pause, Resume, EyeResetNow, MoveBreakNow, Settings, Quit, OpenAwayra,
+        TodayEyeCompleted, TodayMoveCompleted, TodaySkipped, TodaySnoozed, EyeResetInstructionDistance,
+        EyeResetInstructionBlink, Skip, Snooze, Complete, SoundMuted, SoundOn, MoveActivityStand,
+        MoveActivityWalk, MoveActivityShoulders, MoveActivityNeck, MoveActivityStretch,
         ValidationEyeResetIntervalInvalid, ValidationEyeResetDurationInvalid,
         ValidationMoveBreakIntervalInvalid, ValidationMoveBreakDurationInvalid,
-        ValidationSnoozeDurationInvalid, ValidationIdleThresholdInvalid,
-        ValidationGlassClarityInvalid, ValidationWorkHoursRangeInvalid,
-        TrayTooltipStatus, TrayTooltipNextBreak, TrayPauseReminders, TrayResumeReminders
+        ValidationSnoozeDurationInvalid, ValidationIdleThresholdInvalid, ValidationGlassClarityInvalid,
+        ValidationWorkHoursRangeInvalid, TrayTooltipNextBreak, TrayPauseReminders, TrayResumeReminders
     ];
 }

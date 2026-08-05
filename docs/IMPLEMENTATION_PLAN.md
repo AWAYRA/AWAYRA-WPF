@@ -13,11 +13,37 @@ in [CHANGELOG.md](../CHANGELOG.md).
 | `tests/Awayra.App.Tests` | `net10.0-windows` | Application, view model and XAML instantiation tests. |
 | `tests/Awayra.UiTests` | `net10.0-windows` | UI Automation tests driven against a published build. Not run in CI; see below. |
 
+## Versioning
+
+`Directory.Build.props` holds the released version and every project inherits it. Two files cannot
+read it and must be bumped alongside: `src/Awayra.App/app.manifest` (`assemblyIdentity version`,
+four-part) and the `MyAppVersion` fallback in `installer/Awayra.iss`. Both the build and release
+workflows fail if the three disagree.
+
+## Styling
+
+There is no global theme dictionary. `App.xaml` contributes only the `BoolToVisibility` converter,
+and each window merges its own scoped palette: `DashboardStyles.xaml`, `SettingsStyles.xaml`,
+`OverlayStyles.xaml`, `AboutStyles.xaml`. A window that sets no `Foreground` therefore inherits
+nothing, so palettes define their own text brushes.
+
 ## Localization
 
 Localization keys live in `Awayra.Core`, and the only shipped resource set is English
 (`src/Awayra.App/Resources/Strings.resx`). `LocalizationService` currently pins the process to `en`.
 Adding a language means adding a satellite `.resx` and letting `LocalizationService.Apply` select it.
+
+Keys exist only for text that is actually rendered through them: the dashboard, tray menu, overlay
+and validation messages. The Settings window is still authored in English directly in XAML, so
+adding a language means moving those labels to resources at the same time. Keys with no consumer are
+removed rather than left in `StringKeys`, so `LocalizationTests` measures real coverage.
+
+## Culture
+
+`LocalizationService.Apply` pins the UI thread to `en`, but background threads keep the machine
+culture. Anything persisted or compared — JSON times, statistics day keys, log timestamps, countdown
+text — formats with `CultureInfo.InvariantCulture` so a machine on a different time separator or a
+non-Gregorian calendar still reads back what it wrote.
 
 ## Break animations
 

@@ -14,6 +14,15 @@ public sealed class BreakScheduler
     /// </summary>
     public static readonly TimeSpan SnoozeHandoffGrace = TimeSpan.FromSeconds(60);
 
+    /// <summary>
+    /// How overdue a reminder must be before <see cref="RebaseOverdueSchedules"/> pushes it out to a
+    /// fresh interval. Interval time measures time spent at the computer, so a reminder that fell due
+    /// while Awayra was shut down, suspended or locked must not seize the screen the moment the
+    /// session returns. The grace keeps a quick restart from silently discarding a break that really
+    /// was due a few seconds ago.
+    /// </summary>
+    public static readonly TimeSpan OverdueRebaseGrace = TimeSpan.FromMinutes(2);
+
     private readonly IClock _clock;
     private AppSettings _settings;
     private SchedulerState _state;
@@ -30,7 +39,9 @@ public sealed class BreakScheduler
     private TimeSpan? _workHoursFrozenMoveRemaining;
     private TimeSpan? _idleFrozenEyeRemaining;
     private TimeSpan? _idleFrozenMoveRemaining;
-    private int _moveActivityIndex;
+    // -1 so the first Move Break shows the first activity. The index is advanced before the
+    // BreakStarted event so MoveActivityIndex always describes the break that is on screen.
+    private int _moveActivityIndex = -1;
     private bool _snoozeInProgress;
     private BreakType? _lastSnoozedBreak;
     private DateTimeOffset? _snoozeHandoffUntil;
@@ -50,7 +61,7 @@ public sealed class BreakScheduler
 
     public AppSettings Settings => _settings;
     public SchedulerState State => _state;
-    public int MoveActivityIndex => _moveActivityIndex;
+    public int MoveActivityIndex => _moveActivityIndex < 0 ? 0 : _moveActivityIndex;
 
     public SchedulerSnapshot GetSnapshot()
     {
@@ -139,6 +150,18 @@ public sealed class BreakScheduler
         var oldEyeInterval = _settings.EyeResetIntervalMinutes;
         var oldMoveInterval = _settings.MoveBreakIntervalMinutes;
         _settings = settings;
+
+        // Switching a reminder off and on again must not inherit the snooze it carried before, which
+        // would otherwise keep the freshly enabled reminder silent until the old snooze lapsed.
+        if (wasEyeEnabled != settings.EyeResetEnabled)
+        {
+            _state.EyeSnoozeUntil = null;
+        }
+
+        if (wasMoveEnabled != settings.MoveBreakEnabled)
+        {
+            _state.MoveSnoozeUntil = null;
+        }
 
         if (!wasEyeEnabled && settings.EyeResetEnabled)
         {
@@ -539,6 +562,46 @@ public sealed class BreakScheduler
         PublishSnapshot();
     }
 
+    /// <summary>
+    /// Pushes reminders that fell due while Awayra was not counting out to a fresh interval. Call it
+    /// after any gap the tick loop did not observe — process start, resume from suspend, or session
+    /// unlock — so returning to the machine never opens with an immediate fullscreen break.
+    /// </summary>
+    public void RebaseOverdueSchedules()
+    {
+        if (RebaseOverdueSchedules(_clock.Now))
+        {
+            PublishSnapshot();
+        }
+    }
+
+    private bool RebaseOverdueSchedules(DateTimeOffset now)
+    {
+        var changed = false;
+
+        if (now - _state.EyeNextDue > OverdueRebaseGrace)
+        {
+            _state.EyeNextDue = now.AddMinutes(_settings.EyeResetIntervalMinutes);
+            _state.EyeSnoozeUntil = null;
+            changed = true;
+        }
+
+        if (now - _state.MoveNextDue > OverdueRebaseGrace)
+        {
+            _state.MoveNextDue = now.AddMinutes(_settings.MoveBreakIntervalMinutes);
+            _state.MoveSnoozeUntil = null;
+            changed = true;
+        }
+
+        if (changed)
+        {
+            _state.QueuedBreak = null;
+            ClearSnoozeHandoff();
+        }
+
+        return changed;
+    }
+
     private void NormalizeStateOnLoad()
     {
         var now = _clock.Now;
@@ -558,6 +621,15 @@ public sealed class BreakScheduler
         }
 
         MigrateLegacySnoozeState();
+
+        // A break cannot outlive the process that was showing it. Restoring one would either credit
+        // a completion the user never took, once the first tick found BreakEndsAt in the past, or
+        // leave the dashboard reporting a break with no overlay behind it.
+        _state.ActiveBreak = null;
+        _state.BreakEndsAt = null;
+        _state.QueuedBreak = null;
+
+        RebaseOverdueSchedules(now);
     }
 
     private void MigrateLegacySnoozeState()
@@ -581,6 +653,11 @@ public sealed class BreakScheduler
 
     private bool IsBreakSnoozed(BreakType breakType, DateTimeOffset now)
     {
+        if (!IsBreakEnabled(breakType))
+        {
+            return false;
+        }
+
         var snoozeUntil = breakType == BreakType.Eye ? _state.EyeSnoozeUntil : _state.MoveSnoozeUntil;
         return snoozeUntil is not null && now < snoozeUntil.Value;
     }
@@ -649,14 +726,12 @@ public sealed class BreakScheduler
 
     private SchedulerStatus ComputeStatus(DateTimeOffset now)
     {
+        // Order matters: a state the user chose deliberately outranks one that will lapse on its own.
+        // Reporting "Snoozed" first used to hide an explicit pause, and kept reporting it after both
+        // reminders had been switched off.
         if (_state.ActiveBreak is not null)
         {
             return SchedulerStatus.BreakActive;
-        }
-
-        if (IsAnyBreakSnoozed(now))
-        {
-            return SchedulerStatus.Snoozed;
         }
 
         if (!_settings.EyeResetEnabled && !_settings.MoveBreakEnabled)
@@ -682,6 +757,11 @@ public sealed class BreakScheduler
         if (!WorkHoursEvaluator.IsWithinWorkHours(now, _settings.WorkHoursEnabled, _settings.WorkStart, _settings.WorkEnd))
         {
             return SchedulerStatus.OutsideWorkHours;
+        }
+
+        if (IsAnyBreakSnoozed(now))
+        {
+            return SchedulerStatus.Snoozed;
         }
 
         return SchedulerStatus.Running;
@@ -888,6 +968,54 @@ public sealed class BreakScheduler
         {
             _state.MoveNextDue = from.AddMinutes(interval);
             _state.MoveLastCompleted = from;
+        }
+
+        RefreshFrozenRemaining(breakType, from);
+    }
+
+    /// <summary>
+    /// Re-snapshots any frozen countdown for <paramref name="breakType"/> against the schedule that
+    /// was just written. A break can be triggered by hand while the countdown is frozen — paused,
+    /// idle, or outside work hours — and without this the matching resume would restore the stale
+    /// pre-break remaining and fire another break moments later.
+    /// </summary>
+    private void RefreshFrozenRemaining(BreakType breakType, DateTimeOffset now)
+    {
+        var remaining = GetRawRemaining(breakType, now);
+
+        if (breakType == BreakType.Eye)
+        {
+            if (_manualFrozenEyeRemaining is not null)
+            {
+                _manualFrozenEyeRemaining = remaining;
+            }
+
+            if (_workHoursFrozenEyeRemaining is not null)
+            {
+                _workHoursFrozenEyeRemaining = remaining;
+            }
+
+            if (_idleFrozenEyeRemaining is not null)
+            {
+                _idleFrozenEyeRemaining = remaining;
+            }
+
+            return;
+        }
+
+        if (_manualFrozenMoveRemaining is not null)
+        {
+            _manualFrozenMoveRemaining = remaining;
+        }
+
+        if (_workHoursFrozenMoveRemaining is not null)
+        {
+            _workHoursFrozenMoveRemaining = remaining;
+        }
+
+        if (_idleFrozenMoveRemaining is not null)
+        {
+            _idleFrozenMoveRemaining = remaining;
         }
     }
 

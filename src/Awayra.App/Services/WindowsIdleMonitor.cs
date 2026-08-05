@@ -18,9 +18,10 @@ public sealed class WindowsIdleMonitor : IIdleMonitor
             return TimeSpan.Zero;
         }
 
+        // Both values are 32-bit tick counts that wrap roughly every 49.7 days. Unchecked subtraction
+        // gives the correct elapsed span across a wrap without the off-by-one the explicit form had.
         var tick = unchecked((uint)Environment.TickCount);
-        var lastInput = info.DwTime;
-        var idleMs = tick >= lastInput ? tick - lastInput : uint.MaxValue - lastInput + tick;
+        var idleMs = unchecked(tick - info.DwTime);
         return TimeSpan.FromMilliseconds(idleMs);
     }
 

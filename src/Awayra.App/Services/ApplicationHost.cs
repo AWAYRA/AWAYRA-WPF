@@ -70,10 +70,15 @@ public sealed class ApplicationHost : IDisposable
 
     public async Task InitializeAsync()
     {
-        AppPaths.EnsureDataRoot();
         _settings = await _settingsStore.LoadAsync().ConfigureAwait(false);
+
+        // A settings file can hold a value outside its range without being malformed JSON, so it
+        // never reaches the recovery loader. Repair clamps each field on its own; falling back to
+        // defaults here would throw away every other preference the user had set.
+        _settings = SettingsRecovery.Repair(_settings, _logger);
         if (!SettingsValidator.IsValid(_settings))
         {
+            _logger.Error("Settings could not be repaired; falling back to defaults.");
             _settings = AppSettings.CreateDefault();
         }
 
@@ -159,6 +164,10 @@ public sealed class ApplicationHost : IDisposable
             _systemTransitionPaused = false;
             if (wasPaused)
             {
+                // Ticks were suspended for the whole lock or sleep. Anything that fell due in that
+                // window belongs to time the user was away, so it is rebased rather than fired the
+                // instant the session comes back.
+                _scheduler.RebaseOverdueSchedules();
                 _scheduler.Tick();
             }
 
@@ -292,6 +301,12 @@ public sealed class ApplicationHost : IDisposable
             _systemTransitionPaused = false;
             _breakSound.Dispose();
         });
+
+        // The file-backed stores each hold a semaphore that serialises writes.
+        (_settingsStore as IDisposable)?.Dispose();
+        (_stateStore as IDisposable)?.Dispose();
+        (_statisticsStore as IDisposable)?.Dispose();
+
         _logger.Info("Awayra shutting down.");
     }
 

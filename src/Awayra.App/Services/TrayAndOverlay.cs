@@ -179,7 +179,8 @@ public sealed class TrayService : IDisposable
             }
         };
 
-        _icon.DoubleClick += (_, _) => _openDashboard();
+        // No DoubleClick handler: NotifyIcon raises MouseClick for each click of a double click, so
+        // handling both fired the open action three times for one gesture.
         RebuildMenu();
     }
 

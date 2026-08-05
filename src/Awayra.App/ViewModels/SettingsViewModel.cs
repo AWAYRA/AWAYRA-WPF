@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.Globalization;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Awayra.App.Services;
@@ -39,6 +40,34 @@ public partial class SettingsViewModel : ObservableObject
     [ObservableProperty] private bool _reducedMotion;
 
     public ObservableCollection<string> ValidationErrors { get; } = [];
+
+    /// <summary>
+    /// Fields whose text could not be turned into a number. WPF marks the box red and simply stops
+    /// pushing to the source, so without this a typo left the old value in place and Save reported
+    /// success while quietly discarding what the user typed.
+    /// </summary>
+    private readonly SortedSet<string> _unreadableFields = new(StringComparer.Ordinal);
+
+    public bool HasUnreadableFields => _unreadableFields.Count > 0;
+
+    public void SetFieldReadFailure(string propertyName, bool failed)
+    {
+        if (string.IsNullOrWhiteSpace(propertyName))
+        {
+            return;
+        }
+
+        var changed = failed
+            ? _unreadableFields.Add(propertyName)
+            : _unreadableFields.Remove(propertyName);
+
+        if (changed)
+        {
+            OnPropertyChanged(nameof(HasUnreadableFields));
+        }
+    }
+
+    internal IReadOnlyCollection<string> UnreadableFields => _unreadableFields;
 
     public bool IsSoftBellSelected
     {
@@ -150,19 +179,58 @@ public partial class SettingsViewModel : ObservableObject
         }
 
         ValidationErrors.Clear();
+
+        // Reported first, because a field WPF could not read still holds its previous value: every
+        // other message below describes what is currently saved, not what is on screen.
+        if (_unreadableFields.Count > 0)
+        {
+            ValidationErrors.Add(string.Format(
+                CultureInfo.CurrentCulture,
+                _host.Localization.GetValidationMessage("NumericFieldFormatInvalid"),
+                string.Join(", ", _unreadableFields.Select(FriendlyFieldName))));
+        }
+
         foreach (var error in errors)
         {
             ValidationErrors.Add(_host.Localization.GetValidationMessage(error));
         }
 
-        if (errors.Count > 0)
+        if (ValidationErrors.Count > 0)
         {
             return;
         }
 
-        await _host.SaveConfigurationAsync(settings).ConfigureAwait(true);
+        try
+        {
+            await _host.SaveConfigurationAsync(settings).ConfigureAwait(true);
+        }
+        catch (Exception ex)
+        {
+            // Closing here would look exactly like a successful save. Keep the window open and say
+            // what went wrong instead.
+            _host.Logger.Error("Saving settings failed", ex);
+            ValidationErrors.Add(string.Format(
+                CultureInfo.CurrentCulture,
+                _host.Localization.GetValidationMessage("SettingsSaveFailed"),
+                ex.Message));
+            return;
+        }
+
         _close(true);
     }
+
+    private static string FriendlyFieldName(string propertyName) => propertyName switch
+    {
+        nameof(EyeResetIntervalMinutes) => "Eye Reset interval",
+        nameof(EyeResetDurationSeconds) => "Eye Reset duration",
+        nameof(MoveBreakIntervalMinutes) => "Move Break interval",
+        nameof(MoveBreakDurationSeconds) => "Move Break duration",
+        nameof(SnoozeDurationMinutes) => "Snooze duration",
+        nameof(IdleThresholdMinutes) => "Idle after",
+        nameof(BreakSoundRepeatSeconds) => "Sound repeat",
+        nameof(BreakSoundVolume) => "Volume",
+        _ => propertyName
+    };
 
     [RelayCommand]
     private void Cancel()
@@ -190,8 +258,8 @@ public partial class SettingsViewModel : ObservableObject
         PauseWhileIdle = settings.PauseWhileIdle;
         IdleThresholdMinutes = settings.IdleThresholdMinutes;
         WorkHoursEnabled = settings.WorkHoursEnabled;
-        WorkStart = settings.WorkStart.ToString("HH:mm");
-        WorkEnd = settings.WorkEnd.ToString("HH:mm");
+        WorkStart = settings.WorkStart.ToString("HH\\:mm", CultureInfo.InvariantCulture);
+        WorkEnd = settings.WorkEnd.ToString("HH\\:mm", CultureInfo.InvariantCulture);
         RunAtStartup = settings.RunAtStartup;
         StartMinimized = settings.StartMinimized;
         CloseToTray = settings.CloseToTray;
@@ -201,14 +269,20 @@ public partial class SettingsViewModel : ObservableObject
     }
 
     private bool HasParseableWorkHours() =>
-        TimeOnly.TryParse(WorkStart, out _) && TimeOnly.TryParse(WorkEnd, out _);
+        TryParseWorkTime(WorkStart, out _) && TryParseWorkTime(WorkEnd, out _);
+
+    // The field is documented as 24-hour HH:mm, so it is read as such regardless of the machine's
+    // time separator, with the local format still accepted for anyone who types it that way.
+    private static bool TryParseWorkTime(string value, out TimeOnly parsed) =>
+        TimeOnly.TryParse(value, CultureInfo.InvariantCulture, out parsed) ||
+        TimeOnly.TryParse(value, CultureInfo.CurrentCulture, out parsed);
 
     private AppSettings BuildSettings()
     {
         // When a value cannot be parsed the currently saved time is kept, so a typo never
         // silently rewrites the schedule to midnight.
-        var workStart = TimeOnly.TryParse(WorkStart, out var parsedStart) ? parsedStart : _host.Settings.WorkStart;
-        var workEnd = TimeOnly.TryParse(WorkEnd, out var parsedEnd) ? parsedEnd : _host.Settings.WorkEnd;
+        var workStart = TryParseWorkTime(WorkStart, out var parsedStart) ? parsedStart : _host.Settings.WorkStart;
+        var workEnd = TryParseWorkTime(WorkEnd, out var parsedEnd) ? parsedEnd : _host.Settings.WorkEnd;
 
         return new AppSettings
         {

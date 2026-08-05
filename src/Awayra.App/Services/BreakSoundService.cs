@@ -384,11 +384,9 @@ public static class BreakToneGenerator
 
     public static string GetOrCreateWaveFile(BreakSoundTheme theme)
     {
-        var directory = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "Awayra",
-            "SoundCache",
-            CacheVersion);
+        // Routed through AppPaths so --ui-test-data-root really isolates a test run; the hard-coded
+        // profile path meant UI tests wrote their sound cache into the real user profile.
+        var directory = Path.Combine(AppPaths.DataRoot, "SoundCache", CacheVersion);
         Directory.CreateDirectory(directory);
 
         var fileName = theme switch

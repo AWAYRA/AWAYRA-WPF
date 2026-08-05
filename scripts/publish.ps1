@@ -5,7 +5,7 @@ $publishDir = Join-Path $root.Path "artifacts\publish\win-x64"
 Push-Location $root.Path
 
 try {
-    Stop-AllAwayraProcesses
+    Stop-AwayraProcessesUnderRoot -RootPath $root.Path
 
     dotnet restore Awayra.sln
     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
