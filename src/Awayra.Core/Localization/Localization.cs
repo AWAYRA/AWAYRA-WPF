@@ -5,7 +5,6 @@ public static class StringKeys
     public const string AppTitle = nameof(AppTitle);
     public const string StatusRunning = nameof(StatusRunning);
     public const string StatusPaused = nameof(StatusPaused);
-    public const string StatusPausedIdle = nameof(StatusPausedIdle);
     public const string StatusIdle = nameof(StatusIdle);
     public const string StatusConfigurationPaused = nameof(StatusConfigurationPaused);
     public const string StatusOutsideWorkHours = nameof(StatusOutsideWorkHours);
@@ -83,7 +82,7 @@ public static class StringKeys
 
     public static IReadOnlyList<string> All { get; } =
     [
-        AppTitle, StatusRunning, StatusPaused, StatusPausedIdle, StatusIdle, StatusConfigurationPaused, StatusOutsideWorkHours,
+        AppTitle, StatusRunning, StatusPaused, StatusIdle, StatusConfigurationPaused, StatusOutsideWorkHours,
         StatusBreakActive, StatusSnoozed, StatusDisabled, EyeReset, MoveBreak, Enabled, Disabled,
         Pause, Resume, EyeResetNow, MoveBreakNow, Settings, Quit, OpenAwayra,
         TodayEyeCompleted, TodayMoveCompleted, TodaySkipped, TodaySnoozed,

@@ -7,7 +7,13 @@ public enum BreakSoundTheme
     SoftBell = 0,
     GentleChime = 1,
     CalmDrop = 2,
-    CalmPiano = 3
+    CalmPiano = 3,
+
+    /// <summary>Rising and returning pentatonic phrase. Fades in, so it never startles.</summary>
+    MorningDew = 4,
+
+    /// <summary>Lower, slower and warmer version of the same rise-and-return shape.</summary>
+    StillWater = 5
 }
 
 public sealed class AppSettings
@@ -46,8 +52,14 @@ public sealed class AppSettings
     public bool CloseToTray { get; set; } = true;
 
     public int GlassClarity { get; set; } = OverlayGlassSettings.DefaultGlassClarity;
+
+    /// <summary>
+    /// Whether the break overlay shows the guided exercise illustration at all. Independent of
+    /// <see cref="ReducedMotion"/>, which keeps the illustration but removes its movement.
+    /// </summary>
+    public bool BreakAnimationEnabled { get; set; } = true;
+
     public bool ReducedMotion { get; set; }
-    public AppTheme Theme { get; set; } = AppTheme.Dark;
 
     public AppSettings Copy() => (AppSettings)MemberwiseClone();
 

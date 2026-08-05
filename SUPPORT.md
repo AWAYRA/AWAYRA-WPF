@@ -4,7 +4,7 @@ Use the right GitHub area so questions and actionable work do not become mixed t
 
 ## GitHub Discussions
 
-Use [GitHub Discussions](https://github.com/AAA-It-uae/AWAYRA-WPF/discussions) for:
+Use [GitHub Discussions](https://github.com/AWAYRA/AWAYRA-WPF/discussions) for:
 
 - usage questions and setup help
 - ideas that are not yet scoped as development work
@@ -16,7 +16,7 @@ Search existing discussions before opening a new one. For questions, include the
 
 ## GitHub Issues
 
-Use [GitHub Issues](https://github.com/AAA-It-uae/AWAYRA-WPF/issues) only for:
+Use [GitHub Issues](https://github.com/AWAYRA/AWAYRA-WPF/issues) only for:
 
 - reproducible software defects
 - confirmed documentation errors

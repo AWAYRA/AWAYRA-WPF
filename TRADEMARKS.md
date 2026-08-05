@@ -19,6 +19,6 @@ Written permission is required to:
 Forks and modified distributions should use a clearly different name and visual identity and must state that they are unofficial.
 
 The official project is maintained at:
-https://github.com/AAA-It-uae/AWAYRA-WPF
+https://github.com/AWAYRA/AWAYRA-WPF
 
 Questions about brand usage may be raised through a GitHub issue without including confidential information.

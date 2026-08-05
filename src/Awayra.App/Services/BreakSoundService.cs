@@ -380,7 +380,7 @@ public static class BreakToneGenerator
     private const int SampleRate = 44_100;
     private const short Channels = 1;
     private const short BitsPerSample = 16;
-    private const string CacheVersion = "v2";
+    private const string CacheVersion = "v3";
 
     public static string GetOrCreateWaveFile(BreakSoundTheme theme)
     {
@@ -396,6 +396,8 @@ public static class BreakToneGenerator
             BreakSoundTheme.GentleChime => "gentle-chime.wav",
             BreakSoundTheme.CalmDrop => "calm-drop.wav",
             BreakSoundTheme.CalmPiano => "calm-piano.wav",
+            BreakSoundTheme.MorningDew => "morning-dew.wav",
+            BreakSoundTheme.StillWater => "still-water.wav",
             _ => "soft-bell.wav"
         };
         var path = Path.Combine(directory, fileName);
@@ -415,6 +417,8 @@ public static class BreakToneGenerator
             BreakSoundTheme.GentleChime => 1.15,
             BreakSoundTheme.CalmDrop => 0.95,
             BreakSoundTheme.CalmPiano => 1.8,
+            BreakSoundTheme.MorningDew => 3.2,
+            BreakSoundTheme.StillWater => 4.0,
             _ => 0.9
         };
         var sampleCount = (int)(SampleRate * durationSeconds);
@@ -437,14 +441,35 @@ public static class BreakToneGenerator
                     0.90 * PianoNote(t, 0.42, 329.63) +
                     0.84 * PianoNote(t, 0.84, 392.00) +
                     0.76 * PianoNote(t, 1.26, 329.63),
+
+                // C major pentatonic, out and back: C - E - G - E - C.
+                BreakSoundTheme.MorningDew =>
+                    PhraseEnvelope(t, 3.2) * (
+                        SoftVoice(t, 0.00, 523.25, 1.10) +
+                        SoftVoice(t, 0.52, 659.25, 1.10) +
+                        SoftVoice(t, 1.04, 783.99, 1.30) +
+                        SoftVoice(t, 1.66, 659.25, 1.20) +
+                        SoftVoice(t, 2.18, 523.25, 1.40)),
+
+                // Same shape an octave lower and slower: A - C - E - C - A.
+                BreakSoundTheme.StillWater =>
+                    PhraseEnvelope(t, 4.0) * (
+                        SoftVoice(t, 0.00, 220.00, 1.50) +
+                        SoftVoice(t, 0.68, 261.63, 1.50) +
+                        SoftVoice(t, 1.36, 329.63, 1.70) +
+                        SoftVoice(t, 2.14, 261.63, 1.60) +
+                        SoftVoice(t, 2.82, 220.00, 1.90)),
                 _ =>
                     Bell(t, 0.00, 659.25, 5.4) +
                     0.82 * Bell(t, 0.24, 880.00, 6.0)
             };
         }
 
+        // The melodic themes sit deliberately lower than the alert themes. They are meant to be
+        // noticed, not to make anyone jump.
+        var targetPeak = theme is BreakSoundTheme.MorningDew or BreakSoundTheme.StillWater ? 0.46 : 0.68;
         var peak = samples.Select(Math.Abs).DefaultIfEmpty(1d).Max();
-        var scale = peak > 0 ? 0.68 / peak : 1d;
+        var scale = peak > 0 ? targetPeak / peak : 1d;
         var dataLength = sampleCount * sizeof(short);
 
         using var stream = new MemoryStream(44 + dataLength);
@@ -471,6 +496,49 @@ public static class BreakToneGenerator
 
         writer.Flush();
         return stream.ToArray();
+    }
+
+    /// <summary>
+    /// A single sung note with no percussive onset. The attack is an exponential approach rather
+    /// than a ramp, so the waveform leaves silence smoothly and there is no click or transient to
+    /// startle anyone. Neighbouring notes overlap and blend instead of cutting each other off.
+    /// </summary>
+    private static double SoftVoice(double t, double start, double frequency, double duration)
+    {
+        var x = t - start;
+        if (x < 0 || x > duration)
+        {
+            return 0;
+        }
+
+        var attack = 1d - Math.Exp(-x / 0.11);
+        var sustain = duration * 0.30;
+        var release = x <= sustain ? 1d : Math.Exp(-(x - sustain) / (duration * 0.40));
+
+        // Only two quiet harmonics. Anything brighter reads as an alert rather than a melody.
+        var body =
+            Math.Sin(2 * Math.PI * frequency * x) +
+            0.26 * Math.Sin(2 * Math.PI * frequency * 2 * x) +
+            0.07 * Math.Sin(2 * Math.PI * frequency * 3 * x);
+
+        return attack * release * body;
+    }
+
+    /// <summary>
+    /// Swells the whole phrase in and lets it recede, so the melody arrives from silence and
+    /// returns to it. This is the amplitude half of the out-and-back shape; the pitch contour of
+    /// each melodic theme is the other half.
+    /// </summary>
+    private static double PhraseEnvelope(double t, double totalSeconds)
+    {
+        if (t <= 0 || t >= totalSeconds)
+        {
+            return 0;
+        }
+
+        var fadeIn = Math.Min(1d, t / (totalSeconds * 0.16));
+        var fadeOut = Math.Min(1d, (totalSeconds - t) / (totalSeconds * 0.34));
+        return fadeIn * fadeOut;
     }
 
     private static double Bell(double t, double start, double frequency, double decay)

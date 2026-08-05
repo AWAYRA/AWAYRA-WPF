@@ -27,24 +27,44 @@ The installer includes the required .NET runtime. Official executable files are 
 
 - Independent Eye Reset and Move Break schedules
 - Fullscreen break overlays with pause, skip, snooze, and complete controls
+- Guided eye exercise: an animated focus cue and ten counted blinks
+- Guided movement routine: an animated stand, walk, stretch, and return
 - Optional sound for each reminder
-- Four locally generated sounds: Soft bell, Gentle chime, Calm drop, and an original Calm piano loop
+- Six locally generated sounds, including two soft melodies that fade in from silence rather than startling you
 - Configurable volume and repeat interval
 - Per-break mute and unmute control
 - Idle detection and optional work-hour restrictions
 - Windows startup, start-minimized, and tray behavior
 - Daily break statistics
 - Per-monitor DPI support and stabilized recovery after monitor wake, lock/unlock, resume, or display changes
-- Continuous local display diagnostics with a one-click screen-blink report
+- Reduced-motion setting that replaces every animation with static guidance
 - Offline operation with no account, advertising, telemetry, or cloud dependency
 
-## Display diagnostics
+## Break exercises
 
-Awayra 1.1.3 continuously records a bounded local display timeline while the program is running. It captures monitor topology and refresh rate, DWM composition state, Windows display and power messages, session and device transitions, the active foreground process name, and Awayra process health.
+Each break shows a guided animation instead of a bare countdown.
 
-After a visible blink, open the dashboard and press **Screen blink happened — Save diagnostics**. Awayra creates a ZIP under `%LocalAppData%\Awayra\Diagnostics\` and opens it in File Explorer. The ZIP contains the timeline, Awayra logs, recent Windows event logs, connected monitor and GPU device information, power configuration, and DxDiag output.
+**Eye Reset** draws an eye with expanding focus rings that prompt you to send your focus into the distance and bring it back, alongside ten complete blinks counted on screen. One blink every two seconds means a default 20-second break delivers exactly ten.
 
-The recorder does not upload anything. Window titles, screenshots, document contents, and browser history are not collected. Diagnostic data leaves the computer only when the user explicitly sends the ZIP.
+**Move Break** shows a figure typing at a desk who stands, turns, walks away while the camera follows, reaches up to stretch, bends side to side and rolls their shoulders. They then turn to face you for three squats and three jumps, before walking back and sitting down. The loop begins and ends in the same pose, so it plays as a continuous round trip.
+
+Both are controlled from **Settings → Break sound and exercise**:
+
+- **Show the guided exercise animation** is on by default. Turn it off for a plain countdown.
+- **Reduced motion**, under Appearance, keeps the illustration but replaces the movement with a single line of written guidance.
+
+## Sounds
+
+All six sounds are generated locally at first use. Nothing is downloaded and no audio file ships with the application.
+
+| Sound | Character |
+|---|---|
+| Soft bell, Gentle chime, Calm drop | Short alert tones |
+| Calm piano | A four-note piano phrase |
+| **Morning dew** | A five-note phrase that rises and returns, fading in from silence |
+| **Still water** | The same shape an octave lower and slower |
+
+The two melodies are deliberately quieter than the alert tones and begin below one twentieth of their peak volume, so a break never announces itself with a jolt.
 
 ## Default schedule
 
@@ -57,11 +77,21 @@ All intervals and durations are configurable.
 
 ## Privacy
 
-Awayra stores settings, runtime information, logs, and diagnostic traces locally under `%LocalAppData%\Awayra\`. It does not automatically upload screenshots, browsing history, application usage, diagnostic files, or personal information.
+Awayra stores settings, runtime information, and logs locally under `%LocalAppData%\Awayra\`. It does not upload screenshots, browsing history, application usage, or personal information. The application makes no network calls of any kind.
 
 ## Installation behavior
 
-Awayra uses a per-user installation at `%LocalAppData%\Programs\Awayra` and does not require administrator access. Version 1.1.3 performs a clean replacement: it stops an old Awayra process and removes stale program files, settings, scheduler state, logs, diagnostics, shortcuts, and startup registration before installing the new version. Uninstall removes Awayra-owned application data.
+Awayra uses a per-user installation at `%LocalAppData%\Programs\Awayra` and does not require administrator access.
+
+Program files are always replaced: the installer stops any running Awayra process and removes stale binaries and shortcuts before installing the new version.
+
+**Your data is yours.** From version 1.2.0 the installer asks what to do with your existing settings, statistics and reminder schedule, and keeps them by default. Choosing *Delete my existing data* on the wizard page performs the old full reset. Silent installs preserve data unless `/CLEANDATA=yes` is passed:
+
+```bash
+Awayra-Setup-x64.exe /VERYSILENT /CLEANDATA=yes
+```
+
+Uninstall asks whether to remove your settings and statistics, and keeps them by default so a reinstall picks up where you left off. A silent uninstall removes everything.
 
 ## Development
 

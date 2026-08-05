@@ -25,7 +25,6 @@ public sealed class LocalizationService
     {
         SchedulerStatus.Running => Get(StringKeys.StatusRunning),
         SchedulerStatus.PausedManual => Get(StringKeys.StatusPaused),
-        SchedulerStatus.PausedIdle => Get(StringKeys.StatusPausedIdle),
         SchedulerStatus.Idle => Get(StringKeys.StatusIdle),
         SchedulerStatus.ConfigurationPaused => Get(StringKeys.StatusConfigurationPaused),
         SchedulerStatus.OutsideWorkHours => Get(StringKeys.StatusOutsideWorkHours),
@@ -57,6 +56,7 @@ public sealed class LocalizationService
         "BreakSoundVolumeInvalid" => "Sound volume must be between 0 and 100.",
         "BreakSoundRepeatInvalid" => "Sound repeat interval must be between 1 and 60 seconds.",
         "BreakSoundThemeInvalid" => "Select a valid break sound.",
+        "WorkHoursFormatInvalid" => "Work hours must use 24-hour HH:mm format, for example 09:00.",
         _ => errorKey
     };
 }

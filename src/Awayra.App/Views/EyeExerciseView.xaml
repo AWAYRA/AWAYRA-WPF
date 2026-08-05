@@ -1,0 +1,235 @@
+<UserControl x:Class="Awayra.App.Views.EyeExerciseView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             AutomationProperties.AutomationId="EyeExerciseAnimation"
+             Focusable="False"
+             IsHitTestVisible="False">
+  <UserControl.Resources>
+    <ResourceDictionary>
+      <ResourceDictionary.MergedDictionaries>
+        <ResourceDictionary Source="../Resources/OverlayStyles.xaml" />
+      </ResourceDictionary.MergedDictionaries>
+
+      <!-- Almond eye outline. Also used as the clip so the iris can never spill past the lids. -->
+      <PathGeometry x:Key="Eye.OutlineGeometry"
+                    Figures="M 18,62 C 60,14 140,14 182,62 C 140,110 60,110 18,62 Z" />
+
+      <!--
+        One blink every two seconds. Over a default 20-second Eye Reset this delivers exactly the
+        ten complete blinks the instruction asks for, and it stays correct for any other duration
+        because the cycle simply repeats.
+
+        The eye does not squash. Real lids sweep across a stationary eyeball, the upper lid travels
+        roughly twice as far as the lower one, and closing (~90 ms) is markedly faster than opening
+        (~180 ms). Getting that asymmetry right is most of what makes a blink read as real.
+      -->
+      <Storyboard x:Key="Eye.BlinkStoryboard" RepeatBehavior="Forever">
+        <DoubleAnimationUsingKeyFrames Storyboard.TargetName="UpperLidTranslate"
+                                       Storyboard.TargetProperty="Y"
+                                       Duration="0:0:2">
+          <LinearDoubleKeyFrame KeyTime="0:0:1.20" Value="-36" />
+          <SplineDoubleKeyFrame KeyTime="0:0:1.29" Value="46" KeySpline="0.3,0,0.7,1" />
+          <LinearDoubleKeyFrame KeyTime="0:0:1.34" Value="46" />
+          <SplineDoubleKeyFrame KeyTime="0:0:1.52" Value="-36" KeySpline="0,0,0.35,1" />
+          <LinearDoubleKeyFrame KeyTime="0:0:2" Value="-36" />
+        </DoubleAnimationUsingKeyFrames>
+
+        <DoubleAnimationUsingKeyFrames Storyboard.TargetName="LowerLidTranslate"
+                                       Storyboard.TargetProperty="Y"
+                                       Duration="0:0:2">
+          <LinearDoubleKeyFrame KeyTime="0:0:1.20" Value="20" />
+          <SplineDoubleKeyFrame KeyTime="0:0:1.29" Value="-26" KeySpline="0.3,0,0.7,1" />
+          <LinearDoubleKeyFrame KeyTime="0:0:1.34" Value="-26" />
+          <SplineDoubleKeyFrame KeyTime="0:0:1.52" Value="20" KeySpline="0,0,0.35,1" />
+          <LinearDoubleKeyFrame KeyTime="0:0:2" Value="20" />
+        </DoubleAnimationUsingKeyFrames>
+
+        <!-- Bell's phenomenon: the eyeball rolls up slightly behind the closing lid. -->
+        <DoubleAnimationUsingKeyFrames Storyboard.TargetName="IrisTranslate"
+                                       Storyboard.TargetProperty="Y"
+                                       Duration="0:0:2">
+          <LinearDoubleKeyFrame KeyTime="0:0:1.20" Value="0" />
+          <SplineDoubleKeyFrame KeyTime="0:0:1.31" Value="-5" KeySpline="0.3,0,0.7,1" />
+          <SplineDoubleKeyFrame KeyTime="0:0:1.56" Value="0" KeySpline="0,0,0.35,1" />
+          <LinearDoubleKeyFrame KeyTime="0:0:2" Value="0" />
+        </DoubleAnimationUsingKeyFrames>
+      </Storyboard>
+
+      <!-- Ten blinks per cycle, counted out loud for the user. -->
+      <Storyboard x:Key="Eye.CounterStoryboard" RepeatBehavior="Forever">
+        <StringAnimationUsingKeyFrames Storyboard.TargetName="BlinkCounterText"
+                                       Storyboard.TargetProperty="Text"
+                                       Duration="0:0:20">
+          <DiscreteStringKeyFrame KeyTime="0:0:0" Value="Blink 1 of 10" />
+          <DiscreteStringKeyFrame KeyTime="0:0:2" Value="Blink 2 of 10" />
+          <DiscreteStringKeyFrame KeyTime="0:0:4" Value="Blink 3 of 10" />
+          <DiscreteStringKeyFrame KeyTime="0:0:6" Value="Blink 4 of 10" />
+          <DiscreteStringKeyFrame KeyTime="0:0:8" Value="Blink 5 of 10" />
+          <DiscreteStringKeyFrame KeyTime="0:0:10" Value="Blink 6 of 10" />
+          <DiscreteStringKeyFrame KeyTime="0:0:12" Value="Blink 7 of 10" />
+          <DiscreteStringKeyFrame KeyTime="0:0:14" Value="Blink 8 of 10" />
+          <DiscreteStringKeyFrame KeyTime="0:0:16" Value="Blink 9 of 10" />
+          <DiscreteStringKeyFrame KeyTime="0:0:18" Value="Blink 10 of 10" />
+        </StringAnimationUsingKeyFrames>
+      </Storyboard>
+
+      <!--
+        Focus rings pushing outward, paired with the iris contracting: the visual cue for
+        "let your focus travel out to something far away, then bring it back".
+      -->
+      <Storyboard x:Key="Eye.FocusStoryboard" RepeatBehavior="Forever">
+        <DoubleAnimation Storyboard.TargetName="FocusRingAScale" Storyboard.TargetProperty="ScaleX"
+                         From="0.35" To="2.15" Duration="0:0:4" />
+        <DoubleAnimation Storyboard.TargetName="FocusRingAScale" Storyboard.TargetProperty="ScaleY"
+                         From="0.35" To="2.15" Duration="0:0:4" />
+        <DoubleAnimation Storyboard.TargetName="FocusRingA" Storyboard.TargetProperty="Opacity"
+                         From="0.75" To="0" Duration="0:0:4" />
+
+        <DoubleAnimation Storyboard.TargetName="FocusRingBScale" Storyboard.TargetProperty="ScaleX"
+                         From="0.35" To="2.15" Duration="0:0:4" BeginTime="0:0:1.33" />
+        <DoubleAnimation Storyboard.TargetName="FocusRingBScale" Storyboard.TargetProperty="ScaleY"
+                         From="0.35" To="2.15" Duration="0:0:4" BeginTime="0:0:1.33" />
+        <DoubleAnimation Storyboard.TargetName="FocusRingB" Storyboard.TargetProperty="Opacity"
+                         From="0.75" To="0" Duration="0:0:4" BeginTime="0:0:1.33" />
+
+        <DoubleAnimation Storyboard.TargetName="FocusRingCScale" Storyboard.TargetProperty="ScaleX"
+                         From="0.35" To="2.15" Duration="0:0:4" BeginTime="0:0:2.66" />
+        <DoubleAnimation Storyboard.TargetName="FocusRingCScale" Storyboard.TargetProperty="ScaleY"
+                         From="0.35" To="2.15" Duration="0:0:4" BeginTime="0:0:2.66" />
+        <DoubleAnimation Storyboard.TargetName="FocusRingC" Storyboard.TargetProperty="Opacity"
+                         From="0.75" To="0" Duration="0:0:4" BeginTime="0:0:2.66" />
+
+        <!-- Iris contracts as focus travels out, relaxes as it comes back. -->
+        <DoubleAnimationUsingKeyFrames Storyboard.TargetName="IrisScale"
+                                       Storyboard.TargetProperty="ScaleX"
+                                       Duration="0:0:8" AutoReverse="False">
+          <SplineDoubleKeyFrame KeyTime="0:0:4" Value="0.72" KeySpline="0.4,0,0.2,1" />
+          <SplineDoubleKeyFrame KeyTime="0:0:8" Value="1" KeySpline="0.4,0,0.2,1" />
+        </DoubleAnimationUsingKeyFrames>
+        <DoubleAnimationUsingKeyFrames Storyboard.TargetName="IrisScale"
+                                       Storyboard.TargetProperty="ScaleY"
+                                       Duration="0:0:8" AutoReverse="False">
+          <SplineDoubleKeyFrame KeyTime="0:0:4" Value="0.72" KeySpline="0.4,0,0.2,1" />
+          <SplineDoubleKeyFrame KeyTime="0:0:8" Value="1" KeySpline="0.4,0,0.2,1" />
+        </DoubleAnimationUsingKeyFrames>
+
+        <StringAnimationUsingKeyFrames Storyboard.TargetName="FocusHintText"
+                                       Storyboard.TargetProperty="Text"
+                                       Duration="0:0:8">
+          <DiscreteStringKeyFrame KeyTime="0:0:0" Value="Look far away" />
+          <DiscreteStringKeyFrame KeyTime="0:0:4" Value="Now back to near" />
+        </StringAnimationUsingKeyFrames>
+      </Storyboard>
+    </ResourceDictionary>
+  </UserControl.Resources>
+
+  <StackPanel HorizontalAlignment="Center">
+    <!-- Sized so the outermost focus ring stays inside the control instead of bleeding into the card. -->
+    <Grid Width="220" Height="200" HorizontalAlignment="Center">
+
+      <!-- Expanding focus rings, drawn behind the eye. -->
+      <Ellipse x:Name="FocusRingA" Width="90" Height="90"
+               Stroke="{StaticResource Overlay.AccentBrush}" StrokeThickness="1.5"
+               Opacity="0" RenderTransformOrigin="0.5,0.5">
+        <Ellipse.RenderTransform>
+          <ScaleTransform x:Name="FocusRingAScale" ScaleX="0.35" ScaleY="0.35" />
+        </Ellipse.RenderTransform>
+      </Ellipse>
+      <Ellipse x:Name="FocusRingB" Width="90" Height="90"
+               Stroke="{StaticResource Overlay.AccentBrush}" StrokeThickness="1.5"
+               Opacity="0" RenderTransformOrigin="0.5,0.5">
+        <Ellipse.RenderTransform>
+          <ScaleTransform x:Name="FocusRingBScale" ScaleX="0.35" ScaleY="0.35" />
+        </Ellipse.RenderTransform>
+      </Ellipse>
+      <Ellipse x:Name="FocusRingC" Width="90" Height="90"
+               Stroke="{StaticResource Overlay.AccentBrush}" StrokeThickness="1.5"
+               Opacity="0" RenderTransformOrigin="0.5,0.5">
+        <Ellipse.RenderTransform>
+          <ScaleTransform x:Name="FocusRingCScale" ScaleX="0.35" ScaleY="0.35" />
+        </Ellipse.RenderTransform>
+      </Ellipse>
+
+      <!-- The eye. The eyeball is fixed; only the lids move. -->
+      <Grid x:Name="EyeGroup" Width="200" Height="124">
+        <Canvas Width="200" Height="124" Clip="{StaticResource Eye.OutlineGeometry}">
+          <Path Data="{StaticResource Eye.OutlineGeometry}" Fill="#FFEDF3F9" />
+
+          <Grid Canvas.Left="74" Canvas.Top="36" Width="52" Height="52"
+                RenderTransformOrigin="0.5,0.5">
+            <Grid.RenderTransform>
+              <TransformGroup>
+                <ScaleTransform x:Name="IrisScale" ScaleX="1" ScaleY="1" />
+                <TranslateTransform x:Name="IrisTranslate" X="0" Y="0" />
+              </TransformGroup>
+            </Grid.RenderTransform>
+            <Ellipse Width="52" Height="52">
+              <Ellipse.Fill>
+                <RadialGradientBrush GradientOrigin="0.4,0.35">
+                  <GradientStop Color="#FF7FD4F7" Offset="0" />
+                  <GradientStop Color="#FF2F91C4" Offset="0.72" />
+                  <GradientStop Color="#FF1B5F86" Offset="1" />
+                </RadialGradientBrush>
+              </Ellipse.Fill>
+            </Ellipse>
+            <Ellipse Width="22" Height="22" Fill="#FF0B1620"
+                     HorizontalAlignment="Center" VerticalAlignment="Center" />
+            <Ellipse Width="10" Height="10" Fill="#CCFFFFFF"
+                     HorizontalAlignment="Left" VerticalAlignment="Top"
+                     Margin="11,9,0,0" />
+          </Grid>
+
+          <!--
+            Each lid edge is the eye's own outline curve, so the two nest against the almond
+            exactly and the eye closes across its whole width. A lid drawn with its own arbitrary
+            curvature leaves slivers of white at the corners when it meets in the middle.
+          -->
+
+          <!-- Lower lid first, so the upper lid's lash edge stays on top when they meet. -->
+          <Canvas>
+            <Canvas.RenderTransform>
+              <TranslateTransform x:Name="LowerLidTranslate" Y="20" />
+            </Canvas.RenderTransform>
+            <Path Fill="#FF33414F"
+                  Data="M -30,62 L 18,62 C 60,110 140,110 182,62 L 230,62 L 230,320 L -30,320 Z" />
+            <Path Stroke="#FF1E2733" StrokeThickness="2" StrokeLineJoin="Round"
+                  Data="M -30,62 L 18,62 C 60,110 140,110 182,62 L 230,62" />
+          </Canvas>
+
+          <Canvas>
+            <Canvas.RenderTransform>
+              <TranslateTransform x:Name="UpperLidTranslate" Y="-36" />
+            </Canvas.RenderTransform>
+            <Path Fill="#FF3B4B5E"
+                  Data="M -30,-260 L 230,-260 L 230,62 L 182,62 C 140,14 60,14 18,62 L -30,62 Z" />
+            <Path Stroke="#FF1E2733" StrokeThickness="2.5" StrokeLineJoin="Round"
+                  Data="M -30,62 L 18,62 C 60,14 140,14 182,62 L 230,62" />
+          </Canvas>
+        </Canvas>
+
+        <Path Data="{StaticResource Eye.OutlineGeometry}"
+              Stroke="#FF2A3542"
+              StrokeThickness="3"
+              StrokeLineJoin="Round" />
+      </Grid>
+    </Grid>
+
+    <TextBlock x:Name="FocusHintText"
+               Text="Look far away"
+               Margin="0,10,0,0"
+               HorizontalAlignment="Center"
+               FontFamily="{StaticResource Overlay.Font}"
+               FontSize="14"
+               Foreground="{StaticResource Overlay.InstructionSecondaryBrush}" />
+
+    <TextBlock x:Name="BlinkCounterText"
+               AutomationProperties.AutomationId="EyeBlinkCounter"
+               Text="Blink 1 of 10"
+               Margin="0,4,0,0"
+               HorizontalAlignment="Center"
+               FontFamily="{StaticResource Overlay.Font}"
+               FontSize="15"
+               FontWeight="SemiBold"
+               Foreground="{StaticResource Overlay.AccentBrush}" />
+  </StackPanel>
+</UserControl>

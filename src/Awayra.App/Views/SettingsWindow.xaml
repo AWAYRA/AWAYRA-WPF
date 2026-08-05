@@ -87,7 +87,7 @@
                    Foreground="{StaticResource Settings.PrimaryTextBrush}"
                    FontSize="24"
                    FontWeight="SemiBold" />
-        <TextBlock Text="Sound and reminder controls are grouped on the left; behavior and Windows options stay on the right."
+        <TextBlock Text="Sound, exercise and reminder timing are grouped on the left. Behaviour, schedule, appearance and Windows options are on the right."
                    Style="{StaticResource Settings.PageDescription}"
                    Margin="0,3,0,10" />
 
@@ -101,12 +101,12 @@
           <StackPanel Grid.Column="0" Style="{StaticResource Settings.ColumnStack}">
             <Border Style="{StaticResource Settings.SectionCard}">
               <StackPanel>
-                <TextBlock Text="Break sound" Style="{StaticResource Settings.SectionTitle}" />
-                <TextBlock Text="All four sounds are generated locally. Calm piano is an original Awayra sequence with no third-party audio file."
+                <TextBlock Text="Break sound and exercise" Style="{StaticResource Settings.SectionTitle}" />
+                <TextBlock Text="All six are generated locally. Morning dew and Still water fade in from silence."
                            Style="{StaticResource Settings.PageDescription}"
-                           Margin="0,-4,0,9" />
+                           Margin="0,-4,0,8" />
 
-                <UniformGrid Columns="2" Rows="2" Margin="0,0,0,4">
+                <UniformGrid Columns="3" Rows="2" Margin="0,0,0,4">
                   <RadioButton AutomationProperties.AutomationId="SoftBellSoundRadio"
                                GroupName="BreakSoundTheme"
                                Content="Soft bell"
@@ -126,6 +126,16 @@
                                GroupName="BreakSoundTheme"
                                Content="Calm piano"
                                IsChecked="{Binding IsCalmPianoSelected}"
+                               Style="{StaticResource Settings.SoundRadio}" />
+                  <RadioButton AutomationProperties.AutomationId="MorningDewSoundRadio"
+                               GroupName="BreakSoundTheme"
+                               Content="Morning dew"
+                               IsChecked="{Binding IsMorningDewSelected}"
+                               Style="{StaticResource Settings.SoundRadio}" />
+                  <RadioButton AutomationProperties.AutomationId="StillWaterSoundRadio"
+                               GroupName="BreakSoundTheme"
+                               Content="Still water"
+                               IsChecked="{Binding IsStillWaterSelected}"
                                Style="{StaticResource Settings.SoundRadio}" />
                 </UniformGrid>
 
@@ -174,6 +184,19 @@
                           Style="{StaticResource Settings.SecondaryButton}"
                           Padding="13,7" />
                 </Grid>
+
+                <Border Height="1"
+                        Background="{StaticResource Settings.BorderBrush}"
+                        Margin="0,9,0,8" />
+
+                <CheckBox AutomationProperties.AutomationId="BreakAnimationCheckbox"
+                          Content="Show the guided exercise animation"
+                          IsChecked="{Binding BreakAnimationEnabled}"
+                          Style="{StaticResource Settings.CheckBoxRow}"
+                          Margin="0" />
+                <TextBlock Text="Off gives a plain countdown. Reduced motion keeps it without the movement."
+                           Style="{StaticResource Settings.PageDescription}"
+                           Margin="0,5,0,0" />
               </StackPanel>
             </Border>
 
@@ -260,9 +283,9 @@
                     </Grid>
                   </StackPanel>
                 </Grid>
-                <TextBlock Text="Sound ends with the break. The overlay mute control affects only the active break."
+                <TextBlock Text="The overlay mute control affects only the break that is running."
                            Style="{StaticResource Settings.PageDescription}"
-                           Margin="0,3,0,0" />
+                           Margin="0,2,0,0" />
               </StackPanel>
             </Border>
           </StackPanel>

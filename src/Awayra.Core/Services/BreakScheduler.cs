@@ -7,6 +7,13 @@ public sealed class BreakScheduler
 {
     public const int MoveActivityCount = 5;
 
+    /// <summary>
+    /// Grace period applied to the *other* reminder immediately after a snooze, so that dismissing
+    /// one break does not instantly replace it with a second fullscreen overlay. It deliberately
+    /// does not last for the whole snooze duration: each reminder keeps its own schedule.
+    /// </summary>
+    public static readonly TimeSpan SnoozeHandoffGrace = TimeSpan.FromSeconds(60);
+
     private readonly IClock _clock;
     private AppSettings _settings;
     private SchedulerState _state;
@@ -25,6 +32,8 @@ public sealed class BreakScheduler
     private TimeSpan? _idleFrozenMoveRemaining;
     private int _moveActivityIndex;
     private bool _snoozeInProgress;
+    private BreakType? _lastSnoozedBreak;
+    private DateTimeOffset? _snoozeHandoffUntil;
 
     public BreakScheduler(IClock clock, AppSettings settings, SchedulerState? persistedState = null)
     {
@@ -274,6 +283,7 @@ public sealed class BreakScheduler
         if (eyeScheduleChanged || moveScheduleChanged)
         {
             _state.QueuedBreak = null;
+            ClearSnoozeHandoff();
         }
 
         PublishSnapshot();
@@ -429,6 +439,7 @@ public sealed class BreakScheduler
 
         _state.MoveSnoozeUntil = null;
         _state.QueuedBreak = null;
+        ClearSnoozeHandoff();
     }
 
     public void TriggerNow(BreakType breakType)
@@ -510,6 +521,8 @@ public sealed class BreakScheduler
             }
 
             _state.SnoozeUntil = null;
+            _lastSnoozedBreak = breakType;
+            _snoozeHandoffUntil = now + SnoozeHandoffGrace;
             EndBreak(breakType, completed: false, skipped: false, snoozed: true);
             PublishSnapshot();
         }
@@ -564,8 +577,33 @@ public sealed class BreakScheduler
     }
 
     private bool IsAnyBreakSnoozed(DateTimeOffset now) =>
-        (_state.EyeSnoozeUntil is not null && now < _state.EyeSnoozeUntil.Value) ||
-        (_state.MoveSnoozeUntil is not null && now < _state.MoveSnoozeUntil.Value);
+        IsBreakSnoozed(BreakType.Eye, now) || IsBreakSnoozed(BreakType.Move, now);
+
+    private bool IsBreakSnoozed(BreakType breakType, DateTimeOffset now)
+    {
+        var snoozeUntil = breakType == BreakType.Eye ? _state.EyeSnoozeUntil : _state.MoveSnoozeUntil;
+        return snoozeUntil is not null && now < snoozeUntil.Value;
+    }
+
+    /// <summary>
+    /// True while <paramref name="breakType"/> is still inside the short handoff grace that follows
+    /// a snooze of the *other* reminder. The reminder that was snoozed is governed by its own
+    /// snooze time instead, so a snoozed Eye Reset never postpones a Move Break beyond this grace.
+    /// </summary>
+    private bool IsWithinSnoozeHandoffGrace(BreakType breakType, DateTimeOffset now) =>
+        _snoozeHandoffUntil is not null &&
+        now < _snoozeHandoffUntil.Value &&
+        _lastSnoozedBreak is not null &&
+        _lastSnoozedBreak.Value != breakType;
+
+    private void ClearSnoozeHandoff()
+    {
+        _lastSnoozedBreak = null;
+        _snoozeHandoffUntil = null;
+    }
+
+    private bool CanStartBreakNow(BreakType breakType, DateTimeOffset now) =>
+        !IsBreakSnoozed(breakType, now) && !IsWithinSnoozeHandoffGrace(breakType, now);
 
     private void HandleClockJump(DateTimeOffset now)
     {
@@ -707,18 +745,16 @@ public sealed class BreakScheduler
 
     private void TryStartDueBreak(DateTimeOffset now)
     {
-        if (IsAnyBreakSnoozed(now))
-        {
-            return;
-        }
-
+        // Each reminder is evaluated on its own schedule. Snoozing one reminder must never hold the
+        // other one back beyond the short handoff grace, otherwise a 60-minute Eye Reset snooze
+        // would silently postpone an unrelated Move Break by up to an hour.
         var dueBreaks = new List<(BreakType Type, DateTimeOffset Due)>();
-        if (_settings.EyeResetEnabled && now >= _state.EyeNextDue)
+        if (_settings.EyeResetEnabled && now >= _state.EyeNextDue && CanStartBreakNow(BreakType.Eye, now))
         {
             dueBreaks.Add((BreakType.Eye, _state.EyeNextDue));
         }
 
-        if (_settings.MoveBreakEnabled && now >= _state.MoveNextDue)
+        if (_settings.MoveBreakEnabled && now >= _state.MoveNextDue && CanStartBreakNow(BreakType.Move, now))
         {
             dueBreaks.Add((BreakType.Move, _state.MoveNextDue));
         }
@@ -739,12 +775,13 @@ public sealed class BreakScheduler
 
     private void TryStartQueuedOrDue()
     {
-        if (_state.ActiveBreak is not null || IsAnyBreakSnoozed(_clock.Now))
+        var now = _clock.Now;
+        if (_state.ActiveBreak is not null)
         {
             return;
         }
 
-        if (!CanDeliverReminders(_clock.Now))
+        if (!CanDeliverReminders(now))
         {
             return;
         }
@@ -752,12 +789,21 @@ public sealed class BreakScheduler
         if (_state.QueuedBreak is not null)
         {
             var queued = _state.QueuedBreak.Value;
+            if (!CanStartBreakNow(queued, now))
+            {
+                // The queued reminder was snoozed while another break was on screen. Drop it and
+                // let its own due time bring it back rather than holding the other reminder back.
+                _state.QueuedBreak = null;
+                TryStartDueBreak(now);
+                return;
+            }
+
             _state.QueuedBreak = null;
             StartBreak(queued, manual: false);
             return;
         }
 
-        TryStartDueBreak(_clock.Now);
+        TryStartDueBreak(now);
     }
 
     private void StartBreak(BreakType breakType, bool manual)
@@ -775,6 +821,7 @@ public sealed class BreakScheduler
         _state.ActiveBreak = breakType;
         _state.BreakEndsAt = now.AddSeconds(durationSeconds);
         _state.QueuedBreak = null;
+        ClearSnoozeHandoff();
 
         if (breakType == BreakType.Eye)
         {

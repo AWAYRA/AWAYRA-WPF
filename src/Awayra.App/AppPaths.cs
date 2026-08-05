@@ -18,13 +18,10 @@ public static class AppPaths
     public static string StatisticsPath => Path.Combine(DataRoot, "stats.json");
     public static string LogsDirectory => Path.Combine(DataRoot, "Logs");
     public static string LogFilePath => Path.Combine(LogsDirectory, "awayra.log");
-    public static string DiagnosticsDirectory => Path.Combine(DataRoot, "Diagnostics");
-    public static string DisplayTimelinePath => Path.Combine(DiagnosticsDirectory, "display-timeline.jsonl");
 
     public static void EnsureDataRoot()
     {
         Directory.CreateDirectory(DataRoot);
         Directory.CreateDirectory(LogsDirectory);
-        Directory.CreateDirectory(DiagnosticsDirectory);
     }
 }

@@ -1,27 +1,47 @@
-# Awayra Implementation Plan
+# Awayra Implementation Notes
 
-Status: **Completed**
+This document describes how the solution is laid out and how to work on it. Release history lives
+in [CHANGELOG.md](../CHANGELOG.md).
 
-This document tracks execution of the Awayra WPF build plan. See the repository README for usage instructions.
+## Projects
 
-## Completed phases
+| Project | Target | Responsibility |
+|---|---|---|
+| `src/Awayra.Core` | `net10.0` | Scheduling, settings validation, work hours, statistics, localization keys. Platform-neutral and published as the `Awayra.Core` NuGet package. |
+| `src/Awayra.App` | `net10.0-windows` | WPF dashboard, settings and overlay windows, break animations, tray integration, persistence, sound synthesis, Windows interop. |
+| `tests/Awayra.Core.Tests` | `net10.0` | Domain tests. No Windows dependency. |
+| `tests/Awayra.App.Tests` | `net10.0-windows` | Application, view model and XAML instantiation tests. |
+| `tests/Awayra.UiTests` | `net10.0-windows` | UI Automation tests driven against a published build. Not run in CI; see below. |
 
-1. Installed .NET SDK 10.0.302 and pinned `global.json`
-2. Scaffolded solution (`Awayra.Core`, `Awayra.App`, `Awayra.Core.Tests`)
-3. Implemented scheduler, settings validation, work hours, statistics, localization keys
-4. Implemented JSON persistence, logging, tray, overlays, idle detection, autostart, single instance
-5. Implemented dashboard, settings UI, break overlays, dark theme, en/fa/ar resources
-6. Added PowerShell scripts: `dev.ps1`, `test.ps1`, `publish.ps1`, `smoke.ps1`, `generate-icon.ps1`
-7. Validated Debug/Release builds, 44 automated tests, publish and smoke scripts
+## Localization
 
-## Validation commands
+Localization keys live in `Awayra.Core`, and the only shipped resource set is English
+(`src/Awayra.App/Resources/Strings.resx`). `LocalizationService` currently pins the process to `en`.
+Adding a language means adding a satellite `.resx` and letting `LocalizationService.Apply` select it.
+
+## Break animations
+
+`EyeExerciseView` and `MoveExerciseView` are self-contained user controls under
+`src/Awayra.App/Views`. Each owns its vector art and its storyboards, exposes `StartAnimation`,
+`StopAnimation` and `ApplyReducedMotion`, and merges `OverlayStyles.xaml` so it can be instantiated
+and tested standalone. `BreakOverlayWindow` shows exactly one of them per break, and only starts
+motion once the overlay is loaded and only when Reduced motion is off.
+
+## Test coverage
+
+Core and application suites run on every push and pull request, and again inside the release
+workflow before any installer is published.
+
+`tests/Awayra.UiTests` drives the real application through UI Automation and a named pipe
+(`UiTestCommandPipe`, `UiTestDiagnosticsPipe`). It requires an interactive desktop session, so it is
+not part of CI and must be run manually on a developer machine.
+
+## Commands
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\scripts\test.ps1
-powershell -ExecutionPolicy Bypass -File .\scripts\publish.ps1
-powershell -ExecutionPolicy Bypass -File .\scripts\smoke.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\dev.ps1              # run locally
+powershell -ExecutionPolicy Bypass -File .\scripts\verify-change.ps1    # build and test
+powershell -ExecutionPolicy Bypass -File .\scripts\build-installer.ps1  # publish and package
 ```
 
-## Output
-
-`artifacts/publish/win-x64/Awayra.exe`
+Output: `artifacts/publish/win-x64/Awayra.exe` and `artifacts/installer/`.

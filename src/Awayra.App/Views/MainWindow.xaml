@@ -8,9 +8,9 @@
         Title="Awayra"
         Icon="pack://application:,,,/Awayra;component/Assets/awayra.ico"
         Width="460"
-        Height="790"
+        Height="710"
         MinWidth="420"
-        MinHeight="720"
+        MinHeight="650"
         WindowStartupLocation="CenterScreen"
         Background="#0E1319"
         Foreground="#F7F9FC"
@@ -87,7 +87,6 @@
       <RowDefinition Height="Auto" />
       <RowDefinition Height="Auto" />
       <RowDefinition Height="*" />
-      <RowDefinition Height="Auto" />
       <RowDefinition Height="Auto" />
       <RowDefinition Height="Auto" />
       <RowDefinition Height="Auto" />
@@ -223,25 +222,6 @@
     </UniformGrid>
 
     <Button Grid.Row="6"
-            AutomationProperties.AutomationId="ReportScreenBlinkButton"
-            Command="{Binding ReportScreenBlinkCommand}"
-            Style="{StaticResource Dashboard.SecondaryButton}"
-            HorizontalContentAlignment="Left"
-            Padding="16,10"
-            Margin="0,0,0,10">
-      <StackPanel>
-        <TextBlock Text="{Binding ReportScreenBlinkLabel}"
-                   FontWeight="SemiBold"
-                   FontSize="13" />
-        <TextBlock Text="{Binding DiagnosticStatusText}"
-                   Margin="0,3,0,0"
-                   Foreground="{StaticResource Dashboard.SecondaryTextBrush}"
-                   FontSize="10.5"
-                   TextWrapping="Wrap" />
-      </StackPanel>
-    </Button>
-
-    <Button Grid.Row="7"
             AutomationProperties.AutomationId="DashboardAboutSupportButton"
             Click="DashboardAboutSupport_Click"
             Style="{StaticResource Dashboard.AboutSupportCardButton}">

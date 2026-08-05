@@ -262,7 +262,7 @@ try {
         "MinimumWindowsVersion=Windows 10 x64"
         "License=GPL-3.0-only"
         "LicensePage=Included"
-        "SourceRepository=https://github.com/AAA-It-uae/AWAYRA-WPF"
+        "SourceRepository=https://github.com/AWAYRA/AWAYRA-WPF"
     ) | Set-Content -Path $buildInfoPath -Encoding UTF8
 
     Write-Host ""

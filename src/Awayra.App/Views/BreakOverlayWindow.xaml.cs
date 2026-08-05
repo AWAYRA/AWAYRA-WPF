@@ -73,7 +73,59 @@ public partial class BreakOverlayWindow : Window
             _viewModel.ConfigureMove(args, settings, localization, snapshot);
         }
 
+        ConfigureExerciseView(isEye, settings.BreakAnimationEnabled);
         UpdateSoundState();
+    }
+
+    /// <summary>
+    /// Shows the guided exercise that matches this break. Turning the exercise off hides the
+    /// illustration entirely and leaves a plain countdown; Reduced motion keeps the illustration
+    /// but replaces the movement with static guidance. Motion only starts once the overlay loads.
+    /// </summary>
+    private void ConfigureExerciseView(bool isEye, bool animationEnabled)
+    {
+        if (!animationEnabled)
+        {
+            EyeExercise.Visibility = Visibility.Collapsed;
+            MoveExercise.Visibility = Visibility.Collapsed;
+            return;
+        }
+
+        EyeExercise.Visibility = isEye ? Visibility.Visible : Visibility.Collapsed;
+        MoveExercise.Visibility = isEye ? Visibility.Collapsed : Visibility.Visible;
+
+        if (!_viewModel.ReducedMotion)
+        {
+            return;
+        }
+
+        if (isEye)
+        {
+            EyeExercise.ApplyReducedMotion();
+        }
+        else
+        {
+            MoveExercise.ApplyReducedMotion();
+        }
+    }
+
+    private void StartExerciseAnimation()
+    {
+        if (EyeExercise.Visibility == Visibility.Visible)
+        {
+            EyeExercise.StartAnimation();
+        }
+
+        if (MoveExercise.Visibility == Visibility.Visible)
+        {
+            MoveExercise.StartAnimation();
+        }
+    }
+
+    private void StopExerciseAnimation()
+    {
+        EyeExercise.StopAnimation();
+        MoveExercise.StopAnimation();
     }
 
     public void ShowOnActiveMonitor()
@@ -144,6 +196,7 @@ public partial class BreakOverlayWindow : Window
         _monitorRecoveryTimer.Stop();
         StopWaitingForRevealRender();
         _pulseStoryboard?.Stop();
+        StopExerciseAnimation();
         Close();
     }
 
@@ -278,6 +331,8 @@ public partial class BreakOverlayWindow : Window
     {
         if (!_viewModel.ReducedMotion)
         {
+            StartExerciseAnimation();
+
             _pulseStoryboard = new Storyboard { RepeatBehavior = RepeatBehavior.Forever };
             var animation = new DoubleAnimation(1, 1.15, TimeSpan.FromSeconds(2.4))
             {
@@ -306,6 +361,7 @@ public partial class BreakOverlayWindow : Window
         StopWaitingForRevealRender();
         _displayBoundsStabilizer.Reset();
         _pulseStoryboard?.Stop();
+        StopExerciseAnimation();
         _host.BreakSound.StateChanged -= OnSoundStateChanged;
         Loaded -= OnLoaded;
         ContentRendered -= OnFirstContentRendered;

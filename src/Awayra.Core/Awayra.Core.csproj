@@ -18,7 +18,7 @@
     <RepositoryUrl>https://github.com/AWAYRA/AWAYRA-WPF.git</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <PackageReadmeFile>PACKAGE-README.md</PackageReadmeFile>
-    <PackageReleaseNotes>Awayra 1.1.3 scheduling core released with the Windows display diagnostic recorder build.</PackageReleaseNotes>
+    <PackageReleaseNotes>Awayra 1.2.0 scheduling core. Snoozing one reminder no longer postpones the other.</PackageReleaseNotes>
     <IncludeSymbols>false</IncludeSymbols>
   </PropertyGroup>
 
