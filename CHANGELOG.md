@@ -8,6 +8,36 @@ The project follows semantic versioning where practical.
 
 No unreleased changes yet.
 
+## [1.2.0] - 2026-08-05
+
+### Added
+
+- Guided eye exercise on the Eye Reset overlay: an animated eye with expanding focus rings and ten complete blinks counted on screen
+- Guided movement routine on the Move Break overlay: a figure stands, turns, walks away with the camera following, stretches overhead, bends side to side, rolls their shoulders, then walks back and sits down
+- Both animations honour the existing Reduced motion setting, which replaces them with static illustrations and written guidance
+- Installer wizard page asking whether to keep or delete existing settings, statistics and reminder schedule
+- `/CLEANDATA=yes` installer switch for unattended installs that intentionally want a full reset
+- Uninstall now asks before removing personal data
+- Release workflow builds and runs both test suites before publishing
+
+### Changed
+
+- **The installer no longer deletes your data on upgrade.** Settings, statistics, scheduler state and logs are preserved by default; only program files and shortcuts are always replaced
+- Silent installs preserve user data unless `/CLEANDATA=yes` is passed
+- Dashboard is shorter now that the diagnostics panel is gone
+- Dependabot also tracks GitHub Actions versions
+
+### Fixed
+
+- Snoozing one reminder no longer postpones the other. A snoozed Eye Reset could delay an unrelated Move Break by up to the full snooze duration; each reminder now keeps its own schedule, with only a 60-second handoff grace so two overlays never appear back to back
+
+### Removed
+
+- Display diagnostic recorder, the dashboard screen-blink button, and the `%LocalAppData%\Awayra\Diagnostics` timeline. A full native-API audit confirmed Awayra cannot cause a physical monitor blink: it contains no display-mode, topology, monitor-power, HDR or DXGI call of any kind. The recorder had served its purpose
+- Dead `DwmHelper` window-glass helper, which had no callers and passed an undocumented DWM attribute
+- Dead `AppTheme` setting, which was persisted but never read by any code
+- Unreachable `SchedulerStatus.PausedIdle` value and its unused resource string
+
 ## [1.1.3] - 2026-08-03
 
 ### Added
