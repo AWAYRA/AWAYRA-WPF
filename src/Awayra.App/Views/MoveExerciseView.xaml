@@ -50,17 +50,21 @@
 
         <DoubleAnimationUsingKeyFrames Storyboard.TargetName="BodyTranslate"
                                        Storyboard.TargetProperty="X" Duration="0:0:20">
-          <LinearDoubleKeyFrame KeyTime="0:0:2.98" Value="0" />
+          <!-- Seated on the chair, then a step clear of it before walking off. -->
+          <LinearDoubleKeyFrame KeyTime="0:0:1.8" Value="2" />
+          <SplineDoubleKeyFrame KeyTime="0:0:2.8" Value="-10" KeySpline="0.3,0,0.2,1" />
+          <LinearDoubleKeyFrame KeyTime="0:0:2.98" Value="-10" />
           <SplineDoubleKeyFrame KeyTime="0:0:5.6" Value="92" KeySpline="0.4,0,0.2,1" />
           <LinearDoubleKeyFrame KeyTime="0:0:14.6" Value="92" />
-          <SplineDoubleKeyFrame KeyTime="0:0:17.1" Value="0" KeySpline="0.4,0,0.2,1" />
-          <LinearDoubleKeyFrame KeyTime="0:0:20" Value="0" />
+          <SplineDoubleKeyFrame KeyTime="0:0:17.1" Value="-10" KeySpline="0.4,0,0.2,1" />
+          <LinearDoubleKeyFrame KeyTime="0:0:17.7" Value="-10" />
+          <SplineDoubleKeyFrame KeyTime="0:0:20" Value="2" KeySpline="0.4,0,0.6,1" />
         </DoubleAnimationUsingKeyFrames>
 
         <!-- Hip height: seated, upright, three squats, then three jumps clear of the floor. -->
         <DoubleAnimationUsingKeyFrames Storyboard.TargetName="BodyTranslate"
                                        Storyboard.TargetProperty="Y" Duration="0:0:20">
-          <LinearDoubleKeyFrame KeyTime="0:0:1.8" Value="26" />
+          <LinearDoubleKeyFrame KeyTime="0:0:1.8" Value="25" />
           <SplineDoubleKeyFrame KeyTime="0:0:2.8" Value="0" KeySpline="0.3,0,0.2,1" />
           <LinearDoubleKeyFrame KeyTime="0:0:9.4" Value="0" />
 
@@ -88,7 +92,7 @@
           <SplineDoubleKeyFrame KeyTime="0:0:14.4" Value="0" KeySpline="0.3,0,0.3,1" />
 
           <LinearDoubleKeyFrame KeyTime="0:0:17.7" Value="0" />
-          <SplineDoubleKeyFrame KeyTime="0:0:20" Value="26" KeySpline="0.4,0,0.6,1" />
+          <SplineDoubleKeyFrame KeyTime="0:0:20" Value="25" KeySpline="0.4,0,0.6,1" />
         </DoubleAnimationUsingKeyFrames>
 
         <!-- Profile rig: faces the desk, then the walking direction, then squeezes away entirely. -->
@@ -344,10 +348,10 @@
         -->
         <DoubleAnimationUsingKeyFrames Storyboard.TargetName="NearArmRotate"
                                        Storyboard.TargetProperty="Angle" Duration="0:0:20">
-          <LinearDoubleKeyFrame KeyTime="0:0:0.45" Value="-49" />
-          <LinearDoubleKeyFrame KeyTime="0:0:0.9" Value="-46" />
-          <LinearDoubleKeyFrame KeyTime="0:0:1.35" Value="-49" />
-          <LinearDoubleKeyFrame KeyTime="0:0:1.8" Value="-46" />
+          <LinearDoubleKeyFrame KeyTime="0:0:0.45" Value="-36" />
+          <LinearDoubleKeyFrame KeyTime="0:0:0.9" Value="-34" />
+          <LinearDoubleKeyFrame KeyTime="0:0:1.35" Value="-36" />
+          <LinearDoubleKeyFrame KeyTime="0:0:1.8" Value="-34" />
           <SplineDoubleKeyFrame KeyTime="0:0:2.8" Value="0" KeySpline="0.3,0,0.2,1" />
           <LinearDoubleKeyFrame KeyTime="0:0:3.635" Value="-26" />
           <LinearDoubleKeyFrame KeyTime="0:0:4.945" Value="26" />
@@ -363,28 +367,28 @@
           <LinearDoubleKeyFrame KeyTime="0:0:16.475" Value="26" />
           <LinearDoubleKeyFrame KeyTime="0:0:17.1" Value="0" />
           <LinearDoubleKeyFrame KeyTime="0:0:17.7" Value="0" />
-          <SplineDoubleKeyFrame KeyTime="0:0:20" Value="-49" KeySpline="0.4,0,0.6,1" />
+          <SplineDoubleKeyFrame KeyTime="0:0:20" Value="-36" KeySpline="0.4,0,0.6,1" />
         </DoubleAnimationUsingKeyFrames>
 
         <DoubleAnimationUsingKeyFrames Storyboard.TargetName="NearForearmRotate"
                                        Storyboard.TargetProperty="Angle" Duration="0:0:20">
-          <LinearDoubleKeyFrame KeyTime="0:0:0.45" Value="-82" />
-          <LinearDoubleKeyFrame KeyTime="0:0:0.9" Value="-78" />
-          <LinearDoubleKeyFrame KeyTime="0:0:1.35" Value="-82" />
-          <LinearDoubleKeyFrame KeyTime="0:0:1.8" Value="-78" />
+          <LinearDoubleKeyFrame KeyTime="0:0:0.45" Value="-78" />
+          <LinearDoubleKeyFrame KeyTime="0:0:0.9" Value="-75" />
+          <LinearDoubleKeyFrame KeyTime="0:0:1.35" Value="-78" />
+          <LinearDoubleKeyFrame KeyTime="0:0:1.8" Value="-75" />
           <SplineDoubleKeyFrame KeyTime="0:0:2.8" Value="10" KeySpline="0.3,0,0.2,1" />
           <LinearDoubleKeyFrame KeyTime="0:0:5.6" Value="10" />
           <SplineDoubleKeyFrame KeyTime="0:0:6.5" Value="0" KeySpline="0.3,0,0.2,1" />
           <LinearDoubleKeyFrame KeyTime="0:0:17.7" Value="0" />
-          <SplineDoubleKeyFrame KeyTime="0:0:20" Value="-82" KeySpline="0.4,0,0.6,1" />
+          <SplineDoubleKeyFrame KeyTime="0:0:20" Value="-78" KeySpline="0.4,0,0.6,1" />
         </DoubleAnimationUsingKeyFrames>
 
         <DoubleAnimationUsingKeyFrames Storyboard.TargetName="FarArmRotate"
                                        Storyboard.TargetProperty="Angle" Duration="0:0:20">
-          <LinearDoubleKeyFrame KeyTime="0:0:0.45" Value="-44" />
-          <LinearDoubleKeyFrame KeyTime="0:0:0.9" Value="-47" />
-          <LinearDoubleKeyFrame KeyTime="0:0:1.35" Value="-44" />
-          <LinearDoubleKeyFrame KeyTime="0:0:1.8" Value="-47" />
+          <LinearDoubleKeyFrame KeyTime="0:0:0.45" Value="-39" />
+          <LinearDoubleKeyFrame KeyTime="0:0:0.9" Value="-37" />
+          <LinearDoubleKeyFrame KeyTime="0:0:1.35" Value="-39" />
+          <LinearDoubleKeyFrame KeyTime="0:0:1.8" Value="-37" />
           <SplineDoubleKeyFrame KeyTime="0:0:2.8" Value="0" KeySpline="0.3,0,0.2,1" />
           <LinearDoubleKeyFrame KeyTime="0:0:3.635" Value="26" />
           <LinearDoubleKeyFrame KeyTime="0:0:4.945" Value="-26" />
@@ -400,20 +404,20 @@
           <LinearDoubleKeyFrame KeyTime="0:0:16.475" Value="-26" />
           <LinearDoubleKeyFrame KeyTime="0:0:17.1" Value="0" />
           <LinearDoubleKeyFrame KeyTime="0:0:17.7" Value="0" />
-          <SplineDoubleKeyFrame KeyTime="0:0:20" Value="-44" KeySpline="0.4,0,0.6,1" />
+          <SplineDoubleKeyFrame KeyTime="0:0:20" Value="-39" KeySpline="0.4,0,0.6,1" />
         </DoubleAnimationUsingKeyFrames>
 
         <DoubleAnimationUsingKeyFrames Storyboard.TargetName="FarForearmRotate"
                                        Storyboard.TargetProperty="Angle" Duration="0:0:20">
-          <LinearDoubleKeyFrame KeyTime="0:0:0.45" Value="-86" />
-          <LinearDoubleKeyFrame KeyTime="0:0:0.9" Value="-82" />
-          <LinearDoubleKeyFrame KeyTime="0:0:1.35" Value="-86" />
-          <LinearDoubleKeyFrame KeyTime="0:0:1.8" Value="-82" />
+          <LinearDoubleKeyFrame KeyTime="0:0:0.45" Value="-75" />
+          <LinearDoubleKeyFrame KeyTime="0:0:0.9" Value="-72" />
+          <LinearDoubleKeyFrame KeyTime="0:0:1.35" Value="-75" />
+          <LinearDoubleKeyFrame KeyTime="0:0:1.8" Value="-72" />
           <SplineDoubleKeyFrame KeyTime="0:0:2.8" Value="10" KeySpline="0.3,0,0.2,1" />
           <LinearDoubleKeyFrame KeyTime="0:0:5.6" Value="10" />
           <SplineDoubleKeyFrame KeyTime="0:0:6.5" Value="0" KeySpline="0.3,0,0.2,1" />
           <LinearDoubleKeyFrame KeyTime="0:0:17.7" Value="0" />
-          <SplineDoubleKeyFrame KeyTime="0:0:20" Value="-86" KeySpline="0.4,0,0.6,1" />
+          <SplineDoubleKeyFrame KeyTime="0:0:20" Value="-75" KeySpline="0.4,0,0.6,1" />
         </DoubleAnimationUsingKeyFrames>
 
         <StringAnimationUsingKeyFrames Storyboard.TargetName="MoveCaptionText"
@@ -446,10 +450,16 @@
 
         <!-- Workstation -->
 
-        <Rectangle Canvas.Left="38" Canvas.Top="26" Width="76" Height="48"
+        <!--
+          Heights are set from the figure, not guessed. Its standing hip is 56 px above the floor,
+          so at human proportions (hip 90 cm, desk 73 cm, seat 45 cm) the desk surface lands 46 px
+          above the floor and the seat 28 px. The previous layout put the desk above the standing
+          hip, which is why nobody could reach the keyboard while seated.
+        -->
+        <Rectangle Canvas.Left="38" Canvas.Top="48" Width="76" Height="48"
                    RadiusX="4" RadiusY="4" Fill="#FF222C3A"
                    Stroke="#FF5A6A80" StrokeThickness="1.5" />
-        <Rectangle Canvas.Left="42" Canvas.Top="30" Width="68" Height="40"
+        <Rectangle Canvas.Left="42" Canvas.Top="52" Width="68" Height="40"
                    RadiusX="2" RadiusY="2">
           <Rectangle.Fill>
             <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
@@ -458,48 +468,48 @@
             </LinearGradientBrush>
           </Rectangle.Fill>
         </Rectangle>
-        <Rectangle Canvas.Left="47" Canvas.Top="36" Width="34" Height="3" RadiusX="1.5" RadiusY="1.5" Fill="#66CFEAF7" />
-        <Rectangle Canvas.Left="47" Canvas.Top="43" Width="48" Height="3" RadiusX="1.5" RadiusY="1.5" Fill="#44CFEAF7" />
-        <Rectangle Canvas.Left="47" Canvas.Top="50" Width="40" Height="3" RadiusX="1.5" RadiusY="1.5" Fill="#44CFEAF7" />
-        <Rectangle Canvas.Left="47" Canvas.Top="57" Width="26" Height="3" RadiusX="1.5" RadiusY="1.5" Fill="#33CFEAF7" />
-        <Rectangle Canvas.Left="72" Canvas.Top="74" Width="8" Height="16" Fill="#FF4A5568" />
-        <Rectangle Canvas.Left="58" Canvas.Top="89" Width="36" Height="5"
+        <Rectangle Canvas.Left="47" Canvas.Top="58" Width="34" Height="3" RadiusX="1.5" RadiusY="1.5" Fill="#66CFEAF7" />
+        <Rectangle Canvas.Left="47" Canvas.Top="65" Width="48" Height="3" RadiusX="1.5" RadiusY="1.5" Fill="#44CFEAF7" />
+        <Rectangle Canvas.Left="47" Canvas.Top="72" Width="40" Height="3" RadiusX="1.5" RadiusY="1.5" Fill="#44CFEAF7" />
+        <Rectangle Canvas.Left="47" Canvas.Top="79" Width="26" Height="3" RadiusX="1.5" RadiusY="1.5" Fill="#33CFEAF7" />
+        <Rectangle Canvas.Left="72" Canvas.Top="96" Width="8" Height="16" Fill="#FF4A5568" />
+        <Rectangle Canvas.Left="58" Canvas.Top="111" Width="36" Height="5"
                    RadiusX="2.5" RadiusY="2.5" Fill="#FF5A6A80" />
 
-        <Rectangle Canvas.Left="10" Canvas.Top="94" Width="120" Height="7"
+        <Rectangle Canvas.Left="10" Canvas.Top="116" Width="120" Height="7"
                    RadiusX="3" RadiusY="3" Fill="{StaticResource Scene.DeskBrush}" />
-        <Rectangle Canvas.Left="10" Canvas.Top="94" Width="120" Height="2"
+        <Rectangle Canvas.Left="10" Canvas.Top="116" Width="120" Height="2"
                    RadiusX="1" RadiusY="1" Fill="{StaticResource Scene.DeskEdgeBrush}" />
-        <Rectangle Canvas.Left="17" Canvas.Top="101" Width="5" Height="61" Fill="{StaticResource Scene.DeskBrush}" />
-        <Rectangle Canvas.Left="118" Canvas.Top="101" Width="5" Height="61" Fill="{StaticResource Scene.DeskBrush}" />
-        <Rectangle Canvas.Left="22" Canvas.Top="126" Width="96" Height="3" Fill="#FF3C4757" />
+        <Rectangle Canvas.Left="17" Canvas.Top="123" Width="5" Height="39" Fill="{StaticResource Scene.DeskBrush}" />
+        <Rectangle Canvas.Left="118" Canvas.Top="123" Width="5" Height="39" Fill="{StaticResource Scene.DeskBrush}" />
+        <Rectangle Canvas.Left="22" Canvas.Top="143" Width="96" Height="3" Fill="#FF3C4757" />
 
-        <Rectangle Canvas.Left="56" Canvas.Top="90" Width="46" Height="4"
+        <Rectangle Canvas.Left="68" Canvas.Top="112" Width="46" Height="4"
                    RadiusX="2" RadiusY="2" Fill="#FF6B7A92" />
-        <Ellipse Canvas.Left="106" Canvas.Top="89" Width="11" Height="5" Fill="#FF6B7A92" />
-        <Rectangle Canvas.Left="22" Canvas.Top="82" Width="12" Height="12"
+        <Ellipse Canvas.Left="118" Canvas.Top="111" Width="11" Height="5" Fill="#FF6B7A92" />
+        <Rectangle Canvas.Left="22" Canvas.Top="104" Width="12" Height="12"
                    RadiusX="2" RadiusY="2" Fill="#FF7C8CA5" />
         <Path Stroke="#FF7C8CA5" StrokeThickness="2" Fill="Transparent"
-              Data="M 34,85 C 39,85 39,91 34,91" />
+              Data="M 34,107 C 39,107 39,113 34,113" />
 
-        <Rectangle Canvas.Left="163" Canvas.Top="66" Width="8" Height="50"
+        <Rectangle Canvas.Left="163" Canvas.Top="86" Width="8" Height="50"
                    RadiusX="4" RadiusY="4" Fill="#FF4A5568" />
-        <Rectangle Canvas.Left="161" Canvas.Top="70" Width="4" Height="42"
+        <Rectangle Canvas.Left="161" Canvas.Top="90" Width="4" Height="42"
                    RadiusX="2" RadiusY="2" Fill="#FF61708A" />
-        <Rectangle Canvas.Left="130" Canvas.Top="114" Width="42" Height="7"
+        <Rectangle Canvas.Left="130" Canvas.Top="134" Width="42" Height="7"
                    RadiusX="3.5" RadiusY="3.5" Fill="#FF4A5568" />
-        <Rectangle Canvas.Left="130" Canvas.Top="114" Width="42" Height="2"
+        <Rectangle Canvas.Left="130" Canvas.Top="134" Width="42" Height="2"
                    RadiusX="1" RadiusY="1" Fill="#FF61708A" />
-        <Rectangle Canvas.Left="148" Canvas.Top="121" Width="6" Height="26" Fill="#FF5A6A80" />
+        <Rectangle Canvas.Left="148" Canvas.Top="141" Width="6" Height="14" Fill="#FF5A6A80" />
         <Path Stroke="#FF5A6A80" StrokeThickness="3.5" StrokeStartLineCap="Round" StrokeEndLineCap="Round"
-              Data="M 151,147 L 132,157 M 151,147 L 170,157" />
-        <Ellipse Canvas.Left="127" Canvas.Top="155" Width="8" Height="8" Fill="#FF3C4757" />
-        <Ellipse Canvas.Left="165" Canvas.Top="155" Width="8" Height="8" Fill="#FF3C4757" />
+              Data="M 151,155 L 133,161 M 151,155 L 169,161" />
+        <Ellipse Canvas.Left="128" Canvas.Top="157" Width="8" Height="8" Fill="#FF3C4757" />
+        <Ellipse Canvas.Left="164" Canvas.Top="157" Width="8" Height="8" Fill="#FF3C4757" />
 
         <!-- Walker: both rigs share this position -->
-        <Canvas Canvas.Left="140" Canvas.Top="98">
+        <Canvas Canvas.Left="140" Canvas.Top="105">
           <Canvas.RenderTransform>
-            <TranslateTransform x:Name="BodyTranslate" X="0" Y="26" />
+            <TranslateTransform x:Name="BodyTranslate" X="2" Y="25" />
           </Canvas.RenderTransform>
 
           <!-- Profile rig -->
