@@ -10,32 +10,55 @@ $ErrorActionPreference = "Stop"
 Set-StrictMode -Version Latest
 
 function Assert-PathExists {
-    param([Parameter(Mandatory = $true)][string]$Path)
+    param(
+        [Parameter(Mandatory = $true)][string]$Path,
+        [string]$Because
+    )
 
     if (-not (Test-Path -LiteralPath $Path)) {
-        throw "Expected path does not exist: $Path"
+        throw "Expected path does not exist: $Path$(if ($Because) { " ($Because)" })"
     }
 }
 
 function Assert-PathMissing {
-    param([Parameter(Mandatory = $true)][string]$Path)
+    param(
+        [Parameter(Mandatory = $true)][string]$Path,
+        [string]$Because
+    )
 
     if (Test-Path -LiteralPath $Path) {
-        throw "Expected path to be removed: $Path"
+        throw "Expected path to be removed: $Path$(if ($Because) { " ($Because)" })"
+    }
+}
+
+function Assert-FileContent {
+    param(
+        [Parameter(Mandatory = $true)][string]$Path,
+        [Parameter(Mandatory = $true)][string]$Expected
+    )
+
+    Assert-PathExists $Path
+    $actual = (Get-Content -LiteralPath $Path -Raw).Trim()
+    if ($actual -ne $Expected) {
+        throw "File $Path was expected to still contain '$Expected' but contained '$actual'."
     }
 }
 
 function Invoke-AwayraInstaller {
-    param([Parameter(Mandatory = $true)][string]$Path)
+    param(
+        [Parameter(Mandatory = $true)][string]$Path,
+        [string[]]$ExtraArguments = @()
+    )
 
-    $logPath = Join-Path $env:RUNNER_TEMP ("awayra-install-" + [guid]::NewGuid().ToString("N") + ".log")
+    $logRoot = if ($env:RUNNER_TEMP) { $env:RUNNER_TEMP } else { $env:TEMP }
+    $logPath = Join-Path $logRoot ("awayra-install-" + [guid]::NewGuid().ToString("N") + ".log")
     $arguments = @(
         "/VERYSILENT",
         "/SUPPRESSMSGBOXES",
         "/NORESTART",
         "/SP-",
         "/LOG=`"$logPath`""
-    )
+    ) + $ExtraArguments
 
     $process = Start-Process -FilePath $Path -ArgumentList $arguments -Wait -PassThru
     if ($process.ExitCode -ne 0) {
@@ -44,52 +67,63 @@ function Invoke-AwayraInstaller {
     }
 }
 
+function Set-UserDataFixtures {
+    param([Parameter(Mandatory = $true)][string]$Generation)
+
+    New-Item -ItemType Directory -Path (Join-Path $script:DataDir "Logs") -Force | Out-Null
+    New-Item -ItemType Directory -Path $script:RoamingDataDir -Force | Out-Null
+
+    "settings-$Generation" | Set-Content (Join-Path $script:DataDir "settings.json") -Encoding UTF8
+    "state-$Generation" | Set-Content (Join-Path $script:DataDir "state.json") -Encoding UTF8
+    "stats-$Generation" | Set-Content (Join-Path $script:DataDir "stats.json") -Encoding UTF8
+    "log-$Generation" | Set-Content (Join-Path $script:DataDir "Logs\awayra.log") -Encoding UTF8
+    "roaming-$Generation" | Set-Content (Join-Path $script:RoamingDataDir "legacy.txt") -Encoding UTF8
+}
+
 function Set-LegacyFixtures {
     param([Parameter(Mandatory = $true)][string]$Generation)
 
     New-Item -ItemType Directory -Path $script:AppDir -Force | Out-Null
-    New-Item -ItemType Directory -Path (Join-Path $script:DataDir "Logs") -Force | Out-Null
-    New-Item -ItemType Directory -Path $script:RoamingDataDir -Force | Out-Null
-
     "legacy-$Generation" | Set-Content (Join-Path $script:AppDir "stale-$Generation.dll") -Encoding UTF8
-    '{"schemaVersion":0,"eyeResetIntervalMinutes":999}' | Set-Content (Join-Path $script:DataDir "settings.json") -Encoding UTF8
-    '{"activeBreak":"Eye"}' | Set-Content (Join-Path $script:DataDir "state.json") -Encoding UTF8
-    '{"eyeCompleted":999}' | Set-Content (Join-Path $script:DataDir "stats.json") -Encoding UTF8
-    "legacy-log-$Generation" | Set-Content (Join-Path $script:DataDir "Logs\awayra.log") -Encoding UTF8
-    "legacy-roaming-$Generation" | Set-Content (Join-Path $script:RoamingDataDir "legacy.txt") -Encoding UTF8
-
-    New-Item -Path $script:RunKey -Force | Out-Null
-    Set-ItemProperty -Path $script:RunKey -Name "Awayra" -Value "`"$script:AppDir\Awayra.exe`""
+    Set-UserDataFixtures -Generation $Generation
 }
 
-function Assert-CleanInstallState {
+function Assert-ProgramFilesReplaced {
     param([Parameter(Mandatory = $true)][string]$Generation)
 
     $executable = Join-Path $script:AppDir "Awayra.exe"
     Assert-PathExists $executable
-    Assert-PathMissing (Join-Path $script:AppDir "stale-$Generation.dll")
-    Assert-PathMissing (Join-Path $script:DataDir "settings.json")
-    Assert-PathMissing (Join-Path $script:DataDir "state.json")
-    Assert-PathMissing (Join-Path $script:DataDir "stats.json")
-    Assert-PathMissing (Join-Path $script:DataDir "Logs\awayra.log")
-    Assert-PathMissing $script:RoamingDataDir
+    Assert-PathMissing (Join-Path $script:AppDir "stale-$Generation.dll") "program files must always be replaced"
 
     $actualVersion = (Get-Item $executable).VersionInfo.ProductVersion
     if ($actualVersion -notlike "$ExpectedVersion*") {
         throw "Expected installed product version $ExpectedVersion, found '$actualVersion'."
     }
+}
 
-    $runKeyProperties = Get-ItemProperty -Path $script:RunKey -ErrorAction SilentlyContinue
-    $runValueProperty = if ($null -ne $runKeyProperties) {
-        $runKeyProperties.PSObject.Properties["Awayra"]
-    }
-    else {
-        $null
-    }
+function Assert-UserDataPreserved {
+    param([Parameter(Mandatory = $true)][string]$Generation)
 
-    if ($null -ne $runValueProperty) {
-        throw "Legacy Awayra startup registry value was not removed: $($runValueProperty.Value)"
-    }
+    Assert-FileContent (Join-Path $script:DataDir "settings.json") "settings-$Generation"
+    Assert-FileContent (Join-Path $script:DataDir "state.json") "state-$Generation"
+    Assert-FileContent (Join-Path $script:DataDir "stats.json") "stats-$Generation"
+    Assert-FileContent (Join-Path $script:DataDir "Logs\awayra.log") "log-$Generation"
+    Assert-FileContent (Join-Path $script:RoamingDataDir "legacy.txt") "roaming-$Generation"
+}
+
+function Assert-UserDataRemoved {
+    Assert-PathMissing (Join-Path $script:DataDir "settings.json") "/CLEANDATA=yes was requested"
+    Assert-PathMissing (Join-Path $script:DataDir "state.json") "/CLEANDATA=yes was requested"
+    Assert-PathMissing (Join-Path $script:DataDir "stats.json") "/CLEANDATA=yes was requested"
+    Assert-PathMissing $script:RoamingDataDir "/CLEANDATA=yes was requested"
+}
+
+function Reset-Machine {
+    Get-Process -Name "Awayra" -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
+    Remove-Item $script:AppDir -Recurse -Force -ErrorAction SilentlyContinue
+    Remove-Item $script:DataDir -Recurse -Force -ErrorAction SilentlyContinue
+    Remove-Item $script:RoamingDataDir -Recurse -Force -ErrorAction SilentlyContinue
+    Remove-ItemProperty -Path $script:RunKey -Name "Awayra" -ErrorAction SilentlyContinue
 }
 
 $InstallerPath = (Resolve-Path $InstallerPath).Path
@@ -99,32 +133,55 @@ $RoamingDataDir = Join-Path $env:APPDATA "Awayra"
 $RunKey = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Run"
 
 try {
-    Get-Process -Name "Awayra" -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
-    Remove-Item $AppDir -Recurse -Force -ErrorAction SilentlyContinue
-    Remove-Item $DataDir -Recurse -Force -ErrorAction SilentlyContinue
-    Remove-Item $RoamingDataDir -Recurse -Force -ErrorAction SilentlyContinue
-    Remove-ItemProperty -Path $RunKey -Name "Awayra" -ErrorAction SilentlyContinue
+    Reset-Machine
 
-    Write-Host "Creating simulated legacy installation fixtures."
-    Set-LegacyFixtures -Generation "before-first-install"
-
-    Write-Host "Installing Awayra $ExpectedVersion over legacy files and settings."
-    Invoke-AwayraInstaller -Path $InstallerPath
-    Assert-CleanInstallState -Generation "before-first-install"
-
-    Write-Host "Creating a second generation of stale settings to simulate an upgrade/reinstall."
+    # ---------------------------------------------------------------------------------------------
+    # 1. A silent upgrade over an existing installation must replace program files but KEEP data.
+    # ---------------------------------------------------------------------------------------------
+    Write-Host "[1/4] Upgrade over existing installation must preserve user data."
     Set-LegacyFixtures -Generation "before-upgrade"
-
-    Write-Host "Reinstalling Awayra $ExpectedVersion and validating clean-upgrade behavior."
     Invoke-AwayraInstaller -Path $InstallerPath
-    Assert-CleanInstallState -Generation "before-upgrade"
+    Assert-ProgramFilesReplaced -Generation "before-upgrade"
+    Assert-UserDataPreserved -Generation "before-upgrade"
+    Write-Host "      OK - settings, statistics and logs survived the upgrade."
+
+    # ---------------------------------------------------------------------------------------------
+    # 2. A second silent upgrade must still preserve data (no drift on repeated reinstalls).
+    # ---------------------------------------------------------------------------------------------
+    Write-Host "[2/4] Repeated reinstall must still preserve user data."
+    Set-LegacyFixtures -Generation "second-upgrade"
+    Invoke-AwayraInstaller -Path $InstallerPath
+    Assert-ProgramFilesReplaced -Generation "second-upgrade"
+    Assert-UserDataPreserved -Generation "second-upgrade"
+    Write-Host "      OK - data preserved again."
+
+    # ---------------------------------------------------------------------------------------------
+    # 3. An explicit /CLEANDATA=yes must perform the old destructive clean install.
+    # ---------------------------------------------------------------------------------------------
+    Write-Host "[3/4] /CLEANDATA=yes must remove user data on request."
+    Set-LegacyFixtures -Generation "before-reset"
+    Invoke-AwayraInstaller -Path $InstallerPath -ExtraArguments @("/CLEANDATA=yes")
+    Assert-ProgramFilesReplaced -Generation "before-reset"
+    Assert-UserDataRemoved
+
+    $runKeyProperties = Get-ItemProperty -Path $RunKey -ErrorAction SilentlyContinue
+    $runValueProperty = if ($null -ne $runKeyProperties) { $runKeyProperties.PSObject.Properties["Awayra"] } else { $null }
+    if ($null -ne $runValueProperty) {
+        throw "Startup registry value was not removed by /CLEANDATA=yes: $($runValueProperty.Value)"
+    }
+    Write-Host "      OK - fresh install removed data and startup registration."
+
+    # ---------------------------------------------------------------------------------------------
+    # 4. Silent uninstall must remove everything Awayra owns.
+    # ---------------------------------------------------------------------------------------------
+    Write-Host "[4/4] Silent uninstall must remove application and data directories."
+    Set-UserDataFixtures -Generation "before-uninstall"
 
     $uninstaller = Get-ChildItem $AppDir -Filter "unins*.exe" -File | Select-Object -First 1
     if (-not $uninstaller) {
         throw "Awayra uninstaller was not created."
     }
 
-    Write-Host "Uninstalling and validating that application-owned data is removed."
     $uninstallProcess = Start-Process -FilePath $uninstaller.FullName `
         -ArgumentList @("/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART") `
         -Wait `
@@ -136,13 +193,11 @@ try {
     Assert-PathMissing $AppDir
     Assert-PathMissing $DataDir
     Assert-PathMissing $RoamingDataDir
+    Write-Host "      OK - uninstall removed everything."
 
-    Write-Host "CLEAN UPGRADE INSTALLER TEST: PASSED"
+    Write-Host ""
+    Write-Host "INSTALLER UPGRADE TEST: PASSED"
 }
 finally {
-    Get-Process -Name "Awayra" -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
-    Remove-Item $AppDir -Recurse -Force -ErrorAction SilentlyContinue
-    Remove-Item $DataDir -Recurse -Force -ErrorAction SilentlyContinue
-    Remove-Item $RoamingDataDir -Recurse -Force -ErrorAction SilentlyContinue
-    Remove-ItemProperty -Path $RunKey -Name "Awayra" -ErrorAction SilentlyContinue
+    Reset-Machine
 }

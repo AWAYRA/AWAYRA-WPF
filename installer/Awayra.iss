@@ -2,11 +2,11 @@
 ; Build with: powershell -ExecutionPolicy Bypass -File .\scripts\build-installer.ps1
 
 #ifndef MyAppVersion
-  #define MyAppVersion "1.1.3"
+  #define MyAppVersion "1.2.0"
 #endif
 
 #ifndef MyAppVersionInfo
-  #define MyAppVersionInfo "1.1.3.0"
+  #define MyAppVersionInfo "1.2.0.0"
 #endif
 
 #ifndef PublishDir
@@ -80,9 +80,9 @@ Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: de
 [Run]
 Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; Flags: nowait postinstall skipifsilent
 
+; Personal data is intentionally NOT listed here. Whether settings, statistics and logs are
+; removed is decided at uninstall time in CurUninstallStepChanged so the user can keep them.
 [UninstallDelete]
-Type: filesandordirs; Name: "{localappdata}\Awayra"
-Type: filesandordirs; Name: "{userappdata}\Awayra"
 Type: files; Name: "{autodesktop}\Awayra.lnk"
 Type: files; Name: "{userstartup}\Awayra.lnk"
 
@@ -90,6 +90,11 @@ Type: files; Name: "{userstartup}\Awayra.lnk"
 const
   RunKeyPath = 'Software\Microsoft\Windows\CurrentVersion\Run';
   RunValueName = 'Awayra';
+
+var
+  DataChoicePage: TInputOptionWizardPage;
+  ForceCleanData: Boolean;
+  RemoveDataOnUninstall: Boolean;
 
 function IconFileExists(): Boolean;
 begin
@@ -140,24 +145,103 @@ begin
   end;
 end;
 
+function PreviousDataExists(): Boolean;
+begin
+  Result :=
+    DirExists(ExpandConstant('{localappdata}\Awayra')) or
+    DirExists(ExpandConstant('{userappdata}\Awayra'));
+end;
+
+procedure InitializeWizard();
+begin
+  DataChoicePage := CreateInputOptionPage(
+    wpSelectTasks,
+    'Your existing Awayra data',
+    'Awayra found settings and statistics from a previous installation.',
+    'Awayra always replaces its program files. Choose what should happen to your personal data.',
+    True,
+    False);
+  DataChoicePage.Add('Keep my settings, statistics and reminder schedule (recommended)');
+  DataChoicePage.Add('Delete my existing data and install a completely fresh copy');
+  DataChoicePage.SelectedValueIndex := 0;
+end;
+
+function ShouldSkipPage(PageID: Integer): Boolean;
+begin
+  Result := False;
+  if (DataChoicePage <> nil) and (PageID = DataChoicePage.ID) then
+    Result := not PreviousDataExists();
+end;
+
+{ Interactive installs follow the wizard choice. Silent installs preserve data unless the caller
+  explicitly passes /CLEANDATA=yes, so unattended upgrades can never destroy user data by accident. }
+function ShouldResetUserData(): Boolean;
+begin
+  if ForceCleanData then
+    Result := True
+  else if not PreviousDataExists() then
+    Result := False
+  else if WizardSilent() then
+    Result := False
+  else
+    Result := DataChoicePage.SelectedValueIndex = 1;
+end;
+
+procedure RemoveUserData();
+begin
+  DeleteDirectoryOrAbort(ExpandConstant('{localappdata}\Awayra'), 'settings and runtime data');
+  DeleteDirectoryOrAbort(ExpandConstant('{userappdata}\Awayra'), 'legacy roaming data');
+  RegDeleteValue(HKCU, RunKeyPath, RunValueName);
+end;
+
 procedure CleanPreviousInstallation();
 begin
   StopRunningAwayra();
 
+  { Program files and shortcuts are always replaced so a new build never runs against stale binaries. }
   DeleteDirectoryOrAbort(ExpandConstant('{localappdata}\Programs\Awayra'), 'program files');
-  DeleteDirectoryOrAbort(ExpandConstant('{localappdata}\Awayra'), 'settings and runtime data');
-  DeleteDirectoryOrAbort(ExpandConstant('{userappdata}\Awayra'), 'legacy roaming data');
   DeleteDirectoryOrAbort(ExpandConstant('{group}'), 'Start menu shortcuts');
-
   DeleteFileIfPresent(ExpandConstant('{autodesktop}\Awayra.lnk'));
   DeleteFileIfPresent(ExpandConstant('{userstartup}\Awayra.lnk'));
-  RegDeleteValue(HKCU, RunKeyPath, RunValueName);
+
+  if ShouldResetUserData() then
+  begin
+    Log('Fresh install requested: removing existing Awayra settings, statistics and logs.');
+    RemoveUserData();
+  end
+  else
+    Log('Upgrade: existing Awayra settings, statistics and reminder schedule are preserved.');
+end;
+
+function InitializeSetup(): Boolean;
+begin
+  ForceCleanData := CompareText(ExpandConstant('{param:cleandata|no}'), 'yes') = 0;
+  Result := True;
 end;
 
 procedure CurStepChanged(CurStep: TSetupStep);
 begin
   if CurStep = ssInstall then
     CleanPreviousInstallation();
+end;
+
+function InitializeUninstall(): Boolean;
+begin
+  { Silent uninstall keeps the historical behaviour of a complete removal so automation stays
+    deterministic. An interactive uninstall asks, and defaults to keeping personal data. }
+  if UninstallSilent() then
+    RemoveDataOnUninstall := True
+  else if not PreviousDataExists() then
+    RemoveDataOnUninstall := False
+  else
+    RemoveDataOnUninstall :=
+      MsgBox(
+        'Do you also want to delete your Awayra settings, statistics and logs?' + #13#10#13#10 +
+        'Choose No to keep them, so they are restored if you install Awayra again.',
+        mbConfirmation,
+        MB_YESNO or MB_DEFBUTTON2) = IDYES;
+
+  Result := True;
 end;
 
 procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
@@ -169,7 +253,13 @@ begin
   end
   else if CurUninstallStep = usPostUninstall then
   begin
-    DelTree(ExpandConstant('{localappdata}\Awayra'), True, True, True);
-    DelTree(ExpandConstant('{userappdata}\Awayra'), True, True, True);
+    if RemoveDataOnUninstall then
+    begin
+      Log('Uninstall: removing Awayra settings, statistics and logs.');
+      DelTree(ExpandConstant('{localappdata}\Awayra'), True, True, True);
+      DelTree(ExpandConstant('{userappdata}\Awayra'), True, True, True);
+    end
+    else
+      Log('Uninstall: Awayra settings, statistics and logs were kept at the user''s request.');
   end;
 end;
