@@ -113,7 +113,15 @@ public partial class SettingsViewModel : ObservableObject
     {
         _host.BreakSound.StopPreview();
         var settings = BuildSettings();
-        var errors = SettingsValidator.Validate(settings);
+        var errors = SettingsValidator.Validate(settings).ToList();
+
+        // An unparseable work-hour string used to fall back to midnight without telling anyone,
+        // which silently rewrote the user's schedule. Refuse the save instead.
+        if (WorkHoursEnabled && !HasParseableWorkHours())
+        {
+            errors.Insert(0, "WorkHoursFormatInvalid");
+        }
+
         ValidationErrors.Clear();
         foreach (var error in errors)
         {
@@ -164,10 +172,15 @@ public partial class SettingsViewModel : ObservableObject
         ReducedMotion = settings.ReducedMotion;
     }
 
+    private bool HasParseableWorkHours() =>
+        TimeOnly.TryParse(WorkStart, out _) && TimeOnly.TryParse(WorkEnd, out _);
+
     private AppSettings BuildSettings()
     {
-        TimeOnly.TryParse(WorkStart, out var workStart);
-        TimeOnly.TryParse(WorkEnd, out var workEnd);
+        // When a value cannot be parsed the currently saved time is kept, so a typo never
+        // silently rewrites the schedule to midnight.
+        var workStart = TimeOnly.TryParse(WorkStart, out var parsedStart) ? parsedStart : _host.Settings.WorkStart;
+        var workEnd = TimeOnly.TryParse(WorkEnd, out var parsedEnd) ? parsedEnd : _host.Settings.WorkEnd;
 
         return new AppSettings
         {
@@ -195,8 +208,7 @@ public partial class SettingsViewModel : ObservableObject
             StartMinimized = StartMinimized,
             CloseToTray = CloseToTray,
             GlassClarity = GlassClarity,
-            ReducedMotion = ReducedMotion,
-            Theme = AppTheme.Dark
+            ReducedMotion = ReducedMotion
         };
     }
 }

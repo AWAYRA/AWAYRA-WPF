@@ -103,8 +103,7 @@ public sealed class SettingsViewModelSaveTests
             StartMinimized = source.StartMinimized,
             CloseToTray = source.CloseToTray,
             GlassClarity = source.GlassClarity,
-            ReducedMotion = source.ReducedMotion,
-            Theme = source.Theme
+            ReducedMotion = source.ReducedMotion
         };
 
     private sealed class NullIdleMonitor : IIdleMonitor

@@ -47,7 +47,6 @@ public sealed class AppSettings
 
     public int GlassClarity { get; set; } = OverlayGlassSettings.DefaultGlassClarity;
     public bool ReducedMotion { get; set; }
-    public AppTheme Theme { get; set; } = AppTheme.Dark;
 
     public AppSettings Copy() => (AppSettings)MemberwiseClone();
 

@@ -39,8 +39,7 @@ public sealed class SettingsSaveTransitionTests
             StartMinimized = source.StartMinimized,
             CloseToTray = source.CloseToTray,
             GlassClarity = source.GlassClarity,
-            ReducedMotion = source.ReducedMotion,
-            Theme = source.Theme
+            ReducedMotion = source.ReducedMotion
         };
 
     private static (TimeSpan FrozenEye, TimeSpan FrozenMove) PauseAdvanceAndCapture(

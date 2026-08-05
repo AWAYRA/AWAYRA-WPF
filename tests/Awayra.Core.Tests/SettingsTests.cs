@@ -30,7 +30,6 @@ public sealed class SettingsTests
         Assert.IsTrue(settings.CloseToTray);
         Assert.AreEqual(OverlayGlassSettings.DefaultGlassClarity, settings.GlassClarity);
         Assert.IsFalse(settings.ReducedMotion);
-        Assert.AreEqual(AppTheme.Dark, settings.Theme);
     }
 
     [TestMethod]

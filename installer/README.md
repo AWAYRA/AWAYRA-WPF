@@ -67,9 +67,9 @@ The installer displays the repository's `LICENSE` file. Awayra is distributed un
 
 ## Links
 
-- Repository: https://github.com/AAA-It-uae/AWAYRA-WPF
-- Issues: https://github.com/AAA-It-uae/AWAYRA-WPF/issues
-- Releases: https://github.com/AAA-It-uae/AWAYRA-WPF/releases
+- Repository: https://github.com/AWAYRA/AWAYRA-WPF
+- Issues: https://github.com/AWAYRA/AWAYRA-WPF/issues
+- Releases: https://github.com/AWAYRA/AWAYRA-WPF/releases
 
 ## Single-instance mutex
 
