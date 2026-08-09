@@ -1,0 +1,683 @@
+<UserControl x:Class="Awayra.App.Views.MoveExerciseView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             AutomationProperties.AutomationId="MoveExerciseAnimation"
+             Focusable="False"
+             IsHitTestVisible="False">
+  <UserControl.Resources>
+    <ResourceDictionary>
+      <ResourceDictionary.MergedDictionaries>
+        <ResourceDictionary Source="../Resources/OverlayStyles.xaml" />
+      </ResourceDictionary.MergedDictionaries>
+
+      <SolidColorBrush x:Key="Scene.DeskBrush" Color="#FF4A5568" />
+      <SolidColorBrush x:Key="Scene.DeskEdgeBrush" Color="#FF61708A" />
+      <SolidColorBrush x:Key="Scene.GroundBrush" Color="#FF2A3340" />
+      <SolidColorBrush x:Key="Scene.BodyBrush" Color="#FF58C2F4" />
+      <SolidColorBrush x:Key="Scene.BodyFarBrush" Color="#FF2F7FA6" />
+
+      <Style x:Key="Scene.Limb" TargetType="Rectangle">
+        <Setter Property="Fill" Value="{StaticResource Scene.BodyBrush}" />
+        <Setter Property="RadiusX" Value="4" />
+        <Setter Property="RadiusY" Value="4" />
+      </Style>
+
+      <Style x:Key="Scene.FarLimb" TargetType="Rectangle" BasedOn="{StaticResource Scene.Limb}">
+        <Setter Property="Fill" Value="{StaticResource Scene.BodyFarBrush}" />
+      </Style>
+
+      <!--
+        A twenty-second round trip.
+
+        Two rigs share one position. The profile rig sits, types, walks and stretches; the
+        front-facing rig does the squats and jumps, because a squat seen edge-on hides the very
+        thing that makes it a squat. Turning between them is a fast horizontal squeeze of one rig
+        while the other expands, which reads as the figure pivoting to face you.
+
+        The pose at 0:00 and 0:20 is identical, so the loop has no visible seam.
+      -->
+      <Storyboard x:Key="Move.Storyboard" RepeatBehavior="Forever">
+
+        <!-- Camera: a loose follow, panning less than the walker travels so the desk stays in frame. -->
+        <DoubleAnimationUsingKeyFrames Storyboard.TargetName="CameraTranslate"
+                                       Storyboard.TargetProperty="X" Duration="0:0:20">
+          <LinearDoubleKeyFrame KeyTime="0:0:2.98" Value="0" />
+          <SplineDoubleKeyFrame KeyTime="0:0:5.6" Value="-46" KeySpline="0.4,0,0.2,1" />
+          <LinearDoubleKeyFrame KeyTime="0:0:14.6" Value="-46" />
+          <SplineDoubleKeyFrame KeyTime="0:0:17.1" Value="0" KeySpline="0.4,0,0.2,1" />
+          <LinearDoubleKeyFrame KeyTime="0:0:20" Value="0" />
+        </DoubleAnimationUsingKeyFrames>
+
+        <DoubleAnimationUsingKeyFrames Storyboard.TargetName="BodyTranslate"
+                                       Storyboard.TargetProperty="X" Duration="0:0:20">
+          <!-- Seated on the chair, then a step clear of it before walking off. -->
+          <LinearDoubleKeyFrame KeyTime="0:0:1.8" Value="2" />
+          <SplineDoubleKeyFrame KeyTime="0:0:2.8" Value="-10" KeySpline="0.3,0,0.2,1" />
+          <LinearDoubleKeyFrame KeyTime="0:0:2.98" Value="-10" />
+          <SplineDoubleKeyFrame KeyTime="0:0:5.6" Value="92" KeySpline="0.4,0,0.2,1" />
+          <LinearDoubleKeyFrame KeyTime="0:0:14.6" Value="92" />
+          <SplineDoubleKeyFrame KeyTime="0:0:17.1" Value="-10" KeySpline="0.4,0,0.2,1" />
+          <LinearDoubleKeyFrame KeyTime="0:0:17.7" Value="-10" />
+          <SplineDoubleKeyFrame KeyTime="0:0:20" Value="2" KeySpline="0.4,0,0.6,1" />
+        </DoubleAnimationUsingKeyFrames>
+
+        <!-- Hip height: seated, upright, three squats, then three jumps clear of the floor. -->
+        <DoubleAnimationUsingKeyFrames Storyboard.TargetName="BodyTranslate"
+                                       Storyboard.TargetProperty="Y" Duration="0:0:20">
+          <LinearDoubleKeyFrame KeyTime="0:0:1.8" Value="25" />
+          <SplineDoubleKeyFrame KeyTime="0:0:2.8" Value="0" KeySpline="0.3,0,0.2,1" />
+          <LinearDoubleKeyFrame KeyTime="0:0:9.4" Value="0" />
+
+          <SplineDoubleKeyFrame KeyTime="0:0:9.82" Value="18" KeySpline="0.4,0,0.3,1" />
+          <SplineDoubleKeyFrame KeyTime="0:0:10.3" Value="0" KeySpline="0.3,0,0.3,1" />
+          <LinearDoubleKeyFrame KeyTime="0:0:10.43" Value="0" />
+          <SplineDoubleKeyFrame KeyTime="0:0:10.85" Value="18" KeySpline="0.4,0,0.3,1" />
+          <SplineDoubleKeyFrame KeyTime="0:0:11.33" Value="0" KeySpline="0.3,0,0.3,1" />
+          <LinearDoubleKeyFrame KeyTime="0:0:11.46" Value="0" />
+          <SplineDoubleKeyFrame KeyTime="0:0:11.88" Value="18" KeySpline="0.4,0,0.3,1" />
+          <SplineDoubleKeyFrame KeyTime="0:0:12.36" Value="0" KeySpline="0.3,0,0.3,1" />
+
+          <LinearDoubleKeyFrame KeyTime="0:0:12.6" Value="0" />
+          <SplineDoubleKeyFrame KeyTime="0:0:12.72" Value="10" KeySpline="0.4,0,0.4,1" />
+          <SplineDoubleKeyFrame KeyTime="0:0:12.88" Value="-22" KeySpline="0.1,0.7,0.4,1" />
+          <SplineDoubleKeyFrame KeyTime="0:0:13.04" Value="8" KeySpline="0.6,0,0.9,0.4" />
+          <SplineDoubleKeyFrame KeyTime="0:0:13.2" Value="0" KeySpline="0.3,0,0.3,1" />
+          <SplineDoubleKeyFrame KeyTime="0:0:13.32" Value="10" KeySpline="0.4,0,0.4,1" />
+          <SplineDoubleKeyFrame KeyTime="0:0:13.48" Value="-22" KeySpline="0.1,0.7,0.4,1" />
+          <SplineDoubleKeyFrame KeyTime="0:0:13.64" Value="8" KeySpline="0.6,0,0.9,0.4" />
+          <SplineDoubleKeyFrame KeyTime="0:0:13.8" Value="0" KeySpline="0.3,0,0.3,1" />
+          <SplineDoubleKeyFrame KeyTime="0:0:13.92" Value="10" KeySpline="0.4,0,0.4,1" />
+          <SplineDoubleKeyFrame KeyTime="0:0:14.08" Value="-22" KeySpline="0.1,0.7,0.4,1" />
+          <SplineDoubleKeyFrame KeyTime="0:0:14.24" Value="8" KeySpline="0.6,0,0.9,0.4" />
+          <SplineDoubleKeyFrame KeyTime="0:0:14.4" Value="0" KeySpline="0.3,0,0.3,1" />
+
+          <LinearDoubleKeyFrame KeyTime="0:0:17.7" Value="0" />
+          <SplineDoubleKeyFrame KeyTime="0:0:20" Value="25" KeySpline="0.4,0,0.6,1" />
+        </DoubleAnimationUsingKeyFrames>
+
+        <!-- Profile rig: faces the desk, then the walking direction, then squeezes away entirely. -->
+        <DoubleAnimationUsingKeyFrames Storyboard.TargetName="BodyFlip"
+                                       Storyboard.TargetProperty="ScaleX" Duration="0:0:20">
+          <LinearDoubleKeyFrame KeyTime="0:0:2.8" Value="-1" />
+          <SplineDoubleKeyFrame KeyTime="0:0:2.98" Value="1" KeySpline="0.5,0,0.5,1" />
+          <LinearDoubleKeyFrame KeyTime="0:0:9.3" Value="1" />
+          <SplineDoubleKeyFrame KeyTime="0:0:9.4" Value="0" KeySpline="0.5,0,0.5,1" />
+          <LinearDoubleKeyFrame KeyTime="0:0:14.4" Value="0" />
+          <SplineDoubleKeyFrame KeyTime="0:0:14.6" Value="-1" KeySpline="0.5,0,0.5,1" />
+          <LinearDoubleKeyFrame KeyTime="0:0:20" Value="-1" />
+        </DoubleAnimationUsingKeyFrames>
+
+        <!-- Front rig: only present while the figure is facing you. -->
+        <DoubleAnimationUsingKeyFrames Storyboard.TargetName="FrontScale"
+                                       Storyboard.TargetProperty="ScaleX" Duration="0:0:20">
+          <LinearDoubleKeyFrame KeyTime="0:0:9.3" Value="0" />
+          <SplineDoubleKeyFrame KeyTime="0:0:9.4" Value="1" KeySpline="0.5,0,0.5,1" />
+          <LinearDoubleKeyFrame KeyTime="0:0:14.4" Value="1" />
+          <SplineDoubleKeyFrame KeyTime="0:0:14.5" Value="0" KeySpline="0.5,0,0.5,1" />
+          <LinearDoubleKeyFrame KeyTime="0:0:20" Value="0" />
+        </DoubleAnimationUsingKeyFrames>
+
+        <!--
+          Compressing both front legs together is what lets the hips drop while the feet stay on
+          the floor: at 0.62 the leg is 31 px instead of 51, which is exactly the 18 px the hips
+          fall. At the top of a jump it barely tucks, so the feet leave the ground.
+        -->
+        <DoubleAnimationUsingKeyFrames Storyboard.TargetName="FrontLegsScale"
+                                       Storyboard.TargetProperty="ScaleY" Duration="0:0:20">
+          <LinearDoubleKeyFrame KeyTime="0:0:9.4" Value="1" />
+          <SplineDoubleKeyFrame KeyTime="0:0:9.82" Value="0.62" KeySpline="0.4,0,0.3,1" />
+          <SplineDoubleKeyFrame KeyTime="0:0:10.3" Value="1" KeySpline="0.3,0,0.3,1" />
+          <LinearDoubleKeyFrame KeyTime="0:0:10.43" Value="1" />
+          <SplineDoubleKeyFrame KeyTime="0:0:10.85" Value="0.62" KeySpline="0.4,0,0.3,1" />
+          <SplineDoubleKeyFrame KeyTime="0:0:11.33" Value="1" KeySpline="0.3,0,0.3,1" />
+          <LinearDoubleKeyFrame KeyTime="0:0:11.46" Value="1" />
+          <SplineDoubleKeyFrame KeyTime="0:0:11.88" Value="0.62" KeySpline="0.4,0,0.3,1" />
+          <SplineDoubleKeyFrame KeyTime="0:0:12.36" Value="1" KeySpline="0.3,0,0.3,1" />
+          <LinearDoubleKeyFrame KeyTime="0:0:12.6" Value="1" />
+          <SplineDoubleKeyFrame KeyTime="0:0:12.72" Value="0.80" KeySpline="0.4,0,0.4,1" />
+          <SplineDoubleKeyFrame KeyTime="0:0:12.88" Value="0.88" KeySpline="0.3,0,0.4,1" />
+          <SplineDoubleKeyFrame KeyTime="0:0:13.04" Value="0.84" KeySpline="0.6,0,0.9,0.4" />
+          <SplineDoubleKeyFrame KeyTime="0:0:13.2" Value="1" KeySpline="0.3,0,0.3,1" />
+          <SplineDoubleKeyFrame KeyTime="0:0:13.32" Value="0.80" KeySpline="0.4,0,0.4,1" />
+          <SplineDoubleKeyFrame KeyTime="0:0:13.48" Value="0.88" KeySpline="0.3,0,0.4,1" />
+          <SplineDoubleKeyFrame KeyTime="0:0:13.64" Value="0.84" KeySpline="0.6,0,0.9,0.4" />
+          <SplineDoubleKeyFrame KeyTime="0:0:13.8" Value="1" KeySpline="0.3,0,0.3,1" />
+          <SplineDoubleKeyFrame KeyTime="0:0:13.92" Value="0.80" KeySpline="0.4,0,0.4,1" />
+          <SplineDoubleKeyFrame KeyTime="0:0:14.08" Value="0.88" KeySpline="0.3,0,0.4,1" />
+          <SplineDoubleKeyFrame KeyTime="0:0:14.24" Value="0.84" KeySpline="0.6,0,0.9,0.4" />
+          <SplineDoubleKeyFrame KeyTime="0:0:14.4" Value="1" KeySpline="0.3,0,0.3,1" />
+          <LinearDoubleKeyFrame KeyTime="0:0:20" Value="1" />
+        </DoubleAnimationUsingKeyFrames>
+
+        <!-- Knees track apart in the squat and stay closer together in the jump. -->
+        <DoubleAnimationUsingKeyFrames Storyboard.TargetName="FrontLeftThighRotate"
+                                       Storyboard.TargetProperty="Angle" Duration="0:0:20">
+          <LinearDoubleKeyFrame KeyTime="0:0:9.4" Value="0" />
+          <SplineDoubleKeyFrame KeyTime="0:0:9.82" Value="17" KeySpline="0.4,0,0.3,1" />
+          <SplineDoubleKeyFrame KeyTime="0:0:10.3" Value="0" KeySpline="0.3,0,0.3,1" />
+          <SplineDoubleKeyFrame KeyTime="0:0:10.85" Value="17" KeySpline="0.4,0,0.3,1" />
+          <SplineDoubleKeyFrame KeyTime="0:0:11.33" Value="0" KeySpline="0.3,0,0.3,1" />
+          <SplineDoubleKeyFrame KeyTime="0:0:11.88" Value="17" KeySpline="0.4,0,0.3,1" />
+          <SplineDoubleKeyFrame KeyTime="0:0:12.36" Value="0" KeySpline="0.3,0,0.3,1" />
+          <LinearDoubleKeyFrame KeyTime="0:0:20" Value="0" />
+        </DoubleAnimationUsingKeyFrames>
+
+        <DoubleAnimationUsingKeyFrames Storyboard.TargetName="FrontRightThighRotate"
+                                       Storyboard.TargetProperty="Angle" Duration="0:0:20">
+          <LinearDoubleKeyFrame KeyTime="0:0:9.4" Value="0" />
+          <SplineDoubleKeyFrame KeyTime="0:0:9.82" Value="-17" KeySpline="0.4,0,0.3,1" />
+          <SplineDoubleKeyFrame KeyTime="0:0:10.3" Value="0" KeySpline="0.3,0,0.3,1" />
+          <SplineDoubleKeyFrame KeyTime="0:0:10.85" Value="-17" KeySpline="0.4,0,0.3,1" />
+          <SplineDoubleKeyFrame KeyTime="0:0:11.33" Value="0" KeySpline="0.3,0,0.3,1" />
+          <SplineDoubleKeyFrame KeyTime="0:0:11.88" Value="-17" KeySpline="0.4,0,0.3,1" />
+          <SplineDoubleKeyFrame KeyTime="0:0:12.36" Value="0" KeySpline="0.3,0,0.3,1" />
+          <LinearDoubleKeyFrame KeyTime="0:0:20" Value="0" />
+        </DoubleAnimationUsingKeyFrames>
+
+        <!--
+          The shins counter-rotate by exactly what the thighs splay, which keeps them vertical and
+          gives the knees-out silhouette of a squat. Without this the legs simply splay straight
+          and the pose reads as a star jump.
+        -->
+        <DoubleAnimationUsingKeyFrames Storyboard.TargetName="FrontLeftShinRotate"
+                                       Storyboard.TargetProperty="Angle" Duration="0:0:20">
+          <LinearDoubleKeyFrame KeyTime="0:0:9.4" Value="0" />
+          <SplineDoubleKeyFrame KeyTime="0:0:9.82" Value="-17" KeySpline="0.4,0,0.3,1" />
+          <SplineDoubleKeyFrame KeyTime="0:0:10.3" Value="0" KeySpline="0.3,0,0.3,1" />
+          <SplineDoubleKeyFrame KeyTime="0:0:10.85" Value="-17" KeySpline="0.4,0,0.3,1" />
+          <SplineDoubleKeyFrame KeyTime="0:0:11.33" Value="0" KeySpline="0.3,0,0.3,1" />
+          <SplineDoubleKeyFrame KeyTime="0:0:11.88" Value="-17" KeySpline="0.4,0,0.3,1" />
+          <SplineDoubleKeyFrame KeyTime="0:0:12.36" Value="0" KeySpline="0.3,0,0.3,1" />
+          <LinearDoubleKeyFrame KeyTime="0:0:20" Value="0" />
+        </DoubleAnimationUsingKeyFrames>
+
+        <DoubleAnimationUsingKeyFrames Storyboard.TargetName="FrontRightShinRotate"
+                                       Storyboard.TargetProperty="Angle" Duration="0:0:20">
+          <LinearDoubleKeyFrame KeyTime="0:0:9.4" Value="0" />
+          <SplineDoubleKeyFrame KeyTime="0:0:9.82" Value="17" KeySpline="0.4,0,0.3,1" />
+          <SplineDoubleKeyFrame KeyTime="0:0:10.3" Value="0" KeySpline="0.3,0,0.3,1" />
+          <SplineDoubleKeyFrame KeyTime="0:0:10.85" Value="17" KeySpline="0.4,0,0.3,1" />
+          <SplineDoubleKeyFrame KeyTime="0:0:11.33" Value="0" KeySpline="0.3,0,0.3,1" />
+          <SplineDoubleKeyFrame KeyTime="0:0:11.88" Value="17" KeySpline="0.4,0,0.3,1" />
+          <SplineDoubleKeyFrame KeyTime="0:0:12.36" Value="0" KeySpline="0.3,0,0.3,1" />
+          <LinearDoubleKeyFrame KeyTime="0:0:20" Value="0" />
+        </DoubleAnimationUsingKeyFrames>
+
+        <!-- Arms out for balance in the squat, thrown overhead on every jump. -->
+        <DoubleAnimationUsingKeyFrames Storyboard.TargetName="FrontLeftArmRotate"
+                                       Storyboard.TargetProperty="Angle" Duration="0:0:20">
+          <LinearDoubleKeyFrame KeyTime="0:0:9.4" Value="8" />
+          <SplineDoubleKeyFrame KeyTime="0:0:9.82" Value="78" KeySpline="0.4,0,0.3,1" />
+          <SplineDoubleKeyFrame KeyTime="0:0:10.3" Value="8" KeySpline="0.3,0,0.3,1" />
+          <SplineDoubleKeyFrame KeyTime="0:0:10.85" Value="78" KeySpline="0.4,0,0.3,1" />
+          <SplineDoubleKeyFrame KeyTime="0:0:11.33" Value="8" KeySpline="0.3,0,0.3,1" />
+          <SplineDoubleKeyFrame KeyTime="0:0:11.88" Value="78" KeySpline="0.4,0,0.3,1" />
+          <SplineDoubleKeyFrame KeyTime="0:0:12.36" Value="8" KeySpline="0.3,0,0.3,1" />
+          <LinearDoubleKeyFrame KeyTime="0:0:12.6" Value="8" />
+          <SplineDoubleKeyFrame KeyTime="0:0:12.72" Value="-18" KeySpline="0.4,0,0.4,1" />
+          <SplineDoubleKeyFrame KeyTime="0:0:12.88" Value="162" KeySpline="0.2,0,0.4,1" />
+          <SplineDoubleKeyFrame KeyTime="0:0:13.04" Value="40" KeySpline="0.6,0,0.4,1" />
+          <SplineDoubleKeyFrame KeyTime="0:0:13.2" Value="8" KeySpline="0.3,0,0.3,1" />
+          <SplineDoubleKeyFrame KeyTime="0:0:13.32" Value="-18" KeySpline="0.4,0,0.4,1" />
+          <SplineDoubleKeyFrame KeyTime="0:0:13.48" Value="162" KeySpline="0.2,0,0.4,1" />
+          <SplineDoubleKeyFrame KeyTime="0:0:13.64" Value="40" KeySpline="0.6,0,0.4,1" />
+          <SplineDoubleKeyFrame KeyTime="0:0:13.8" Value="8" KeySpline="0.3,0,0.3,1" />
+          <SplineDoubleKeyFrame KeyTime="0:0:13.92" Value="-18" KeySpline="0.4,0,0.4,1" />
+          <SplineDoubleKeyFrame KeyTime="0:0:14.08" Value="162" KeySpline="0.2,0,0.4,1" />
+          <SplineDoubleKeyFrame KeyTime="0:0:14.24" Value="40" KeySpline="0.6,0,0.4,1" />
+          <SplineDoubleKeyFrame KeyTime="0:0:14.4" Value="8" KeySpline="0.3,0,0.3,1" />
+          <LinearDoubleKeyFrame KeyTime="0:0:20" Value="8" />
+        </DoubleAnimationUsingKeyFrames>
+
+        <DoubleAnimationUsingKeyFrames Storyboard.TargetName="FrontRightArmRotate"
+                                       Storyboard.TargetProperty="Angle" Duration="0:0:20">
+          <LinearDoubleKeyFrame KeyTime="0:0:9.4" Value="-8" />
+          <SplineDoubleKeyFrame KeyTime="0:0:9.82" Value="-78" KeySpline="0.4,0,0.3,1" />
+          <SplineDoubleKeyFrame KeyTime="0:0:10.3" Value="-8" KeySpline="0.3,0,0.3,1" />
+          <SplineDoubleKeyFrame KeyTime="0:0:10.85" Value="-78" KeySpline="0.4,0,0.3,1" />
+          <SplineDoubleKeyFrame KeyTime="0:0:11.33" Value="-8" KeySpline="0.3,0,0.3,1" />
+          <SplineDoubleKeyFrame KeyTime="0:0:11.88" Value="-78" KeySpline="0.4,0,0.3,1" />
+          <SplineDoubleKeyFrame KeyTime="0:0:12.36" Value="-8" KeySpline="0.3,0,0.3,1" />
+          <LinearDoubleKeyFrame KeyTime="0:0:12.6" Value="-8" />
+          <SplineDoubleKeyFrame KeyTime="0:0:12.72" Value="18" KeySpline="0.4,0,0.4,1" />
+          <SplineDoubleKeyFrame KeyTime="0:0:12.88" Value="-162" KeySpline="0.2,0,0.4,1" />
+          <SplineDoubleKeyFrame KeyTime="0:0:13.04" Value="-40" KeySpline="0.6,0,0.4,1" />
+          <SplineDoubleKeyFrame KeyTime="0:0:13.2" Value="-8" KeySpline="0.3,0,0.3,1" />
+          <SplineDoubleKeyFrame KeyTime="0:0:13.32" Value="18" KeySpline="0.4,0,0.4,1" />
+          <SplineDoubleKeyFrame KeyTime="0:0:13.48" Value="-162" KeySpline="0.2,0,0.4,1" />
+          <SplineDoubleKeyFrame KeyTime="0:0:13.64" Value="-40" KeySpline="0.6,0,0.4,1" />
+          <SplineDoubleKeyFrame KeyTime="0:0:13.8" Value="-8" KeySpline="0.3,0,0.3,1" />
+          <SplineDoubleKeyFrame KeyTime="0:0:13.92" Value="18" KeySpline="0.4,0,0.4,1" />
+          <SplineDoubleKeyFrame KeyTime="0:0:14.08" Value="-162" KeySpline="0.2,0,0.4,1" />
+          <SplineDoubleKeyFrame KeyTime="0:0:14.24" Value="-40" KeySpline="0.6,0,0.4,1" />
+          <SplineDoubleKeyFrame KeyTime="0:0:14.4" Value="-8" KeySpline="0.3,0,0.3,1" />
+          <LinearDoubleKeyFrame KeyTime="0:0:20" Value="-8" />
+        </DoubleAnimationUsingKeyFrames>
+
+        <!-- Profile rig timeline -->
+
+        <DoubleAnimationUsingKeyFrames Storyboard.TargetName="TorsoRotate"
+                                       Storyboard.TargetProperty="Angle" Duration="0:0:20">
+          <LinearDoubleKeyFrame KeyTime="0:0:1.8" Value="16" />
+          <SplineDoubleKeyFrame KeyTime="0:0:2.4" Value="22" KeySpline="0.4,0,0.2,1" />
+          <SplineDoubleKeyFrame KeyTime="0:0:2.8" Value="0" KeySpline="0.4,0,0.2,1" />
+          <LinearDoubleKeyFrame KeyTime="0:0:6.5" Value="0" />
+          <SplineDoubleKeyFrame KeyTime="0:0:6.95" Value="16" KeySpline="0.4,0,0.2,1" />
+          <SplineDoubleKeyFrame KeyTime="0:0:7.4" Value="-16" KeySpline="0.4,0,0.2,1" />
+          <SplineDoubleKeyFrame KeyTime="0:0:7.7" Value="0" KeySpline="0.4,0,0.2,1" />
+          <LinearDoubleKeyFrame KeyTime="0:0:17.7" Value="0" />
+          <SplineDoubleKeyFrame KeyTime="0:0:20" Value="16" KeySpline="0.4,0,0.6,1" />
+        </DoubleAnimationUsingKeyFrames>
+
+        <DoubleAnimationUsingKeyFrames Storyboard.TargetName="NearThighRotate"
+                                       Storyboard.TargetProperty="Angle" Duration="0:0:20">
+          <LinearDoubleKeyFrame KeyTime="0:0:1.8" Value="-82" />
+          <SplineDoubleKeyFrame KeyTime="0:0:2.8" Value="0" KeySpline="0.3,0,0.2,1" />
+          <LinearDoubleKeyFrame KeyTime="0:0:2.98" Value="0" />
+          <LinearDoubleKeyFrame KeyTime="0:0:3.635" Value="24" />
+          <LinearDoubleKeyFrame KeyTime="0:0:4.29" Value="0" />
+          <LinearDoubleKeyFrame KeyTime="0:0:4.945" Value="-24" />
+          <LinearDoubleKeyFrame KeyTime="0:0:5.6" Value="0" />
+          <LinearDoubleKeyFrame KeyTime="0:0:14.6" Value="0" />
+          <LinearDoubleKeyFrame KeyTime="0:0:15.225" Value="24" />
+          <LinearDoubleKeyFrame KeyTime="0:0:15.85" Value="0" />
+          <LinearDoubleKeyFrame KeyTime="0:0:16.475" Value="-24" />
+          <LinearDoubleKeyFrame KeyTime="0:0:17.1" Value="0" />
+          <LinearDoubleKeyFrame KeyTime="0:0:17.7" Value="0" />
+          <SplineDoubleKeyFrame KeyTime="0:0:20" Value="-82" KeySpline="0.4,0,0.6,1" />
+        </DoubleAnimationUsingKeyFrames>
+
+        <DoubleAnimationUsingKeyFrames Storyboard.TargetName="NearShinRotate"
+                                       Storyboard.TargetProperty="Angle" Duration="0:0:20">
+          <LinearDoubleKeyFrame KeyTime="0:0:1.8" Value="82" />
+          <SplineDoubleKeyFrame KeyTime="0:0:2.8" Value="0" KeySpline="0.3,0,0.2,1" />
+          <LinearDoubleKeyFrame KeyTime="0:0:2.98" Value="0" />
+          <LinearDoubleKeyFrame KeyTime="0:0:3.635" Value="6" />
+          <LinearDoubleKeyFrame KeyTime="0:0:4.29" Value="34" />
+          <LinearDoubleKeyFrame KeyTime="0:0:4.945" Value="18" />
+          <LinearDoubleKeyFrame KeyTime="0:0:5.6" Value="0" />
+          <LinearDoubleKeyFrame KeyTime="0:0:14.6" Value="0" />
+          <LinearDoubleKeyFrame KeyTime="0:0:15.225" Value="6" />
+          <LinearDoubleKeyFrame KeyTime="0:0:15.85" Value="34" />
+          <LinearDoubleKeyFrame KeyTime="0:0:16.475" Value="18" />
+          <LinearDoubleKeyFrame KeyTime="0:0:17.1" Value="0" />
+          <LinearDoubleKeyFrame KeyTime="0:0:17.7" Value="0" />
+          <SplineDoubleKeyFrame KeyTime="0:0:20" Value="82" KeySpline="0.4,0,0.6,1" />
+        </DoubleAnimationUsingKeyFrames>
+
+        <DoubleAnimationUsingKeyFrames Storyboard.TargetName="FarThighRotate"
+                                       Storyboard.TargetProperty="Angle" Duration="0:0:20">
+          <LinearDoubleKeyFrame KeyTime="0:0:1.8" Value="-78" />
+          <SplineDoubleKeyFrame KeyTime="0:0:2.8" Value="0" KeySpline="0.3,0,0.2,1" />
+          <LinearDoubleKeyFrame KeyTime="0:0:2.98" Value="0" />
+          <LinearDoubleKeyFrame KeyTime="0:0:3.635" Value="-24" />
+          <LinearDoubleKeyFrame KeyTime="0:0:4.29" Value="0" />
+          <LinearDoubleKeyFrame KeyTime="0:0:4.945" Value="24" />
+          <LinearDoubleKeyFrame KeyTime="0:0:5.6" Value="0" />
+          <LinearDoubleKeyFrame KeyTime="0:0:14.6" Value="0" />
+          <LinearDoubleKeyFrame KeyTime="0:0:15.225" Value="-24" />
+          <LinearDoubleKeyFrame KeyTime="0:0:15.85" Value="0" />
+          <LinearDoubleKeyFrame KeyTime="0:0:16.475" Value="24" />
+          <LinearDoubleKeyFrame KeyTime="0:0:17.1" Value="0" />
+          <LinearDoubleKeyFrame KeyTime="0:0:17.7" Value="0" />
+          <SplineDoubleKeyFrame KeyTime="0:0:20" Value="-78" KeySpline="0.4,0,0.6,1" />
+        </DoubleAnimationUsingKeyFrames>
+
+        <DoubleAnimationUsingKeyFrames Storyboard.TargetName="FarShinRotate"
+                                       Storyboard.TargetProperty="Angle" Duration="0:0:20">
+          <LinearDoubleKeyFrame KeyTime="0:0:1.8" Value="78" />
+          <SplineDoubleKeyFrame KeyTime="0:0:2.8" Value="0" KeySpline="0.3,0,0.2,1" />
+          <LinearDoubleKeyFrame KeyTime="0:0:2.98" Value="0" />
+          <LinearDoubleKeyFrame KeyTime="0:0:3.635" Value="34" />
+          <LinearDoubleKeyFrame KeyTime="0:0:4.29" Value="12" />
+          <LinearDoubleKeyFrame KeyTime="0:0:4.945" Value="6" />
+          <LinearDoubleKeyFrame KeyTime="0:0:5.6" Value="0" />
+          <LinearDoubleKeyFrame KeyTime="0:0:14.6" Value="0" />
+          <LinearDoubleKeyFrame KeyTime="0:0:15.225" Value="34" />
+          <LinearDoubleKeyFrame KeyTime="0:0:15.85" Value="12" />
+          <LinearDoubleKeyFrame KeyTime="0:0:16.475" Value="6" />
+          <LinearDoubleKeyFrame KeyTime="0:0:17.1" Value="0" />
+          <LinearDoubleKeyFrame KeyTime="0:0:17.7" Value="0" />
+          <SplineDoubleKeyFrame KeyTime="0:0:20" Value="78" KeySpline="0.4,0,0.6,1" />
+        </DoubleAnimationUsingKeyFrames>
+
+        <!--
+          Seated, the near arm is solved so the hand lands on the keyboard rather than in the lap:
+          shoulder -49 with the forearm folded back -82 puts the elbow low and the hand forward at
+          desk height. The small oscillation is the typing.
+        -->
+        <DoubleAnimationUsingKeyFrames Storyboard.TargetName="NearArmRotate"
+                                       Storyboard.TargetProperty="Angle" Duration="0:0:20">
+          <LinearDoubleKeyFrame KeyTime="0:0:0.45" Value="-36" />
+          <LinearDoubleKeyFrame KeyTime="0:0:0.9" Value="-34" />
+          <LinearDoubleKeyFrame KeyTime="0:0:1.35" Value="-36" />
+          <LinearDoubleKeyFrame KeyTime="0:0:1.8" Value="-34" />
+          <SplineDoubleKeyFrame KeyTime="0:0:2.8" Value="0" KeySpline="0.3,0,0.2,1" />
+          <LinearDoubleKeyFrame KeyTime="0:0:3.635" Value="-26" />
+          <LinearDoubleKeyFrame KeyTime="0:0:4.945" Value="26" />
+          <LinearDoubleKeyFrame KeyTime="0:0:5.6" Value="0" />
+          <SplineDoubleKeyFrame KeyTime="0:0:6.5" Value="-155" KeySpline="0.3,0,0.2,1" />
+          <LinearDoubleKeyFrame KeyTime="0:0:7.7" Value="-155" />
+          <SplineDoubleKeyFrame KeyTime="0:0:8.3" Value="0" KeySpline="0.4,0,0.2,1" />
+          <SplineDoubleKeyFrame KeyTime="0:0:8.6" Value="32" KeySpline="0.4,0,0.4,1" />
+          <SplineDoubleKeyFrame KeyTime="0:0:8.9" Value="-32" KeySpline="0.4,0,0.4,1" />
+          <SplineDoubleKeyFrame KeyTime="0:0:9.2" Value="0" KeySpline="0.4,0,0.4,1" />
+          <LinearDoubleKeyFrame KeyTime="0:0:14.6" Value="0" />
+          <LinearDoubleKeyFrame KeyTime="0:0:15.225" Value="-26" />
+          <LinearDoubleKeyFrame KeyTime="0:0:16.475" Value="26" />
+          <LinearDoubleKeyFrame KeyTime="0:0:17.1" Value="0" />
+          <LinearDoubleKeyFrame KeyTime="0:0:17.7" Value="0" />
+          <SplineDoubleKeyFrame KeyTime="0:0:20" Value="-36" KeySpline="0.4,0,0.6,1" />
+        </DoubleAnimationUsingKeyFrames>
+
+        <DoubleAnimationUsingKeyFrames Storyboard.TargetName="NearForearmRotate"
+                                       Storyboard.TargetProperty="Angle" Duration="0:0:20">
+          <LinearDoubleKeyFrame KeyTime="0:0:0.45" Value="-78" />
+          <LinearDoubleKeyFrame KeyTime="0:0:0.9" Value="-75" />
+          <LinearDoubleKeyFrame KeyTime="0:0:1.35" Value="-78" />
+          <LinearDoubleKeyFrame KeyTime="0:0:1.8" Value="-75" />
+          <SplineDoubleKeyFrame KeyTime="0:0:2.8" Value="10" KeySpline="0.3,0,0.2,1" />
+          <LinearDoubleKeyFrame KeyTime="0:0:5.6" Value="10" />
+          <SplineDoubleKeyFrame KeyTime="0:0:6.5" Value="0" KeySpline="0.3,0,0.2,1" />
+          <LinearDoubleKeyFrame KeyTime="0:0:17.7" Value="0" />
+          <SplineDoubleKeyFrame KeyTime="0:0:20" Value="-78" KeySpline="0.4,0,0.6,1" />
+        </DoubleAnimationUsingKeyFrames>
+
+        <DoubleAnimationUsingKeyFrames Storyboard.TargetName="FarArmRotate"
+                                       Storyboard.TargetProperty="Angle" Duration="0:0:20">
+          <LinearDoubleKeyFrame KeyTime="0:0:0.45" Value="-39" />
+          <LinearDoubleKeyFrame KeyTime="0:0:0.9" Value="-37" />
+          <LinearDoubleKeyFrame KeyTime="0:0:1.35" Value="-39" />
+          <LinearDoubleKeyFrame KeyTime="0:0:1.8" Value="-37" />
+          <SplineDoubleKeyFrame KeyTime="0:0:2.8" Value="0" KeySpline="0.3,0,0.2,1" />
+          <LinearDoubleKeyFrame KeyTime="0:0:3.635" Value="26" />
+          <LinearDoubleKeyFrame KeyTime="0:0:4.945" Value="-26" />
+          <LinearDoubleKeyFrame KeyTime="0:0:5.6" Value="0" />
+          <SplineDoubleKeyFrame KeyTime="0:0:6.5" Value="-205" KeySpline="0.3,0,0.2,1" />
+          <LinearDoubleKeyFrame KeyTime="0:0:7.7" Value="-205" />
+          <SplineDoubleKeyFrame KeyTime="0:0:8.3" Value="0" KeySpline="0.4,0,0.2,1" />
+          <SplineDoubleKeyFrame KeyTime="0:0:8.6" Value="-32" KeySpline="0.4,0,0.4,1" />
+          <SplineDoubleKeyFrame KeyTime="0:0:8.9" Value="32" KeySpline="0.4,0,0.4,1" />
+          <SplineDoubleKeyFrame KeyTime="0:0:9.2" Value="0" KeySpline="0.4,0,0.4,1" />
+          <LinearDoubleKeyFrame KeyTime="0:0:14.6" Value="0" />
+          <LinearDoubleKeyFrame KeyTime="0:0:15.225" Value="26" />
+          <LinearDoubleKeyFrame KeyTime="0:0:16.475" Value="-26" />
+          <LinearDoubleKeyFrame KeyTime="0:0:17.1" Value="0" />
+          <LinearDoubleKeyFrame KeyTime="0:0:17.7" Value="0" />
+          <SplineDoubleKeyFrame KeyTime="0:0:20" Value="-39" KeySpline="0.4,0,0.6,1" />
+        </DoubleAnimationUsingKeyFrames>
+
+        <DoubleAnimationUsingKeyFrames Storyboard.TargetName="FarForearmRotate"
+                                       Storyboard.TargetProperty="Angle" Duration="0:0:20">
+          <LinearDoubleKeyFrame KeyTime="0:0:0.45" Value="-75" />
+          <LinearDoubleKeyFrame KeyTime="0:0:0.9" Value="-72" />
+          <LinearDoubleKeyFrame KeyTime="0:0:1.35" Value="-75" />
+          <LinearDoubleKeyFrame KeyTime="0:0:1.8" Value="-72" />
+          <SplineDoubleKeyFrame KeyTime="0:0:2.8" Value="10" KeySpline="0.3,0,0.2,1" />
+          <LinearDoubleKeyFrame KeyTime="0:0:5.6" Value="10" />
+          <SplineDoubleKeyFrame KeyTime="0:0:6.5" Value="0" KeySpline="0.3,0,0.2,1" />
+          <LinearDoubleKeyFrame KeyTime="0:0:17.7" Value="0" />
+          <SplineDoubleKeyFrame KeyTime="0:0:20" Value="-75" KeySpline="0.4,0,0.6,1" />
+        </DoubleAnimationUsingKeyFrames>
+
+        <StringAnimationUsingKeyFrames Storyboard.TargetName="MoveCaptionText"
+                                       Storyboard.TargetProperty="Text" Duration="0:0:20">
+          <DiscreteStringKeyFrame KeyTime="0:0:0" Value="Time to leave the keyboard" />
+          <DiscreteStringKeyFrame KeyTime="0:0:1.8" Value="Stand up" />
+          <DiscreteStringKeyFrame KeyTime="0:0:2.98" Value="Walk it off" />
+          <DiscreteStringKeyFrame KeyTime="0:0:5.6" Value="Reach up and stretch" />
+          <DiscreteStringKeyFrame KeyTime="0:0:6.5" Value="Bend side to side" />
+          <DiscreteStringKeyFrame KeyTime="0:0:7.7" Value="Roll your shoulders" />
+          <DiscreteStringKeyFrame KeyTime="0:0:9.4" Value="Three squats" />
+          <DiscreteStringKeyFrame KeyTime="0:0:12.6" Value="And three little jumps" />
+          <DiscreteStringKeyFrame KeyTime="0:0:14.6" Value="Head back to your desk" />
+          <DiscreteStringKeyFrame KeyTime="0:0:17.7" Value="Sit down refreshed" />
+        </StringAnimationUsingKeyFrames>
+      </Storyboard>
+    </ResourceDictionary>
+  </UserControl.Resources>
+
+  <StackPanel HorizontalAlignment="Center">
+    <Border Width="340" Height="190" CornerRadius="14" ClipToBounds="True"
+            Background="#33101821">
+      <Canvas Width="340" Height="190">
+        <Canvas.RenderTransform>
+          <TranslateTransform x:Name="CameraTranslate" X="0" Y="0" />
+        </Canvas.RenderTransform>
+
+        <Rectangle Canvas.Left="-90" Canvas.Top="162" Width="540" Height="3"
+                   Fill="{StaticResource Scene.GroundBrush}" />
+
+        <!-- Workstation -->
+
+        <!--
+          Heights are set from the figure, not guessed. Its standing hip is 56 px above the floor,
+          so at human proportions (hip 90 cm, desk 73 cm, seat 45 cm) the desk surface lands 46 px
+          above the floor and the seat 28 px. The previous layout put the desk above the standing
+          hip, which is why nobody could reach the keyboard while seated.
+        -->
+        <Rectangle Canvas.Left="38" Canvas.Top="48" Width="76" Height="48"
+                   RadiusX="4" RadiusY="4" Fill="#FF222C3A"
+                   Stroke="#FF5A6A80" StrokeThickness="1.5" />
+        <Rectangle Canvas.Left="42" Canvas.Top="52" Width="68" Height="40"
+                   RadiusX="2" RadiusY="2">
+          <Rectangle.Fill>
+            <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+              <GradientStop Color="#FF2C6E93" Offset="0" />
+              <GradientStop Color="#FF1B4C68" Offset="1" />
+            </LinearGradientBrush>
+          </Rectangle.Fill>
+        </Rectangle>
+        <Rectangle Canvas.Left="47" Canvas.Top="58" Width="34" Height="3" RadiusX="1.5" RadiusY="1.5" Fill="#66CFEAF7" />
+        <Rectangle Canvas.Left="47" Canvas.Top="65" Width="48" Height="3" RadiusX="1.5" RadiusY="1.5" Fill="#44CFEAF7" />
+        <Rectangle Canvas.Left="47" Canvas.Top="72" Width="40" Height="3" RadiusX="1.5" RadiusY="1.5" Fill="#44CFEAF7" />
+        <Rectangle Canvas.Left="47" Canvas.Top="79" Width="26" Height="3" RadiusX="1.5" RadiusY="1.5" Fill="#33CFEAF7" />
+        <Rectangle Canvas.Left="72" Canvas.Top="96" Width="8" Height="16" Fill="#FF4A5568" />
+        <Rectangle Canvas.Left="58" Canvas.Top="111" Width="36" Height="5"
+                   RadiusX="2.5" RadiusY="2.5" Fill="#FF5A6A80" />
+
+        <Rectangle Canvas.Left="10" Canvas.Top="116" Width="120" Height="7"
+                   RadiusX="3" RadiusY="3" Fill="{StaticResource Scene.DeskBrush}" />
+        <Rectangle Canvas.Left="10" Canvas.Top="116" Width="120" Height="2"
+                   RadiusX="1" RadiusY="1" Fill="{StaticResource Scene.DeskEdgeBrush}" />
+        <Rectangle Canvas.Left="17" Canvas.Top="123" Width="5" Height="39" Fill="{StaticResource Scene.DeskBrush}" />
+        <Rectangle Canvas.Left="118" Canvas.Top="123" Width="5" Height="39" Fill="{StaticResource Scene.DeskBrush}" />
+        <Rectangle Canvas.Left="22" Canvas.Top="143" Width="96" Height="3" Fill="#FF3C4757" />
+
+        <Rectangle Canvas.Left="68" Canvas.Top="112" Width="46" Height="4"
+                   RadiusX="2" RadiusY="2" Fill="#FF6B7A92" />
+        <Ellipse Canvas.Left="118" Canvas.Top="111" Width="11" Height="5" Fill="#FF6B7A92" />
+        <Rectangle Canvas.Left="22" Canvas.Top="104" Width="12" Height="12"
+                   RadiusX="2" RadiusY="2" Fill="#FF7C8CA5" />
+        <Path Stroke="#FF7C8CA5" StrokeThickness="2" Fill="Transparent"
+              Data="M 34,107 C 39,107 39,113 34,113" />
+
+        <Rectangle Canvas.Left="163" Canvas.Top="86" Width="8" Height="50"
+                   RadiusX="4" RadiusY="4" Fill="#FF4A5568" />
+        <Rectangle Canvas.Left="161" Canvas.Top="90" Width="4" Height="42"
+                   RadiusX="2" RadiusY="2" Fill="#FF61708A" />
+        <Rectangle Canvas.Left="130" Canvas.Top="134" Width="42" Height="7"
+                   RadiusX="3.5" RadiusY="3.5" Fill="#FF4A5568" />
+        <Rectangle Canvas.Left="130" Canvas.Top="134" Width="42" Height="2"
+                   RadiusX="1" RadiusY="1" Fill="#FF61708A" />
+        <Rectangle Canvas.Left="148" Canvas.Top="141" Width="6" Height="14" Fill="#FF5A6A80" />
+        <Path Stroke="#FF5A6A80" StrokeThickness="3.5" StrokeStartLineCap="Round" StrokeEndLineCap="Round"
+              Data="M 151,155 L 133,161 M 151,155 L 169,161" />
+        <Ellipse Canvas.Left="128" Canvas.Top="157" Width="8" Height="8" Fill="#FF3C4757" />
+        <Ellipse Canvas.Left="164" Canvas.Top="157" Width="8" Height="8" Fill="#FF3C4757" />
+
+        <!-- Walker: both rigs share this position -->
+        <Canvas Canvas.Left="140" Canvas.Top="105">
+          <Canvas.RenderTransform>
+            <TranslateTransform x:Name="BodyTranslate" X="2" Y="25" />
+          </Canvas.RenderTransform>
+
+          <!-- Profile rig -->
+          <Canvas>
+            <Canvas.RenderTransform>
+              <ScaleTransform x:Name="BodyFlip" ScaleX="-1" ScaleY="1" />
+            </Canvas.RenderTransform>
+
+            <Canvas>
+              <Canvas.RenderTransform>
+                <RotateTransform x:Name="FarThighRotate" Angle="-78" CenterX="0" CenterY="0" />
+              </Canvas.RenderTransform>
+              <Rectangle Canvas.Left="-4" Canvas.Top="0" Width="8" Height="26"
+                         Style="{StaticResource Scene.FarLimb}" />
+              <Canvas Canvas.Top="26">
+                <Canvas.RenderTransform>
+                  <RotateTransform x:Name="FarShinRotate" Angle="78" CenterX="0" CenterY="0" />
+                </Canvas.RenderTransform>
+                <Rectangle Canvas.Left="-3.5" Canvas.Top="0" Width="7" Height="25"
+                           Style="{StaticResource Scene.FarLimb}" />
+                <Rectangle Canvas.Left="-4" Canvas.Top="23" Width="14" Height="5"
+                           Style="{StaticResource Scene.FarLimb}" />
+              </Canvas>
+            </Canvas>
+
+            <Canvas>
+              <Canvas.RenderTransform>
+                <RotateTransform x:Name="TorsoRotate" Angle="16" CenterX="0" CenterY="0" />
+              </Canvas.RenderTransform>
+
+              <Canvas Canvas.Top="-36">
+                <Canvas.RenderTransform>
+                  <RotateTransform x:Name="FarArmRotate" Angle="-44" CenterX="0" CenterY="0" />
+                </Canvas.RenderTransform>
+                <Rectangle Canvas.Left="-3" Canvas.Top="0" Width="6.5" Height="21"
+                           Style="{StaticResource Scene.FarLimb}" />
+                <Canvas Canvas.Top="20">
+                  <Canvas.RenderTransform>
+                    <RotateTransform x:Name="FarForearmRotate" Angle="-86" CenterX="0" CenterY="0" />
+                  </Canvas.RenderTransform>
+                  <Rectangle Canvas.Left="-2.75" Canvas.Top="0" Width="6" Height="19"
+                             Style="{StaticResource Scene.FarLimb}" />
+                </Canvas>
+              </Canvas>
+
+              <Rectangle Canvas.Left="-8" Canvas.Top="-42" Width="16" Height="44"
+                         RadiusX="7" RadiusY="7" Fill="{StaticResource Scene.BodyBrush}" />
+              <Ellipse Canvas.Left="-11" Canvas.Top="-66" Width="22" Height="22"
+                       Fill="{StaticResource Scene.BodyBrush}" />
+
+              <Canvas Canvas.Top="-36">
+                <Canvas.RenderTransform>
+                  <RotateTransform x:Name="NearArmRotate" Angle="-49" CenterX="0" CenterY="0" />
+                </Canvas.RenderTransform>
+                <Rectangle Canvas.Left="-3.25" Canvas.Top="0" Width="7" Height="21"
+                           Style="{StaticResource Scene.Limb}" />
+                <Canvas Canvas.Top="21">
+                  <Canvas.RenderTransform>
+                    <RotateTransform x:Name="NearForearmRotate" Angle="-82" CenterX="0" CenterY="0" />
+                  </Canvas.RenderTransform>
+                  <Rectangle Canvas.Left="-3" Canvas.Top="0" Width="6.5" Height="20"
+                             Style="{StaticResource Scene.Limb}" />
+                </Canvas>
+              </Canvas>
+            </Canvas>
+
+            <Canvas>
+              <Canvas.RenderTransform>
+                <RotateTransform x:Name="NearThighRotate" Angle="-82" CenterX="0" CenterY="0" />
+              </Canvas.RenderTransform>
+              <Rectangle Canvas.Left="-4.5" Canvas.Top="0" Width="9" Height="26"
+                         Style="{StaticResource Scene.Limb}" />
+              <Canvas Canvas.Top="26">
+                <Canvas.RenderTransform>
+                  <RotateTransform x:Name="NearShinRotate" Angle="82" CenterX="0" CenterY="0" />
+                </Canvas.RenderTransform>
+                <Rectangle Canvas.Left="-4" Canvas.Top="0" Width="8" Height="25"
+                           Style="{StaticResource Scene.Limb}" />
+                <Rectangle Canvas.Left="-4.5" Canvas.Top="23" Width="15" Height="5.5"
+                           Style="{StaticResource Scene.Limb}" />
+              </Canvas>
+            </Canvas>
+          </Canvas>
+
+          <!-- Front-facing rig, used for the squats and jumps -->
+          <Canvas>
+            <Canvas.RenderTransform>
+              <ScaleTransform x:Name="FrontScale" ScaleX="0" ScaleY="1" CenterX="0" CenterY="0" />
+            </Canvas.RenderTransform>
+
+            <!-- Both legs compress together, which is what lowers the hips. -->
+            <Canvas>
+              <Canvas.RenderTransform>
+                <ScaleTransform x:Name="FrontLegsScale" ScaleX="1" ScaleY="1" CenterX="0" CenterY="0" />
+              </Canvas.RenderTransform>
+
+              <Canvas Canvas.Left="-7">
+                <Canvas.RenderTransform>
+                  <RotateTransform x:Name="FrontLeftThighRotate" Angle="0" CenterX="0" CenterY="0" />
+                </Canvas.RenderTransform>
+                <Rectangle Canvas.Left="-5" Canvas.Top="0" Width="10" Height="26"
+                           Style="{StaticResource Scene.Limb}" />
+                <Canvas Canvas.Top="26">
+                  <Canvas.RenderTransform>
+                    <RotateTransform x:Name="FrontLeftShinRotate" Angle="0" CenterX="0" CenterY="0" />
+                  </Canvas.RenderTransform>
+                  <Rectangle Canvas.Left="-4.5" Canvas.Top="0" Width="9" Height="25"
+                             Style="{StaticResource Scene.Limb}" />
+                  <Rectangle Canvas.Left="-6" Canvas.Top="23" Width="12" Height="5.5"
+                             Style="{StaticResource Scene.Limb}" />
+                </Canvas>
+              </Canvas>
+
+              <Canvas Canvas.Left="7">
+                <Canvas.RenderTransform>
+                  <RotateTransform x:Name="FrontRightThighRotate" Angle="0" CenterX="0" CenterY="0" />
+                </Canvas.RenderTransform>
+                <Rectangle Canvas.Left="-5" Canvas.Top="0" Width="10" Height="26"
+                           Style="{StaticResource Scene.Limb}" />
+                <Canvas Canvas.Top="26">
+                  <Canvas.RenderTransform>
+                    <RotateTransform x:Name="FrontRightShinRotate" Angle="0" CenterX="0" CenterY="0" />
+                  </Canvas.RenderTransform>
+                  <Rectangle Canvas.Left="-4.5" Canvas.Top="0" Width="9" Height="25"
+                             Style="{StaticResource Scene.Limb}" />
+                  <Rectangle Canvas.Left="-6" Canvas.Top="23" Width="12" Height="5.5"
+                             Style="{StaticResource Scene.Limb}" />
+                </Canvas>
+              </Canvas>
+            </Canvas>
+
+            <Canvas Canvas.Left="-14" Canvas.Top="-38">
+              <Canvas.RenderTransform>
+                <RotateTransform x:Name="FrontLeftArmRotate" Angle="8" CenterX="0" CenterY="0" />
+              </Canvas.RenderTransform>
+              <Rectangle Canvas.Left="-3.5" Canvas.Top="0" Width="7" Height="21"
+                         Style="{StaticResource Scene.Limb}" />
+              <Rectangle Canvas.Left="-3.25" Canvas.Top="20" Width="6.5" Height="19"
+                         Style="{StaticResource Scene.Limb}" />
+            </Canvas>
+
+            <Canvas Canvas.Left="14" Canvas.Top="-38">
+              <Canvas.RenderTransform>
+                <RotateTransform x:Name="FrontRightArmRotate" Angle="-8" CenterX="0" CenterY="0" />
+              </Canvas.RenderTransform>
+              <Rectangle Canvas.Left="-3.5" Canvas.Top="0" Width="7" Height="21"
+                         Style="{StaticResource Scene.Limb}" />
+              <Rectangle Canvas.Left="-3.25" Canvas.Top="20" Width="6.5" Height="19"
+                         Style="{StaticResource Scene.Limb}" />
+            </Canvas>
+
+            <Rectangle Canvas.Left="-13" Canvas.Top="-44" Width="26" Height="46"
+                       RadiusX="9" RadiusY="9" Fill="{StaticResource Scene.BodyBrush}" />
+            <Ellipse Canvas.Left="-12" Canvas.Top="-68" Width="24" Height="24"
+                     Fill="{StaticResource Scene.BodyBrush}" />
+          </Canvas>
+        </Canvas>
+      </Canvas>
+    </Border>
+
+    <TextBlock x:Name="MoveCaptionText"
+               AutomationProperties.AutomationId="MoveExerciseCaption"
+               Text="Time to leave the keyboard"
+               Margin="0,10,0,0"
+               HorizontalAlignment="Center"
+               FontFamily="{StaticResource Overlay.Font}"
+               FontSize="15"
+               FontWeight="SemiBold"
+               Foreground="{StaticResource Overlay.AccentBrush}" />
+  </StackPanel>
+</UserControl>

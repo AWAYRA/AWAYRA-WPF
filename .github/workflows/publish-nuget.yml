@@ -1,0 +1,186 @@
+name: Publish Awayra.Core NuGet package
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'src/Awayra.Core/**'
+      - 'Directory.Build.props'
+      - '.github/workflows/publish-nuget.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'src/Awayra.Core/**'
+      - 'Directory.Build.props'
+      - '.github/workflows/publish-nuget.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+  statuses: write
+
+concurrency:
+  group: awayra-core-nuget-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  package:
+    name: nuget-package
+    runs-on: windows-latest
+    timeout-minutes: 25
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Restore
+        run: dotnet restore tests/Awayra.Core.Tests/Awayra.Core.Tests.csproj
+
+      - name: Test core library
+        run: dotnet test tests/Awayra.Core.Tests/Awayra.Core.Tests.csproj -c Release --no-restore -p:TreatWarningsAsErrors=true
+
+      - name: Pack NuGet package
+        run: dotnet pack src/Awayra.Core/Awayra.Core.csproj -c Release --no-restore -o artifacts/nuget -p:ContinuousIntegrationBuild=true
+
+      - name: Validate package output
+        shell: pwsh
+        run: |
+          $packages = @(Get-ChildItem artifacts/nuget/Awayra.Core.*.nupkg -File)
+          if ($packages.Count -ne 1) {
+            throw "Expected exactly one Awayra.Core package, found $($packages.Count)."
+          }
+          Write-Host "Package ready: $($packages[0].FullName)"
+
+      - name: Upload pull request package artifact
+        if: github.event_name == 'pull_request'
+        uses: actions/upload-artifact@v6
+        with:
+          name: Awayra-Core-NuGet-${{ github.event.pull_request.number }}
+          path: artifacts/nuget/*.nupkg
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Configure authenticated GitHub Packages source
+        if: github.event_name != 'pull_request'
+        shell: pwsh
+        run: >-
+          dotnet nuget add source
+          --username '${{ github.actor }}'
+          --password '${{ secrets.GITHUB_TOKEN }}'
+          --store-password-in-clear-text
+          --name github
+          'https://nuget.pkg.github.com/AWAYRA/index.json'
+
+      # --skip-duplicate used to turn "this version is already on the feed" into a green run, so a
+      # change to Awayra.Core without a version bump was never published while the restore check
+      # below happily verified the previous package. Fail here instead and say what to do.
+      - name: Fail when this version was already published
+        if: github.event_name != 'pull_request'
+        shell: pwsh
+        run: |
+          $version = (dotnet msbuild src/Awayra.Core/Awayra.Core.csproj -nologo -getProperty:Version | Select-Object -Last 1).Trim()
+          if ($version -notmatch '^\d+\.\d+\.\d+$') {
+            throw "Could not resolve a semantic package version: $version"
+          }
+
+          $probe = 'artifacts/version-probe'
+          New-Item -ItemType Directory -Path $probe -Force | Out-Null
+          @"
+          <Project Sdk="Microsoft.NET.Sdk">
+            <PropertyGroup>
+              <TargetFramework>net10.0</TargetFramework>
+            </PropertyGroup>
+            <ItemGroup>
+              <PackageReference Include="Awayra.Core" Version="[$version]" />
+            </ItemGroup>
+          </Project>
+          "@ | Set-Content "$probe/VersionProbe.csproj" -Encoding UTF8
+
+          dotnet restore "$probe/VersionProbe.csproj" --no-cache *> $null
+          $alreadyPublished = $LASTEXITCODE -eq 0
+          $global:LASTEXITCODE = 0
+
+          if ($alreadyPublished) {
+            throw "Awayra.Core $version is already on the feed. Bump Version in Directory.Build.props; publishing silently skipped changes before."
+          }
+
+          Write-Host "Awayra.Core $version is not published yet."
+
+      - name: Publish to GitHub Packages
+        if: github.event_name != 'pull_request'
+        shell: pwsh
+        run: |
+          $packages = @(Get-ChildItem artifacts/nuget/Awayra.Core.*.nupkg -File)
+          if ($packages.Count -ne 1) {
+            throw "Expected exactly one package before publishing."
+          }
+          dotnet nuget push $packages[0].FullName `
+            --api-key '${{ secrets.GITHUB_TOKEN }}' `
+            --source github
+
+      - name: Verify package can be restored
+        if: github.event_name != 'pull_request'
+        shell: pwsh
+        run: |
+          $version = (dotnet msbuild src/Awayra.Core/Awayra.Core.csproj -nologo -getProperty:Version | Select-Object -Last 1).Trim()
+          if ($version -notmatch '^\d+\.\d+\.\d+$') {
+            throw "Could not resolve a semantic package version: $version"
+          }
+
+          $smokeDirectory = 'artifacts/package-smoke'
+          New-Item -ItemType Directory -Path $smokeDirectory -Force | Out-Null
+          @"
+          <Project Sdk="Microsoft.NET.Sdk">
+            <PropertyGroup>
+              <TargetFramework>net10.0</TargetFramework>
+            </PropertyGroup>
+            <ItemGroup>
+              <PackageReference Include="Awayra.Core" Version="$version" />
+            </ItemGroup>
+          </Project>
+          "@ | Set-Content "$smokeDirectory/PackageSmoke.csproj" -Encoding UTF8
+
+          for ($attempt = 1; $attempt -le 6; $attempt++) {
+            dotnet restore "$smokeDirectory/PackageSmoke.csproj" --no-cache
+            if ($LASTEXITCODE -eq 0) {
+              Write-Host "Verified Awayra.Core $version from GitHub Packages."
+              exit 0
+            }
+            Write-Host "Package not available yet; retry $attempt/6 in 10 seconds."
+            Start-Sleep -Seconds 10
+          }
+
+          throw "Published package could not be restored from GitHub Packages."
+
+      - name: Report package publication status
+        if: always() && github.event_name != 'pull_request'
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          JOB_STATUS: ${{ job.status }}
+        run: |
+          if (-not (Get-Command gh -ErrorAction SilentlyContinue)) {
+            Write-Warning "GitHub CLI is unavailable; skipping supplemental commit status."
+            exit 0
+          }
+
+          if ($env:JOB_STATUS -eq 'success') {
+            $state = 'success'
+            $description = 'Awayra.Core package published and restore-verified'
+          }
+          else {
+            $state = 'failure'
+            $description = 'Awayra.Core package publication failed'
+          }
+
+          gh api --method POST "repos/$env:GITHUB_REPOSITORY/statuses/$env:GITHUB_SHA" `
+            -f state=$state `
+            -f context='awayra/nuget-package' `
+            -f description=$description `
+            -f target_url="$env:GITHUB_SERVER_URL/$env:GITHUB_REPOSITORY/actions/runs/$env:GITHUB_RUN_ID"

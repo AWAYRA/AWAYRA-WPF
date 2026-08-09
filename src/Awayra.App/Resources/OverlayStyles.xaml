@@ -1,0 +1,187 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+  <!-- Overlay palette. Each window owns its own; there is no global theme dictionary. -->
+  <Color x:Key="Overlay.CardSurfaceColor">#EE18202A</Color>
+  <Color x:Key="Overlay.CardBorderColor">#66465566</Color>
+  <Color x:Key="Overlay.AccentColor">#FF58C2F4</Color>
+  <Color x:Key="Overlay.AccentHoverColor">#FF73CEF7</Color>
+  <Color x:Key="Overlay.AccentPressedColor">#FF3DACE6</Color>
+  <Color x:Key="Overlay.AccentForegroundColor">#FF07141C</Color>
+  <Color x:Key="Overlay.TrackColor">#FF3A4554</Color>
+  <Color x:Key="Overlay.PulseColor">#FF58C2F4</Color>
+  <Color x:Key="Overlay.TitleTextColor">#FFF7F9FC</Color>
+  <Color x:Key="Overlay.CountdownTextColor">#FFFFFFFF</Color>
+  <Color x:Key="Overlay.InstructionPrimaryColor">#FFF3F6FA</Color>
+  <Color x:Key="Overlay.InstructionSecondaryColor">#FFD3DAE5</Color>
+  <Color x:Key="Overlay.SecondaryButtonBackgroundColor">#FF202833</Color>
+  <Color x:Key="Overlay.SecondaryButtonHoverColor">#FF364355</Color>
+  <Color x:Key="Overlay.DisabledTextColor">#FF8A96A8</Color>
+  <Color x:Key="Overlay.FocusRingColor">#FF73CEF7</Color>
+
+  <SolidColorBrush x:Key="Overlay.CardSurfaceBrush" Color="{StaticResource Overlay.CardSurfaceColor}" />
+  <SolidColorBrush x:Key="Overlay.CardBorderBrush" Color="{StaticResource Overlay.CardBorderColor}" />
+  <SolidColorBrush x:Key="Overlay.AccentBrush" Color="{StaticResource Overlay.AccentColor}" />
+  <SolidColorBrush x:Key="Overlay.AccentHoverBrush" Color="{StaticResource Overlay.AccentHoverColor}" />
+  <SolidColorBrush x:Key="Overlay.AccentPressedBrush" Color="{StaticResource Overlay.AccentPressedColor}" />
+  <SolidColorBrush x:Key="Overlay.AccentForegroundBrush" Color="{StaticResource Overlay.AccentForegroundColor}" />
+  <SolidColorBrush x:Key="Overlay.TrackBrush" Color="{StaticResource Overlay.TrackColor}" />
+  <SolidColorBrush x:Key="Overlay.PulseBrush" Color="{StaticResource Overlay.PulseColor}" />
+  <SolidColorBrush x:Key="Overlay.TitleTextBrush" Color="{StaticResource Overlay.TitleTextColor}" />
+  <SolidColorBrush x:Key="Overlay.CountdownTextBrush" Color="{StaticResource Overlay.CountdownTextColor}" />
+  <SolidColorBrush x:Key="Overlay.InstructionPrimaryBrush" Color="{StaticResource Overlay.InstructionPrimaryColor}" />
+  <SolidColorBrush x:Key="Overlay.InstructionSecondaryBrush" Color="{StaticResource Overlay.InstructionSecondaryColor}" />
+  <SolidColorBrush x:Key="Overlay.SecondaryButtonBackgroundBrush" Color="{StaticResource Overlay.SecondaryButtonBackgroundColor}" />
+  <SolidColorBrush x:Key="Overlay.SecondaryButtonHoverBrush" Color="{StaticResource Overlay.SecondaryButtonHoverColor}" />
+  <SolidColorBrush x:Key="Overlay.DisabledTextBrush" Color="{StaticResource Overlay.DisabledTextColor}" />
+  <SolidColorBrush x:Key="Overlay.FocusRingBrush" Color="{StaticResource Overlay.FocusRingColor}" />
+
+  <FontFamily x:Key="Overlay.Font">Segoe UI Variable, Segoe UI, Tahoma</FontFamily>
+
+  <Style x:Key="Overlay.TitleText" TargetType="TextBlock">
+    <Setter Property="Foreground" Value="{StaticResource Overlay.TitleTextBrush}" />
+    <Setter Property="FontFamily" Value="{StaticResource Overlay.Font}" />
+    <Setter Property="FontSize" Value="30" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="HorizontalAlignment" Value="Center" />
+  </Style>
+
+  <Style x:Key="Overlay.CountdownText" TargetType="TextBlock">
+    <Setter Property="Foreground" Value="{StaticResource Overlay.CountdownTextBrush}" />
+    <Setter Property="FontFamily" Value="{StaticResource Overlay.Font}" />
+    <Setter Property="FontSize" Value="44" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="HorizontalAlignment" Value="Center" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+    <Setter Property="Typography.NumeralAlignment" Value="Tabular" />
+    <Setter Property="Typography.NumeralStyle" Value="Lining" />
+  </Style>
+
+  <Style x:Key="Overlay.InstructionPrimaryText" TargetType="TextBlock">
+    <Setter Property="Foreground" Value="{StaticResource Overlay.InstructionPrimaryBrush}" />
+    <Setter Property="FontFamily" Value="{StaticResource Overlay.Font}" />
+    <Setter Property="FontSize" Value="16" />
+    <Setter Property="TextWrapping" Value="Wrap" />
+    <Setter Property="TextAlignment" Value="Center" />
+  </Style>
+
+  <Style x:Key="Overlay.InstructionSecondaryText" TargetType="TextBlock">
+    <Setter Property="Foreground" Value="{StaticResource Overlay.InstructionSecondaryBrush}" />
+    <Setter Property="FontFamily" Value="{StaticResource Overlay.Font}" />
+    <Setter Property="FontSize" Value="14" />
+    <Setter Property="TextWrapping" Value="Wrap" />
+    <Setter Property="TextAlignment" Value="Center" />
+  </Style>
+
+  <Style x:Key="Overlay.TrackRing" TargetType="Ellipse">
+    <Setter Property="Stroke" Value="{StaticResource Overlay.TrackBrush}" />
+    <Setter Property="StrokeThickness" Value="4" />
+    <Setter Property="Fill" Value="Transparent" />
+    <Setter Property="SnapsToDevicePixels" Value="True" />
+  </Style>
+
+  <Style x:Key="Overlay.PulseRing" TargetType="Ellipse">
+    <Setter Property="Stroke" Value="{StaticResource Overlay.PulseBrush}" />
+    <Setter Property="StrokeThickness" Value="2.5" />
+    <Setter Property="Fill" Value="Transparent" />
+    <Setter Property="Opacity" Value="0.92" />
+    <Setter Property="RenderTransformOrigin" Value="0.5,0.5" />
+    <Setter Property="SnapsToDevicePixels" Value="True" />
+  </Style>
+
+  <Style x:Key="Overlay.PrimaryButton" TargetType="Button">
+    <Setter Property="Background" Value="{StaticResource Overlay.AccentBrush}" />
+    <Setter Property="Foreground" Value="{StaticResource Overlay.AccentForegroundBrush}" />
+    <Setter Property="BorderBrush" Value="{StaticResource Overlay.AccentBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="Padding" Value="16,9" />
+    <Setter Property="FontFamily" Value="{StaticResource Overlay.Font}" />
+    <Setter Property="FontSize" Value="13" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="MinWidth" Value="96" />
+    <Setter Property="MinHeight" Value="36" />
+    <Setter Property="Cursor" Value="Hand" />
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="Button">
+          <Border x:Name="Root"
+                  Background="{TemplateBinding Background}"
+                  BorderBrush="{TemplateBinding BorderBrush}"
+                  BorderThickness="{TemplateBinding BorderThickness}"
+                  CornerRadius="10"
+                  Padding="{TemplateBinding Padding}"
+                  SnapsToDevicePixels="True">
+            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+          </Border>
+          <ControlTemplate.Triggers>
+            <Trigger Property="IsMouseOver" Value="True">
+              <Setter TargetName="Root" Property="Background" Value="{StaticResource Overlay.AccentHoverBrush}" />
+              <Setter TargetName="Root" Property="BorderBrush" Value="{StaticResource Overlay.AccentHoverBrush}" />
+            </Trigger>
+            <Trigger Property="IsPressed" Value="True">
+              <Setter TargetName="Root" Property="Background" Value="{StaticResource Overlay.AccentPressedBrush}" />
+              <Setter TargetName="Root" Property="BorderBrush" Value="{StaticResource Overlay.AccentPressedBrush}" />
+            </Trigger>
+            <Trigger Property="IsEnabled" Value="False">
+              <Setter TargetName="Root" Property="Background" Value="{StaticResource Overlay.TrackBrush}" />
+              <Setter TargetName="Root" Property="BorderBrush" Value="{StaticResource Overlay.TrackBrush}" />
+              <Setter Property="Foreground" Value="{StaticResource Overlay.DisabledTextBrush}" />
+            </Trigger>
+            <Trigger Property="IsKeyboardFocused" Value="True">
+              <Setter TargetName="Root" Property="BorderBrush" Value="{StaticResource Overlay.FocusRingBrush}" />
+              <Setter TargetName="Root" Property="BorderThickness" Value="2" />
+            </Trigger>
+          </ControlTemplate.Triggers>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+
+  <Style x:Key="Overlay.SecondaryButton" TargetType="Button">
+    <Setter Property="Background" Value="{StaticResource Overlay.SecondaryButtonBackgroundBrush}" />
+    <Setter Property="Foreground" Value="{StaticResource Overlay.TitleTextBrush}" />
+    <Setter Property="BorderBrush" Value="{StaticResource Overlay.CardBorderBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="Padding" Value="16,9" />
+    <Setter Property="FontFamily" Value="{StaticResource Overlay.Font}" />
+    <Setter Property="FontSize" Value="13" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="MinWidth" Value="96" />
+    <Setter Property="MinHeight" Value="36" />
+    <Setter Property="Cursor" Value="Hand" />
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="Button">
+          <Border x:Name="Root"
+                  Background="{TemplateBinding Background}"
+                  BorderBrush="{TemplateBinding BorderBrush}"
+                  BorderThickness="{TemplateBinding BorderThickness}"
+                  CornerRadius="10"
+                  Padding="{TemplateBinding Padding}"
+                  SnapsToDevicePixels="True">
+            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+          </Border>
+          <ControlTemplate.Triggers>
+            <Trigger Property="IsMouseOver" Value="True">
+              <Setter TargetName="Root" Property="Background" Value="{StaticResource Overlay.SecondaryButtonHoverBrush}" />
+              <Setter TargetName="Root" Property="BorderBrush" Value="{StaticResource Overlay.AccentHoverBrush}" />
+            </Trigger>
+            <Trigger Property="IsPressed" Value="True">
+              <Setter TargetName="Root" Property="Background" Value="{StaticResource Overlay.CardSurfaceBrush}" />
+              <Setter TargetName="Root" Property="BorderBrush" Value="{StaticResource Overlay.AccentPressedBrush}" />
+            </Trigger>
+            <Trigger Property="IsEnabled" Value="False">
+              <Setter Property="Foreground" Value="{StaticResource Overlay.DisabledTextBrush}" />
+              <Setter TargetName="Root" Property="Opacity" Value="0.55" />
+            </Trigger>
+            <Trigger Property="IsKeyboardFocused" Value="True">
+              <Setter TargetName="Root" Property="BorderBrush" Value="{StaticResource Overlay.AccentBrush}" />
+              <Setter TargetName="Root" Property="BorderThickness" Value="2" />
+            </Trigger>
+          </ControlTemplate.Triggers>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+
+</ResourceDictionary>

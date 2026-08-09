@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security vulnerability
+    url: https://github.com/AWAYRA/AWAYRA-WPF/security/policy
+    about: Read the security policy before reporting a vulnerability.
+  - name: Download Awayra
+    url: https://github.com/AWAYRA/AWAYRA-WPF/releases/latest
+    about: Download the latest official Windows release.

@@ -1,0 +1,50 @@
+name: CodeQL
+
+# Awayra ships a signed-by-nobody desktop installer to the public, so the source it is built from
+# gets a static security analysis on every change and once a week for newly published rules.
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: '17 4 * * 1'
+
+permissions:
+  contents: read
+
+jobs:
+  analyze:
+    name: analyze-csharp
+    runs-on: windows-latest
+    timeout-minutes: 40
+
+    permissions:
+      security-events: write
+      actions: read
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v4
+        with:
+          languages: csharp
+          build-mode: manual
+
+      # Built explicitly rather than by autobuild: this is the same command CI already proves works,
+      # so an analysis failure means a real problem instead of a build-detection quirk.
+      - name: Build solution
+        run: dotnet build Awayra.sln -c Release
+
+      - name: Perform CodeQL analysis
+        uses: github/codeql-action/analyze@v4
+        with:
+          category: /language:csharp

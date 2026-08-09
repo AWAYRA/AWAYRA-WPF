@@ -1,0 +1,275 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+  <!-- Dashboard palette. Each window owns its own; there is no global theme dictionary. -->
+  <Color x:Key="Dashboard.WindowBackground">#FF0E1319</Color>
+  <Color x:Key="Dashboard.CardColor">#FF181F28</Color>
+  <Color x:Key="Dashboard.CardElevated">#FF202833</Color>
+  <Color x:Key="Dashboard.PrimaryText">#FFF7F9FC</Color>
+  <Color x:Key="Dashboard.SecondaryText">#FFD0D8E4</Color>
+  <Color x:Key="Dashboard.MutedTextColor">#FF9EABBC</Color>
+  <Color x:Key="Dashboard.Border">#FF364355</Color>
+  <Color x:Key="Dashboard.Accent">#FF58C2F4</Color>
+  <Color x:Key="Dashboard.AccentHover">#FF73CEF7</Color>
+  <Color x:Key="Dashboard.AccentPressed">#FF3DACE6</Color>
+  <Color x:Key="Dashboard.AccentForeground">#FF07141C</Color>
+  <Color x:Key="Dashboard.DisabledText">#FF7A8798</Color>
+  <Color x:Key="Dashboard.EyeAccent">#FF58C2F4</Color>
+  <Color x:Key="Dashboard.MoveAccent">#FF5DD4B4</Color>
+  <Color x:Key="Dashboard.FocusRing">#FF73CEF7</Color>
+
+  <SolidColorBrush x:Key="Dashboard.WindowBackgroundBrush" Color="{StaticResource Dashboard.WindowBackground}" />
+  <SolidColorBrush x:Key="Dashboard.CardBrush" Color="{StaticResource Dashboard.CardColor}" />
+  <SolidColorBrush x:Key="Dashboard.CardElevatedBrush" Color="{StaticResource Dashboard.CardElevated}" />
+  <SolidColorBrush x:Key="Dashboard.PrimaryTextBrush" Color="{StaticResource Dashboard.PrimaryText}" />
+  <SolidColorBrush x:Key="Dashboard.SecondaryTextBrush" Color="{StaticResource Dashboard.SecondaryText}" />
+  <SolidColorBrush x:Key="Dashboard.MutedTextBrush" Color="{StaticResource Dashboard.MutedTextColor}" />
+  <SolidColorBrush x:Key="Dashboard.BorderBrush" Color="{StaticResource Dashboard.Border}" />
+  <SolidColorBrush x:Key="Dashboard.AccentBrush" Color="{StaticResource Dashboard.Accent}" />
+  <SolidColorBrush x:Key="Dashboard.AccentHoverBrush" Color="{StaticResource Dashboard.AccentHover}" />
+  <SolidColorBrush x:Key="Dashboard.AccentPressedBrush" Color="{StaticResource Dashboard.AccentPressed}" />
+  <SolidColorBrush x:Key="Dashboard.AccentForegroundBrush" Color="{StaticResource Dashboard.AccentForeground}" />
+  <SolidColorBrush x:Key="Dashboard.DisabledTextBrush" Color="{StaticResource Dashboard.DisabledText}" />
+  <SolidColorBrush x:Key="Dashboard.EyeAccentBrush" Color="{StaticResource Dashboard.EyeAccent}" />
+  <SolidColorBrush x:Key="Dashboard.MoveAccentBrush" Color="{StaticResource Dashboard.MoveAccent}" />
+  <SolidColorBrush x:Key="Dashboard.FocusRingBrush" Color="{StaticResource Dashboard.FocusRing}" />
+
+  <FontFamily x:Key="Dashboard.Font">Segoe UI Variable, Segoe UI, Tahoma</FontFamily>
+
+  <Style x:Key="Dashboard.Window" TargetType="Window">
+    <Setter Property="Background" Value="{StaticResource Dashboard.WindowBackgroundBrush}" />
+    <Setter Property="Foreground" Value="{StaticResource Dashboard.PrimaryTextBrush}" />
+    <Setter Property="FontFamily" Value="{StaticResource Dashboard.Font}" />
+  </Style>
+
+  <Style x:Key="Dashboard.TitleText" TargetType="TextBlock">
+    <Setter Property="Foreground" Value="{StaticResource Dashboard.PrimaryTextBrush}" />
+    <Setter Property="FontSize" Value="30" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="FontFamily" Value="{StaticResource Dashboard.Font}" />
+  </Style>
+
+  <Style x:Key="Dashboard.StatusText" TargetType="TextBlock">
+    <Setter Property="Foreground" Value="{StaticResource Dashboard.SecondaryTextBrush}" />
+    <Setter Property="FontSize" Value="14" />
+    <Setter Property="FontFamily" Value="{StaticResource Dashboard.Font}" />
+    <Setter Property="Margin" Value="0,6,0,0" />
+  </Style>
+
+  <Style x:Key="Dashboard.Card" TargetType="Border">
+    <Setter Property="Background" Value="{StaticResource Dashboard.CardBrush}" />
+    <Setter Property="BorderBrush" Value="{StaticResource Dashboard.BorderBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="12" />
+    <Setter Property="Padding" Value="16" />
+  </Style>
+
+  <Style x:Key="Dashboard.CountdownCard" TargetType="Border" BasedOn="{StaticResource Dashboard.Card}">
+    <Setter Property="Padding" Value="14,14,16,14" />
+  </Style>
+
+  <Style x:Key="Dashboard.CardAccentBar" TargetType="Border">
+    <Setter Property="Width" Value="3" />
+    <Setter Property="CornerRadius" Value="2" />
+    <Setter Property="Margin" Value="0,2,12,2" />
+    <Setter Property="VerticalAlignment" Value="Stretch" />
+  </Style>
+
+  <Style x:Key="Dashboard.CardLabel" TargetType="TextBlock">
+    <Setter Property="Foreground" Value="{StaticResource Dashboard.SecondaryTextBrush}" />
+    <Setter Property="FontSize" Value="13" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="FontFamily" Value="{StaticResource Dashboard.Font}" />
+  </Style>
+
+  <Style x:Key="Dashboard.CountdownValue" TargetType="TextBlock">
+    <Setter Property="Foreground" Value="{StaticResource Dashboard.PrimaryTextBrush}" />
+    <Setter Property="FontSize" Value="40" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="FontFamily" Value="{StaticResource Dashboard.Font}" />
+    <Setter Property="Margin" Value="0,10,0,6" />
+    <Setter Property="MinHeight" Value="48" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+    <Setter Property="Typography.NumeralAlignment" Value="Tabular" />
+    <Setter Property="Typography.NumeralStyle" Value="Lining" />
+  </Style>
+
+  <Style x:Key="Dashboard.MutedText" TargetType="TextBlock">
+    <Setter Property="Foreground" Value="{StaticResource Dashboard.MutedTextBrush}" />
+    <Setter Property="FontSize" Value="12" />
+    <Setter Property="FontFamily" Value="{StaticResource Dashboard.Font}" />
+  </Style>
+
+  <Style x:Key="Dashboard.StatsSection" TargetType="Border" BasedOn="{StaticResource Dashboard.Card}">
+    <Setter Property="Padding" Value="14" />
+  </Style>
+
+  <Style x:Key="Dashboard.StatTile" TargetType="Border">
+    <Setter Property="Background" Value="{StaticResource Dashboard.CardElevatedBrush}" />
+    <Setter Property="BorderBrush" Value="{StaticResource Dashboard.BorderBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="8" />
+    <Setter Property="Padding" Value="12,10" />
+    <Setter Property="MinHeight" Value="52" />
+  </Style>
+
+  <Style x:Key="Dashboard.StatText" TargetType="TextBlock">
+    <Setter Property="Foreground" Value="{StaticResource Dashboard.SecondaryTextBrush}" />
+    <Setter Property="FontSize" Value="13" />
+    <Setter Property="FontWeight" Value="Normal" />
+    <Setter Property="FontFamily" Value="{StaticResource Dashboard.Font}" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+    <Setter Property="TextWrapping" Value="Wrap" />
+  </Style>
+
+  <Style x:Key="Dashboard.PrimaryButton" TargetType="Button">
+    <Setter Property="Background" Value="{StaticResource Dashboard.AccentBrush}" />
+    <Setter Property="Foreground" Value="{StaticResource Dashboard.AccentForegroundBrush}" />
+    <Setter Property="Padding" Value="16,10" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="BorderBrush" Value="{StaticResource Dashboard.AccentBrush}" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="FontSize" Value="13" />
+    <Setter Property="FontFamily" Value="{StaticResource Dashboard.Font}" />
+    <Setter Property="Cursor" Value="Hand" />
+    <Setter Property="MinHeight" Value="40" />
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="Button">
+          <Border x:Name="Root"
+                  Background="{TemplateBinding Background}"
+                  BorderBrush="{TemplateBinding BorderBrush}"
+                  BorderThickness="{TemplateBinding BorderThickness}"
+                  CornerRadius="10"
+                  Padding="{TemplateBinding Padding}"
+                  SnapsToDevicePixels="True">
+            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+          </Border>
+          <ControlTemplate.Triggers>
+            <Trigger Property="IsMouseOver" Value="True">
+              <Setter TargetName="Root" Property="Background" Value="{StaticResource Dashboard.AccentHoverBrush}" />
+              <Setter TargetName="Root" Property="BorderBrush" Value="{StaticResource Dashboard.AccentHoverBrush}" />
+            </Trigger>
+            <Trigger Property="IsPressed" Value="True">
+              <Setter TargetName="Root" Property="Background" Value="{StaticResource Dashboard.AccentPressedBrush}" />
+              <Setter TargetName="Root" Property="BorderBrush" Value="{StaticResource Dashboard.AccentPressedBrush}" />
+            </Trigger>
+            <Trigger Property="IsEnabled" Value="False">
+              <Setter TargetName="Root" Property="Background" Value="{StaticResource Dashboard.BorderBrush}" />
+              <Setter TargetName="Root" Property="BorderBrush" Value="{StaticResource Dashboard.BorderBrush}" />
+              <Setter Property="Foreground" Value="{StaticResource Dashboard.DisabledTextBrush}" />
+            </Trigger>
+            <Trigger Property="IsKeyboardFocused" Value="True">
+              <Setter TargetName="Root" Property="BorderBrush" Value="{StaticResource Dashboard.FocusRingBrush}" />
+              <Setter TargetName="Root" Property="BorderThickness" Value="2" />
+            </Trigger>
+          </ControlTemplate.Triggers>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+
+  <Style x:Key="Dashboard.SecondaryButton" TargetType="Button">
+    <Setter Property="Background" Value="{StaticResource Dashboard.CardElevatedBrush}" />
+    <Setter Property="Foreground" Value="{StaticResource Dashboard.PrimaryTextBrush}" />
+    <Setter Property="BorderBrush" Value="{StaticResource Dashboard.BorderBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="Padding" Value="14,9" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="FontSize" Value="13" />
+    <Setter Property="FontFamily" Value="{StaticResource Dashboard.Font}" />
+    <Setter Property="Cursor" Value="Hand" />
+    <Setter Property="MinHeight" Value="38" />
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="Button">
+          <Border x:Name="Root"
+                  Background="{TemplateBinding Background}"
+                  BorderBrush="{TemplateBinding BorderBrush}"
+                  BorderThickness="{TemplateBinding BorderThickness}"
+                  CornerRadius="10"
+                  Padding="{TemplateBinding Padding}"
+                  SnapsToDevicePixels="True">
+            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+          </Border>
+          <ControlTemplate.Triggers>
+            <Trigger Property="IsMouseOver" Value="True">
+              <Setter TargetName="Root" Property="Background" Value="{StaticResource Dashboard.BorderBrush}" />
+              <Setter TargetName="Root" Property="BorderBrush" Value="{StaticResource Dashboard.AccentHoverBrush}" />
+            </Trigger>
+            <Trigger Property="IsPressed" Value="True">
+              <Setter TargetName="Root" Property="Background" Value="{StaticResource Dashboard.CardBrush}" />
+              <Setter TargetName="Root" Property="BorderBrush" Value="{StaticResource Dashboard.AccentPressedBrush}" />
+            </Trigger>
+            <Trigger Property="IsEnabled" Value="False">
+              <Setter Property="Foreground" Value="{StaticResource Dashboard.DisabledTextBrush}" />
+              <Setter TargetName="Root" Property="Opacity" Value="0.55" />
+            </Trigger>
+            <Trigger Property="IsKeyboardFocused" Value="True">
+              <Setter TargetName="Root" Property="BorderBrush" Value="{StaticResource Dashboard.AccentBrush}" />
+              <Setter TargetName="Root" Property="BorderThickness" Value="2" />
+            </Trigger>
+          </ControlTemplate.Triggers>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+
+  <Style x:Key="Dashboard.AboutSupportPrimaryText" TargetType="TextBlock">
+    <Setter Property="Foreground" Value="{StaticResource Dashboard.PrimaryTextBrush}" />
+    <Setter Property="FontSize" Value="13" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="FontFamily" Value="{StaticResource Dashboard.Font}" />
+  </Style>
+
+  <Style x:Key="Dashboard.AboutSupportSecondaryText" TargetType="TextBlock">
+    <Setter Property="Foreground" Value="{StaticResource Dashboard.MutedTextBrush}" />
+    <Setter Property="FontSize" Value="12" />
+    <Setter Property="FontFamily" Value="{StaticResource Dashboard.Font}" />
+    <Setter Property="TextWrapping" Value="Wrap" />
+    <Setter Property="Margin" Value="0,4,0,0" />
+  </Style>
+
+  <Style x:Key="Dashboard.AboutSupportCardButton" TargetType="Button">
+    <Setter Property="Background" Value="{StaticResource Dashboard.CardBrush}" />
+    <Setter Property="Foreground" Value="{StaticResource Dashboard.PrimaryTextBrush}" />
+    <Setter Property="BorderBrush" Value="{StaticResource Dashboard.BorderBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="Padding" Value="16,12" />
+    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+    <Setter Property="VerticalContentAlignment" Value="Center" />
+    <Setter Property="Cursor" Value="Hand" />
+    <Setter Property="MinHeight" Value="56" />
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="Button">
+          <Border x:Name="Root"
+                  Background="{TemplateBinding Background}"
+                  BorderBrush="{TemplateBinding BorderBrush}"
+                  BorderThickness="{TemplateBinding BorderThickness}"
+                  CornerRadius="10"
+                  Padding="{TemplateBinding Padding}"
+                  SnapsToDevicePixels="True">
+            <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                              VerticalAlignment="{TemplateBinding VerticalContentAlignment}" />
+          </Border>
+          <ControlTemplate.Triggers>
+            <Trigger Property="IsMouseOver" Value="True">
+              <Setter TargetName="Root" Property="Background" Value="{StaticResource Dashboard.CardElevatedBrush}" />
+              <Setter TargetName="Root" Property="BorderBrush" Value="{StaticResource Dashboard.AccentHoverBrush}" />
+            </Trigger>
+            <Trigger Property="IsPressed" Value="True">
+              <Setter TargetName="Root" Property="Background" Value="{StaticResource Dashboard.CardBrush}" />
+              <Setter TargetName="Root" Property="BorderBrush" Value="{StaticResource Dashboard.AccentPressedBrush}" />
+            </Trigger>
+            <Trigger Property="IsKeyboardFocused" Value="True">
+              <Setter TargetName="Root" Property="BorderBrush" Value="{StaticResource Dashboard.AccentBrush}" />
+              <Setter TargetName="Root" Property="BorderThickness" Value="2" />
+            </Trigger>
+          </ControlTemplate.Triggers>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+
+</ResourceDictionary>

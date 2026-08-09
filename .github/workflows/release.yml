@@ -1,0 +1,271 @@
+name: Publish Windows release
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: awayra-windows-release-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  release:
+    name: installer
+    runs-on: windows-latest
+    timeout-minutes: 50
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 10.0.x
+
+      # Directory.Build.props is the single source of the released version; every project, the
+      # installer and app.manifest derive from it, and the consistency check below proves it.
+      - name: Read and validate version
+        id: version
+        shell: pwsh
+        run: |
+          [xml]$props = Get-Content "Directory.Build.props"
+          $version = [string](@($props.Project.PropertyGroup.Version | Where-Object { $_ })[0]).Trim()
+
+          if ($version -notmatch '^\d+\.\d+\.\d+$') {
+            throw "Directory.Build.props Version must use semantic version format x.y.z. Found: $version"
+          }
+
+          [xml]$manifest = Get-Content "src/Awayra.App/app.manifest"
+          $manifestVersion = $manifest.assembly.assemblyIdentity.version
+          if ($manifestVersion -ne "$version.0") {
+            throw "app.manifest declares $manifestVersion but the product version is $version. Update src/Awayra.App/app.manifest."
+          }
+
+          $iss = Get-Content "installer/Awayra.iss" -Raw
+          if ($iss -notmatch '#define\s+MyAppVersion\s+"([^"]+)"') {
+            throw "Could not read the MyAppVersion fallback from installer/Awayra.iss."
+          }
+          if ($Matches[1] -ne $version) {
+            throw "installer/Awayra.iss declares $($Matches[1]) but the product version is $version."
+          }
+
+          Write-Host "Version $version is consistent across props, manifest and installer."
+          "version=$version" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+          "tag=v$version" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+
+      - name: Check release prerequisites
+        if: github.event_name != 'pull_request'
+        shell: pwsh
+        run: |
+          if (-not (Get-Command gh -ErrorAction SilentlyContinue)) {
+            throw "GitHub CLI is required on the Windows release runner."
+          }
+          gh --version
+
+      - name: Check whether release already exists
+        id: existing
+        if: github.event_name != 'pull_request'
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ steps.version.outputs.tag }}
+        run: |
+          gh release view $env:RELEASE_TAG --repo $env:GITHUB_REPOSITORY *> $null
+          $releaseExists = $LASTEXITCODE -eq 0
+          $global:LASTEXITCODE = 0
+
+          if ($releaseExists) {
+            "release_exists=true" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+            Write-Host "Release $env:RELEASE_TAG already exists. Nothing to publish."
+          }
+          else {
+            "release_exists=false" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+          }
+
+      - name: Validate version tag
+        id: tag
+        if: github.event_name != 'pull_request' && steps.existing.outputs.release_exists != 'true'
+        shell: pwsh
+        env:
+          RELEASE_TAG: ${{ steps.version.outputs.tag }}
+        run: |
+          $headSha = (git rev-parse HEAD).Trim()
+          $peeled = git ls-remote --tags origin "refs/tags/$env:RELEASE_TAG^{}"
+          $direct = git ls-remote --tags origin "refs/tags/$env:RELEASE_TAG"
+          $remote = if ($peeled) { $peeled } else { $direct }
+
+          if ($remote) {
+            $remoteSha = (($remote | Select-Object -First 1) -split '\s+')[0]
+            if ($remoteSha -ne $headSha) {
+              throw "Tag $env:RELEASE_TAG already points to $remoteSha instead of current commit $headSha. Bump the application version; never move a published version tag."
+            }
+
+            "tag_exists=true" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+          }
+          else {
+            "tag_exists=false" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+          }
+
+      # A public release must never be cut from a commit whose tests fail. windows-build.yml runs
+      # the same suites independently, but it cannot gate this workflow, so the gate lives here.
+      - name: Build and test before releasing
+        if: steps.existing.outputs.release_exists != 'true'
+        shell: pwsh
+        run: |
+          dotnet build Awayra.sln -c Release -p:TreatWarningsAsErrors=true
+          if ($LASTEXITCODE -ne 0) { throw "Solution build failed; refusing to publish a release." }
+
+          dotnet test tests/Awayra.Core.Tests/Awayra.Core.Tests.csproj -c Release --no-build --no-restore `
+            --logger "trx;LogFileName=core-tests.trx" --results-directory artifacts/test-results/core
+          if ($LASTEXITCODE -ne 0) { throw "Core tests failed; refusing to publish a release." }
+
+          dotnet test tests/Awayra.App.Tests/Awayra.App.Tests.csproj -c Release --no-build --no-restore `
+            --logger "trx;LogFileName=app-tests.trx" --results-directory artifacts/test-results/app
+          if ($LASTEXITCODE -ne 0) { throw "Application tests failed; refusing to publish a release." }
+
+          $results = @(Get-ChildItem artifacts/test-results -Recurse -Filter *.trx)
+          if ($results.Count -ne 2) { throw "Expected two TRX result files, found $($results.Count)." }
+          foreach ($result in $results) {
+            [xml]$trx = Get-Content $result.FullName
+            $counters = $trx.TestRun.ResultSummary.Counters
+            if ($null -eq $counters -or [int]$counters.total -le 0) { throw "No tests were executed in $($result.Name)." }
+            if ([int]$counters.failed -ne 0) { throw "Test failures recorded in $($result.Name)." }
+            Write-Host "$($result.Name): total=$($counters.total), passed=$($counters.passed)"
+          }
+
+      - name: Install verified Inno Setup 7
+        if: steps.existing.outputs.release_exists != 'true'
+        shell: pwsh
+        run: |
+          $candidates = @(
+            "$env:LOCALAPPDATA\Programs\Inno Setup 7\ISCC.exe",
+            "C:\Program Files\Inno Setup 7\ISCC.exe",
+            "C:\Program Files (x86)\Inno Setup 7\ISCC.exe"
+          )
+
+          $compiler = $candidates | Where-Object { Test-Path $_ } | Select-Object -First 1
+          if (-not $compiler) {
+            $innoVersion = "7.0.2"
+            $installerPath = Join-Path $env:RUNNER_TEMP "innosetup-$innoVersion-x64.exe"
+            $downloadUrl = "https://github.com/jrsoftware/issrc/releases/download/is-7_0_2/innosetup-$innoVersion-x64.exe"
+
+            Invoke-WebRequest -Uri $downloadUrl -OutFile $installerPath
+            $signature = Get-AuthenticodeSignature -FilePath $installerPath
+            if ($signature.Status -ne "Valid") {
+              throw "Inno Setup Authenticode verification failed: $($signature.Status)"
+            }
+            if ($signature.SignerCertificate.Subject -notmatch 'Pyrsys B\.V\.') {
+              throw "Unexpected Inno Setup signer: $($signature.SignerCertificate.Subject)"
+            }
+
+            $process = Start-Process -FilePath $installerPath -ArgumentList "/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /SP-" -Wait -PassThru
+            if ($process.ExitCode -ne 0) {
+              throw "Inno Setup installation failed with exit code $($process.ExitCode)."
+            }
+
+            $compiler = $candidates | Where-Object { Test-Path $_ } | Select-Object -First 1
+          }
+
+          if (-not $compiler) {
+            throw "Inno Setup 7 compiler was not found after installation."
+          }
+
+          Write-Host "Using Inno Setup compiler: $compiler"
+
+      # Signing is optional: with no certificate configured the build reports UNSIGNED in
+      # BUILD-INFO.txt. Adding these three repository secrets turns on Authenticode signing for both
+      # the executable and the installer without any further change.
+      - name: Build installer and checksums
+        if: steps.existing.outputs.release_exists != 'true'
+        shell: pwsh
+        env:
+          AWAYRA_SIGN_CERT_PATH: ${{ secrets.AWAYRA_SIGN_CERT_PATH }}
+          AWAYRA_SIGN_CERT_PASSWORD: ${{ secrets.AWAYRA_SIGN_CERT_PASSWORD }}
+          AWAYRA_TIMESTAMP_URL: ${{ secrets.AWAYRA_TIMESTAMP_URL }}
+        run: powershell -ExecutionPolicy Bypass -File .\scripts\build-installer.ps1
+
+      - name: Test clean install upgrade and uninstall
+        if: steps.existing.outputs.release_exists != 'true'
+        shell: pwsh
+        env:
+          APP_VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          $installer = Join-Path $PWD "artifacts\installer\Awayra-Setup-$env:APP_VERSION-x64.exe"
+          powershell -ExecutionPolicy Bypass -File .\scripts\test-clean-upgrade.ps1 `
+            -InstallerPath $installer `
+            -ExpectedVersion $env:APP_VERSION
+
+      - name: Prepare permanent download filenames
+        if: steps.existing.outputs.release_exists != 'true'
+        shell: pwsh
+        env:
+          APP_VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          $artifactDir = Join-Path $PWD "artifacts\installer"
+          $versionedInstaller = Join-Path $artifactDir "Awayra-Setup-$env:APP_VERSION-x64.exe"
+          $stableInstaller = Join-Path $artifactDir "Awayra-Setup-x64.exe"
+          $stableChecksum = Join-Path $artifactDir "Awayra-Setup-x64.sha256.txt"
+
+          if (-not (Test-Path $versionedInstaller)) {
+            throw "Expected installer not found: $versionedInstaller"
+          }
+
+          Copy-Item $versionedInstaller $stableInstaller -Force
+          $hash = (Get-FileHash $stableInstaller -Algorithm SHA256).Hash.ToLowerInvariant()
+          "$hash  Awayra-Setup-x64.exe" | Set-Content $stableChecksum -Encoding ascii
+
+      - name: Upload pull request installer artifact
+        if: github.event_name == 'pull_request'
+        uses: actions/upload-artifact@v6
+        with:
+          name: Awayra-installer-pr-${{ github.event.pull_request.number }}
+          path: artifacts/installer/*
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Create version tag
+        if: github.event_name != 'pull_request' && steps.existing.outputs.release_exists != 'true' && steps.tag.outputs.tag_exists != 'true'
+        shell: pwsh
+        env:
+          RELEASE_TAG: ${{ steps.version.outputs.tag }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -a $env:RELEASE_TAG -m "Awayra $env:RELEASE_TAG"
+          git push origin $env:RELEASE_TAG
+
+      - name: Publish GitHub Release
+        if: github.event_name != 'pull_request' && steps.existing.outputs.release_exists != 'true'
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ steps.version.outputs.tag }}
+          APP_VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          $artifactDir = Join-Path $PWD "artifacts\installer"
+          $assets = @(
+            (Join-Path $artifactDir "Awayra-Setup-$env:APP_VERSION-x64.exe"),
+            (Join-Path $artifactDir "Awayra-Setup-$env:APP_VERSION-x64.sha256.txt"),
+            (Join-Path $artifactDir "Awayra-Setup-x64.exe"),
+            (Join-Path $artifactDir "Awayra-Setup-x64.sha256.txt"),
+            (Join-Path $artifactDir "BUILD-INFO.txt")
+          )
+
+          foreach ($asset in $assets) {
+            if (-not (Test-Path $asset)) { throw "Release asset missing: $asset" }
+          }
+
+          gh release create $env:RELEASE_TAG @assets `
+            --repo $env:GITHUB_REPOSITORY `
+            --title "Awayra $env:APP_VERSION" `
+            --generate-notes `
+            --verify-tag

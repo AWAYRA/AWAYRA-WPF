@@ -1,0 +1,49 @@
+name: Feature request
+description: Suggest a focused improvement for Awayra
+title: "[Feature]: "
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem to solve
+      description: Explain the user problem, not only the proposed implementation.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: Describe the smallest useful change.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Explain current workarounds or other approaches.
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Eye Reset
+        - Move Break
+        - Dashboard
+        - Settings
+        - System tray
+        - Installer and updates
+        - Accessibility
+        - Other
+    validations:
+      required: true
+  - type: checkboxes
+    id: principles
+    attributes:
+      label: Project principles
+      options:
+        - label: The feature can work without an account or mandatory cloud service.
+          required: true
+        - label: The feature does not require telemetry or background data collection.
+          required: true
+        - label: I searched existing issues for a similar request.
+          required: true

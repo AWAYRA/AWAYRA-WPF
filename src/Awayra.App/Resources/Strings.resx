@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <data name="AppTitle" xml:space="preserve"><value>Awayra</value></data>
+  <data name="StatusRunning" xml:space="preserve"><value>Reminders active</value></data>
+  <data name="StatusPaused" xml:space="preserve"><value>Paused</value></data>
+  <data name="StatusIdle" xml:space="preserve"><value>Idle</value></data>
+  <data name="StatusConfigurationPaused" xml:space="preserve"><value>Settings open</value></data>
+  <data name="StatusOutsideWorkHours" xml:space="preserve"><value>Outside work hours</value></data>
+  <data name="StatusBreakActive" xml:space="preserve"><value>Break in progress</value></data>
+  <data name="StatusSnoozed" xml:space="preserve"><value>Snoozed</value></data>
+  <data name="StatusDisabled" xml:space="preserve"><value>Reminders disabled</value></data>
+  <data name="EyeReset" xml:space="preserve"><value>Eye Reset</value></data>
+  <data name="MoveBreak" xml:space="preserve"><value>Move Break</value></data>
+  <data name="Enabled" xml:space="preserve"><value>Enabled</value></data>
+  <data name="Disabled" xml:space="preserve"><value>Disabled</value></data>
+  <data name="Pause" xml:space="preserve"><value>Pause</value></data>
+  <data name="Resume" xml:space="preserve"><value>Resume</value></data>
+  <data name="EyeResetNow" xml:space="preserve"><value>Eye Reset Now</value></data>
+  <data name="MoveBreakNow" xml:space="preserve"><value>Move Break Now</value></data>
+  <data name="Settings" xml:space="preserve"><value>Settings</value></data>
+  <data name="Quit" xml:space="preserve"><value>Quit</value></data>
+  <data name="OpenAwayra" xml:space="preserve"><value>Open Awayra</value></data>
+  <data name="TodayEyeCompleted" xml:space="preserve"><value>Eye resets today</value></data>
+  <data name="TodayMoveCompleted" xml:space="preserve"><value>Move breaks today</value></data>
+  <data name="TodaySkipped" xml:space="preserve"><value>Skipped today</value></data>
+  <data name="TodaySnoozed" xml:space="preserve"><value>Snoozed today</value></data>
+  <data name="EyeResetInstructionDistance" xml:space="preserve"><value>Look at a distant object for a few breaths.</value></data>
+  <data name="EyeResetInstructionBlink" xml:space="preserve"><value>Blink naturally and relax your face.</value></data>
+  <data name="Skip" xml:space="preserve"><value>Skip</value></data>
+  <data name="Snooze" xml:space="preserve"><value>Snooze</value></data>
+  <data name="Complete" xml:space="preserve"><value>Complete</value></data>
+  <data name="MoveActivityStand" xml:space="preserve"><value>Stand up and reset your posture.</value></data>
+  <data name="MoveActivityWalk" xml:space="preserve"><value>Walk briefly away from your desk.</value></data>
+  <data name="MoveActivityShoulders" xml:space="preserve"><value>Relax your shoulders and unclench your jaw.</value></data>
+  <data name="MoveActivityNeck" xml:space="preserve"><value>Gently move your neck within a comfortable range.</value></data>
+  <data name="MoveActivityStretch" xml:space="preserve"><value>Stretch your arms gently without forcing.</value></data>
+  <data name="ValidationEyeResetIntervalInvalid" xml:space="preserve"><value>Eye reset interval must be between 1 and 480 minutes.</value></data>
+  <data name="ValidationEyeResetDurationInvalid" xml:space="preserve"><value>Eye reset duration must be between 5 and 600 seconds.</value></data>
+  <data name="ValidationMoveBreakIntervalInvalid" xml:space="preserve"><value>Move break interval must be between 1 and 480 minutes.</value></data>
+  <data name="ValidationMoveBreakDurationInvalid" xml:space="preserve"><value>Move break duration must be between 5 and 600 seconds.</value></data>
+  <data name="ValidationSnoozeDurationInvalid" xml:space="preserve"><value>Snooze duration must be between 1 and 60 minutes.</value></data>
+  <data name="ValidationIdleThresholdInvalid" xml:space="preserve"><value>Idle threshold must be between 1 and 120 minutes.</value></data>
+  <data name="ValidationGlassClarityInvalid" xml:space="preserve"><value>Glass clarity must be between 0 and 150.</value></data>
+  <data name="ValidationWorkHoursRangeInvalid" xml:space="preserve"><value>Work start and end cannot be the same time.</value></data>
+  <data name="TrayTooltipNextBreak" xml:space="preserve"><value>Next break in {0}</value></data>
+  <data name="TrayPauseReminders" xml:space="preserve"><value>Pause Reminders</value></data>
+  <data name="TrayResumeReminders" xml:space="preserve"><value>Resume Reminders</value></data>
+  <data name="SoundMuted" xml:space="preserve">
+    <value>🔇 Muted</value>
+  </data>
+  <data name="SoundOn" xml:space="preserve">
+    <value>🔊 Sound on</value>
+  </data>
+</root>

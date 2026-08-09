@@ -1,0 +1,45 @@
+name: Report Windows release status
+
+on:
+  workflow_run:
+    workflows: ["Publish Windows release"]
+    types: [completed]
+
+permissions:
+  statuses: write
+
+jobs:
+  report:
+    if: github.event.workflow_run.event != 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Publish commit status
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+          RESULT: ${{ github.event.workflow_run.conclusion }}
+          RUN_URL: ${{ github.event.workflow_run.html_url }}
+        run: |
+          case "$RESULT" in
+            success)
+              state="success"
+              description="Windows installer release published successfully"
+              ;;
+            cancelled)
+              state="error"
+              description="Windows installer release was cancelled"
+              ;;
+            *)
+              state="failure"
+              description="Windows installer release failed: $RESULT"
+              ;;
+          esac
+
+          gh api --method POST "repos/$GITHUB_REPOSITORY/statuses/$HEAD_SHA" \
+            -f state="$state" \
+            -f target_url="$RUN_URL" \
+            -f description="$description" \
+            -f context="awayra/release"

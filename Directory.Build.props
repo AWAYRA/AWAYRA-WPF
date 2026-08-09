@@ -1,0 +1,41 @@
+<Project>
+  <PropertyGroup>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <LangVersion>latest</LangVersion>
+    <Company>Awayra</Company>
+    <Product>Awayra</Product>
+    <Copyright>Copyright © 2026 Farzin Alavi</Copyright>
+
+    <!-- Single source of truth for the released version. Every project, the installer and the
+         release workflow derive from these; app.manifest carries the same number and CI fails the
+         build if the two ever drift. -->
+    <Version>1.3.0</Version>
+    <FileVersion>1.3.0.0</FileVersion>
+    <AssemblyVersion>1.3.0.0</AssemblyVersion>
+
+    <!-- WFO0003 asks for Application.SetHighDpiMode instead of manifest DPI settings. That is right
+         for a Windows Forms application; Awayra is WPF and only uses Windows Forms for the tray icon,
+         and WPF pins process DPI awareness before OnStartup can call the API. Measured: the call
+         returned false and the process ran DPI-unaware until app.manifest declared it.
+         Suppressed for every project because WPF compiles the app through a generated
+         "_wpftmp" project that does not match a project-name condition. -->
+    <NoWarn>$(NoWarn);WFO0003</NoWarn>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(MSBuildProjectName)' == 'Awayra.Core' or '$(MSBuildProjectName)' == 'Awayra.App'">
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+
+    <!-- TreatWarningsAsErrors only gates compiler warnings on its own. The .NET analyzers add the
+         correctness and reliability rules that were not being enforced at all. -->
+    <EnableNETAnalyzers>true</EnableNETAnalyzers>
+    <AnalysisLevel>latest-recommended</AnalysisLevel>
+
+    <!-- CA1716: IAppLogger.Error collides with a Visual Basic keyword. Error is the expected name
+         for a logging method and the interface is only ever implemented in C#; renaming it would
+         break the published Awayra.Core package for no practical gain.
+         CA1822: WPF binds only to instance members, so view-model properties that happen not to
+         touch instance state still cannot be static without breaking the views. -->
+    <NoWarn>$(NoWarn);CA1716;CA1822</NoWarn>
+  </PropertyGroup>
+</Project>

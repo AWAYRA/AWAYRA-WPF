@@ -1,0 +1,29 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+
+    <IsPackable>true</IsPackable>
+    <PackageId>Awayra.Core</PackageId>
+    <Title>Awayra Core</Title>
+    <Authors>Farzin Alavi</Authors>
+    <Company>Awayra</Company>
+    <Description>Platform-neutral scheduling, settings, statistics, and reminder-domain logic used by the Awayra Windows break reminder.</Description>
+    <PackageTags>awayra;break-reminder;20-20-20;eye-care;posture;wellness;scheduler;dotnet</PackageTags>
+    <PackageLicenseExpression>GPL-3.0-only</PackageLicenseExpression>
+    <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
+    <PackageProjectUrl>https://github.com/AWAYRA/AWAYRA-WPF</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/AWAYRA/AWAYRA-WPF.git</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageReadmeFile>PACKAGE-README.md</PackageReadmeFile>
+    <PackageReleaseNotes>Awayra 1.3.0 scheduling core. Reminders overdue from a shutdown or sleep are rebased instead of firing on return, settings are repaired field by field instead of reset, and unused coordination helpers were removed.</PackageReleaseNotes>
+    <IncludeSymbols>false</IncludeSymbols>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="PACKAGE-README.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
+
+</Project>

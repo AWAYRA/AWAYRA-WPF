@@ -1,0 +1,117 @@
+<Window x:Class="Awayra.App.Views.BreakOverlayWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:views="clr-namespace:Awayra.App.Views"
+        WindowStyle="None"
+        ResizeMode="NoResize"
+        ShowInTaskbar="False"
+        Topmost="True"
+        AllowsTransparency="False"
+        Background="#FF000000"
+        Foreground="#FFF7F9FC"
+        Opacity="1"
+        Focusable="True"
+        KeyDown="Window_OnKeyDown">
+  <Window.Resources>
+    <ResourceDictionary>
+      <ResourceDictionary.MergedDictionaries>
+        <ResourceDictionary Source="../Resources/OverlayStyles.xaml" />
+      </ResourceDictionary.MergedDictionaries>
+    </ResourceDictionary>
+  </Window.Resources>
+
+  <Grid>
+    <Image x:Name="SnapshotImage"
+           Stretch="Fill"
+           Source="{Binding SnapshotSource}">
+      <Image.Effect>
+        <BlurEffect Radius="{Binding BlurRadius}" />
+      </Image.Effect>
+    </Image>
+
+    <Border x:Name="TintScrim"
+            Background="#FF0E1116"
+            Opacity="{Binding BackgroundTintOpacity}" />
+
+    <Border HorizontalAlignment="Center"
+            VerticalAlignment="Center"
+            MinWidth="420"
+            MaxWidth="640"
+            Padding="36"
+            CornerRadius="24"
+            Background="{StaticResource Overlay.CardSurfaceBrush}"
+            BorderBrush="{StaticResource Overlay.CardBorderBrush}"
+            BorderThickness="1"
+            SnapsToDevicePixels="True">
+      <Border.Effect>
+        <DropShadowEffect Color="#FF000000"
+                          BlurRadius="28"
+                          ShadowDepth="0"
+                          Opacity="0.42" />
+      </Border.Effect>
+      <StackPanel HorizontalAlignment="Center">
+        <TextBlock Text="{Binding Title}"
+                   Style="{StaticResource Overlay.TitleText}"
+                   Margin="0,0,0,16" />
+
+        <!-- Guided exercise for the break that is running. Only one of the two is ever visible. -->
+        <Grid x:Name="ExerciseHost"
+              HorizontalAlignment="Center"
+              Margin="0,0,0,18">
+          <views:EyeExerciseView x:Name="EyeExercise" Visibility="Collapsed" />
+          <views:MoveExerciseView x:Name="MoveExercise" Visibility="Collapsed" />
+        </Grid>
+
+        <Grid Width="150"
+              Height="150"
+              Margin="0,0,0,20"
+              HorizontalAlignment="Center"
+              SnapsToDevicePixels="True">
+          <Ellipse Style="{StaticResource Overlay.TrackRing}" />
+          <Ellipse x:Name="PulseRing" Style="{StaticResource Overlay.PulseRing}">
+            <Ellipse.RenderTransform>
+              <ScaleTransform ScaleX="1" ScaleY="1" />
+            </Ellipse.RenderTransform>
+          </Ellipse>
+          <TextBlock x:Name="OverlayCountdown"
+                     Text="{Binding RemainingText}"
+                     Style="{StaticResource Overlay.CountdownText}" />
+        </Grid>
+
+        <TextBlock Text="{Binding InstructionPrimary}"
+                   Style="{StaticResource Overlay.InstructionPrimaryText}"
+                   Margin="0,0,0,8" />
+        <TextBlock Text="{Binding InstructionSecondary}"
+                   Style="{StaticResource Overlay.InstructionSecondaryText}"
+                   Margin="0,0,0,20" />
+
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+          <Button x:Name="SoundToggleButton"
+                  Content="{Binding SoundToggleText}"
+                  Command="{Binding ToggleSoundCommand}"
+                  Style="{StaticResource Overlay.SecondaryButton}"
+                  Margin="0,0,8,0" />
+          <Button x:Name="SkipButton"
+                  Content="{Binding SkipText}"
+                  Command="{Binding SkipCommand}"
+                  Style="{StaticResource Overlay.SecondaryButton}"
+                  Margin="0,0,8,0"
+                  Visibility="{Binding ShowSkip, Converter={StaticResource BoolToVisibility}}" />
+          <Button x:Name="SnoozeButton"
+                  Content="{Binding SnoozeText}"
+                  Command="{Binding SnoozeCommand}"
+                  Style="{StaticResource Overlay.SecondaryButton}"
+                  Margin="0,0,8,0"
+                  Visibility="{Binding ShowSnooze, Converter={StaticResource BoolToVisibility}}" />
+          <!-- Disabled until the countdown ends when skipping is off, so Complete cannot be used as
+               a way around a break the user asked not to be able to skip. -->
+          <Button x:Name="CompleteButton"
+                  Content="{Binding CompleteText}"
+                  Command="{Binding CompleteCommand}"
+                  IsEnabled="{Binding CanComplete}"
+                  Style="{StaticResource Overlay.PrimaryButton}" />
+        </StackPanel>
+      </StackPanel>
+    </Border>
+  </Grid>
+</Window>
