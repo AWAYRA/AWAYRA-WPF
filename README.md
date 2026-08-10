@@ -7,7 +7,7 @@
 **You can replace a laptop. You can rebuild a business. You can earn money again.  
 But your health deserves your attention every single day.**
 
-Awayra is a free, open-source break reminder for Windows designed to help people who spend long hours in front of a screen build healthier work habits.
+Awayra is a free, open-source break reminder for Windows designed to help people who spend long hours in front of a screen. Build healthier work habits.
 
 It reminds you to rest your eyes, move your body, stretch, blink, stand up, and step away from the screen before hours of focused work quietly turn into hours of uninterrupted sitting.
 
