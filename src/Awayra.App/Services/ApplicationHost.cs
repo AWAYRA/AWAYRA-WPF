@@ -302,15 +302,22 @@ public sealed class ApplicationHost : IDisposable
             _breakSound.Dispose();
         });
 
-        // The file-backed stores each hold a semaphore that serialises writes.
-        (_settingsStore as IDisposable)?.Dispose();
-        (_stateStore as IDisposable)?.Dispose();
-        (_statisticsStore as IDisposable)?.Dispose();
-
         _logger.Info("Awayra shutting down.");
     }
 
-    public void Dispose() => Shutdown();
+    public void Dispose()
+    {
+        Shutdown();
+
+        // The file-backed stores each hold a semaphore that serialises writes. They are disposed
+        // here rather than in Shutdown so the final PersistAllAsync a caller runs between
+        // Shutdown and Dispose can still write. Disposing them inside Shutdown turned the last
+        // save of scheduler state and statistics into an ObjectDisposedException on every tray
+        // quit, silently losing whatever happened since the previous break ended.
+        (_settingsStore as IDisposable)?.Dispose();
+        (_stateStore as IDisposable)?.Dispose();
+        (_statisticsStore as IDisposable)?.Dispose();
+    }
 
     private async void UpdateIdleState()
     {

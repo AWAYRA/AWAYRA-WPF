@@ -8,6 +8,18 @@ The project follows semantic versioning where practical.
 
 No unreleased changes yet.
 
+## [1.3.2] - 2026-08-13
+
+### Fixed
+
+- Quitting from the tray always failed its final save with an ObjectDisposedException, silently
+  losing whatever scheduler state and statistics had changed since the last break ended. Shutdown
+  disposed the file stores before QuitFromTray ran PersistAllAsync; the stores are now disposed in
+  Dispose, which runs on exit after the final save and log flush have completed. Introduced in
+  1.3.0 alongside the store-disposal cleanup, and caught in the field from the error it left in
+  the log
+- A regression test now replays the exact tray-quit order against real file-backed stores
+
 ## [1.3.1] - 2026-08-13
 
 ### Fixed

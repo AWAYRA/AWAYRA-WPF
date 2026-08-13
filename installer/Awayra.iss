@@ -5,11 +5,11 @@
 ; executable. The fallbacks only apply when ISCC is invoked by hand and must track
 ; Directory.Build.props; CI fails the build if they drift.
 #ifndef MyAppVersion
-  #define MyAppVersion "1.3.1"
+  #define MyAppVersion "1.3.2"
 #endif
 
 #ifndef MyAppVersionInfo
-  #define MyAppVersionInfo "1.3.1.0"
+  #define MyAppVersionInfo "1.3.2.0"
 #endif
 
 #ifndef PublishDir
