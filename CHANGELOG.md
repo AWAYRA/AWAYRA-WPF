@@ -8,6 +8,27 @@ The project follows semantic versioning where practical.
 
 No unreleased changes yet.
 
+## [1.3.1] - 2026-08-13
+
+### Fixed
+
+- Some monitors physically blanked and re-synced — as if briefly powered off and on — every time a
+  fullscreen break overlay opened or closed. The overlay was an opaque, borderless, topmost window
+  at exact monitor bounds, which is precisely the profile DWM promotes to independent flip
+  ("fullscreen optimizations"); on VRR (G-Sync/FreeSync), HDR, and hybrid-GPU systems that
+  promotion forces a display re-handshake. The overlay is now a layered window
+  (`AllowsTransparency="True"`), which DWM never promotes, so the handshake no longer happens.
+  This bug had been hunted since 1.1.1; the 1.1.3 native-API audit correctly found no display,
+  power or DXGI call, because the trigger was the window's own shape, not an API
+- The invisible overlay preparation introduced in 1.1.2 never actually worked: `Window.Opacity`
+  has no effect on a top-level window unless it is layered, so a solid dark fullscreen frame was
+  really being presented before the break content rendered — and the deliberate two-frame render
+  wait lengthened it. With the window now layered, the existing Opacity 0-to-1 reveal genuinely
+  hides those frames for the first time
+- The overlay background is no longer pure black (`#FF000000` → `#FF0E1116`), so the first
+  presented frame can no longer collapse dynamic-contrast backlights into a visible off/on dip
+- A regression test now guards the layered profile and the non-black background
+
 ## [1.3.0] - 2026-08-05
 
 A full audit of the source, installer, scripts and workflows. Nothing about how Awayra reminds you

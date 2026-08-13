@@ -49,6 +49,34 @@ public sealed class BreakOverlayPresentationTests
         });
     }
 
+    [TestMethod]
+    public void BreakOverlay_IsLayeredAndAvoidsPureBlackBackground()
+    {
+        StaTestContext.Run(() =>
+        {
+            WpfTestHost.EnsureApplicationResources();
+            var host = WpfTestHost.CreateHost();
+            var window = new BreakOverlayWindow(
+                host,
+                new OverlayViewModel(),
+                new NullMonitorSnapshotService());
+
+            // Layered windows are excluded from DWM independent-flip promotion, which is
+            // what made some VRR/HDR monitors physically blank and re-sync whenever a
+            // fullscreen break opened or closed. Layering is also the only reason the
+            // Opacity=0 invisible preparation in ShowOnActiveMonitor works at all, and a
+            // pure black background would still collapse dynamic-contrast backlights on
+            // the first presented frame.
+            Assert.IsTrue(window.AllowsTransparency);
+
+            var background = (System.Windows.Media.SolidColorBrush)window.Background;
+            Assert.AreNotEqual(System.Windows.Media.Colors.Black, background.Color);
+
+            window.Close();
+            host.Dispose();
+        });
+    }
+
     private static void PumpUntil(Dispatcher dispatcher, Func<bool> condition, TimeSpan timeout)
     {
         var deadline = DateTime.UtcNow + timeout;

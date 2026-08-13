@@ -18,7 +18,7 @@
     <RepositoryUrl>https://github.com/AWAYRA/AWAYRA-WPF.git</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <PackageReadmeFile>PACKAGE-README.md</PackageReadmeFile>
-    <PackageReleaseNotes>Awayra 1.3.0 scheduling core. Reminders overdue from a shutdown or sleep are rebased instead of firing on return, settings are repaired field by field instead of reset, and unused coordination helpers were removed.</PackageReleaseNotes>
+    <PackageReleaseNotes>Awayra 1.3.1 scheduling core. No functional changes; version aligned with the application release that stops fullscreen break overlays from making some monitors blank and re-sync.</PackageReleaseNotes>
     <IncludeSymbols>false</IncludeSymbols>
   </PropertyGroup>
 

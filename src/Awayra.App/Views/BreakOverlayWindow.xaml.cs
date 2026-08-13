@@ -157,10 +157,15 @@ public partial class BreakOverlayWindow : Window
         _pendingRevealBounds = targetBounds;
         _firstFrameRevealed = false;
 
-        // A fullscreen WPF window can briefly expose its black background before the
-        // snapshot and controls have completed their first render. Keep the native
-        // window fully transparent and non-activating until a complete frame has been
-        // rendered at the final physical monitor bounds.
+        // The window is a WPF layered window (AllowsTransparency="True" in XAML) for two
+        // reasons. First, Opacity only has an effect on a top-level window through the
+        // layered-window path, so this Opacity=0 preparation genuinely hides the window
+        // until a complete frame has been rendered at the final physical monitor bounds;
+        // without it the first frames were presented as a solid dark fullscreen flash.
+        // Second, DWM never promotes a layered window to independent flip, so showing an
+        // opaque borderless topmost window at exact monitor bounds no longer triggers the
+        // fullscreen-optimization handshake that made some VRR/HDR monitors physically
+        // blank and re-sync every time a break opened or closed.
         Opacity = 0;
         ShowActivated = false;
         _ = new WindowInteropHelper(this).EnsureHandle();
