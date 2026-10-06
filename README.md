@@ -1,18 +1,11 @@
 <div align="center">
 
-# ❤️ Awayra
+# Awayra
 
-## Your health matters.
+## Look away. Move. Get back to work.
 
-**You can replace a laptop. You can rebuild a business. You can earn money again.  
-But your health deserves your attention every single day.**
-
-Awayra is a free, open-source break reminder for Windows designed to help people who spend long hours in front of a screen. 
-Build healthier work habits.
-
-It reminds you to rest your eyes, move your body, stretch, blink, stand up, and step away from the screen before hours of focused work quietly turn into hours of uninterrupted sitting.
-
-### ❤️ Built with care for healthier lives around the world.
+Free, open-source Windows reminders for eye rests and movement breaks, each on its own adjustable schedule.
+Optional sounds, working hours, idle reset, snooze and skip. Works offline, without an account or telemetry.
 
 ![Windows](https://img.shields.io/badge/Windows-10%20%7C%2011-0078D4?logo=windows11&logoColor=white)
 ![.NET](https://img.shields.io/badge/.NET-10-512BD4?logo=dotnet&logoColor=white)
@@ -20,11 +13,46 @@ It reminds you to rest your eyes, move your body, stretch, blink, stand up, and 
 ![Privacy](https://img.shields.io/badge/Privacy-100%25%20Local-2ea44f)
 ![Free](https://img.shields.io/badge/Price-Free-brightgreen)
 
-### [⬇️ Download Awayra for Windows](https://github.com/AWAYRA/AWAYRA-WPF/releases/latest/download/Awayra-Setup-x64.exe)
+### [Download Awayra for Windows](https://github.com/AWAYRA/AWAYRA-WPF/releases/latest/download/Awayra-Setup-x64.exe)
 
 [Release notes](https://github.com/AWAYRA/AWAYRA-WPF/releases/latest) · [Report a bug](https://github.com/AWAYRA/AWAYRA-WPF/issues)
 
 </div>
+
+---
+
+## See Awayra in action
+
+### Two timers, one dashboard
+
+See the next eye rest and movement break side by side. Enable reminders and sound separately for each type, start a break now, or pause reminders.
+
+<p align="center">
+  <img src="docs/screenshots/dashboard.png" alt="Awayra dashboard with separate eye and movement countdowns, reminder and sound switches, daily counts, and break controls" width="430">
+</p>
+
+### Set it up for your workday
+
+Adjust each break's interval and duration, choose from six local sounds, and set volume and repeat timing. Configure work hours, idle reset, snooze, skip, overlay clarity and guided animations in one window.
+
+![Awayra settings: independent break timers, sound choices, reminder actions, work hours, overlay appearance and Windows behavior](docs/screenshots/settings.png)
+
+### Guided eye rests and movement breaks
+
+Eye Reset prompts you to look into the distance and blink. Move Break guides you to step away and move. Both include a countdown and controls to mute, skip, snooze or complete the current break.
+
+<table>
+  <tr>
+    <th>Eye Reset</th>
+    <th>Move Break</th>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/eye-reset.png" alt="Eye Reset overlay with a guided blinking exercise, countdown and break controls" width="360"></td>
+    <td><img src="docs/screenshots/move-break.png" alt="Move Break overlay with a guided movement illustration, countdown and break controls" width="360"></td>
+  </tr>
+</table>
+
+These screenshots use demonstration settings. The default eye rest is 20 seconds every 20 minutes; the default movement break is 60 seconds every 45 minutes. Both schedules are adjustable. Sound is optional and repeats during a break; there is no separate end-only chime.
 
 ---
 
