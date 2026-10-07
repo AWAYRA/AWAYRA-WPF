@@ -52,7 +52,31 @@ Eye Reset prompts you to look into the distance and blink. Move Break guides you
   </tr>
 </table>
 
-These screenshots use demonstration settings. The default eye rest is 20 seconds every 20 minutes; the default movement break is 60 seconds every 45 minutes. Both schedules are adjustable. Sound is optional and repeats during a break; there is no separate end-only chime.
+These are actual Awayra 1.3.1 captures with the default break intervals and durations. Sound, idle and Windows preferences show an example configuration. The default eye rest is 20 seconds every 20 minutes; the default movement break is 60 seconds every 45 minutes. Both schedules are adjustable. Sound is optional and repeats during a break; there is no separate end-only chime.
+
+### Every settings group, up close
+
+**Sound & guided exercise** — Choose from six local sounds, adjust volume and repeat timing, preview a sound, and switch guided animation on or off.
+
+![Sound & guided exercise](docs/screenshots/sound-settings.png?v=20261008)
+
+**Independent timers** — Set reminder, sound, interval and duration separately for Eye Reset and Move Break.
+
+![Independent timers](docs/screenshots/timer-settings.png?v=20261008)
+
+**Work hours, snooze & idle** — Choose skip and snooze permissions, a snooze duration, an idle threshold and your work hours.
+
+![Work hours, snooze & idle](docs/screenshots/schedule-settings.png?v=20261008)
+
+**Appearance & Windows** — Adjust overlay clarity and reduced motion. Choose startup, minimized launch and close-to-tray behavior.
+
+![Appearance & Windows](docs/screenshots/appearance-settings.png?v=20261008)
+
+### Pause, version and support
+
+<table><tr><th>Pause & resume</th><th>About & support</th></tr><tr><td><img src="docs/screenshots/paused.png" alt="Paused dashboard with Resume control" width="360"></td><td><img src="docs/screenshots/about.png" alt="Version, source code, issue reporting and optional support status" width="360"></td></tr></table>
+
+Financial support is optional. The application currently shows that its payment link is not configured.
 
 ---
 
