@@ -28,14 +28,14 @@ Optional sounds, working hours, idle reset, snooze and skip. Works offline, with
 See the next eye rest and movement break side by side. Enable reminders and sound separately for each type, start a break now, or pause reminders.
 
 <p align="center">
-  <img src="docs/screenshots/dashboard.png" alt="Awayra dashboard with separate eye and movement countdowns, reminder and sound switches, daily counts, and break controls" width="430">
+  <img src="docs/screenshots/dashboard.png?v=20261008-hd" alt="Awayra dashboard with separate eye and movement countdowns, reminder and sound switches, daily counts, and break controls" width="430">
 </p>
 
 ### Set it up for your workday
 
 Adjust each break's interval and duration, choose from six local sounds, and set volume and repeat timing. Configure work hours, idle reset, snooze, skip, overlay clarity and guided animations in one window.
 
-![Awayra settings: independent break timers, sound choices, reminder actions, work hours, overlay appearance and Windows behavior](docs/screenshots/settings.png)
+![Awayra settings: independent break timers, sound choices, reminder actions, work hours, overlay appearance and Windows behavior](docs/screenshots/settings.png?v=20261008-hd)
 
 ### Guided eye rests and movement breaks
 
@@ -47,34 +47,34 @@ Eye Reset prompts you to look into the distance and blink. Move Break guides you
     <th>Move Break</th>
   </tr>
   <tr>
-    <td><img src="docs/screenshots/eye-reset.png" alt="Eye Reset overlay with a guided blinking exercise, countdown and break controls" width="360"></td>
-    <td><img src="docs/screenshots/move-break.png" alt="Move Break overlay with a guided movement illustration, countdown and break controls" width="360"></td>
+    <td><img src="docs/screenshots/eye-reset.png?v=20261008-hd" alt="Eye Reset overlay with a guided blinking exercise, countdown and break controls" width="360"></td>
+    <td><img src="docs/screenshots/move-break.png?v=20261008-hd" alt="Move Break overlay with a guided movement illustration, countdown and break controls" width="360"></td>
   </tr>
 </table>
 
-These are actual Awayra 1.3.1 captures with the default break intervals and durations. Sound, idle and Windows preferences show an example configuration. The default eye rest is 20 seconds every 20 minutes; the default movement break is 60 seconds every 45 minutes. Both schedules are adjustable. Sound is optional and repeats during a break; there is no separate end-only chime.
+These are actual Awayra 1.3.2 captures with the default break intervals and durations. Original lossless PNGs are rendered directly from the running WPF interface at 3x resolution (288 DPI). Default settings are shown with a solid overlay for readability. The default eye rest is 20 seconds every 20 minutes; the default movement break is 60 seconds every 45 minutes. Both schedules are adjustable. Sound is optional and repeats during a break; there is no separate end-only chime.
 
 ### Every settings group, up close
 
 **Sound & guided exercise** — Choose from six local sounds, adjust volume and repeat timing, preview a sound, and switch guided animation on or off.
 
-![Sound & guided exercise](docs/screenshots/sound-settings.png?v=20261008)
+![Sound & guided exercise](docs/screenshots/sound-settings.png?v=20261008-hd)
 
 **Independent timers** — Set reminder, sound, interval and duration separately for Eye Reset and Move Break.
 
-![Independent timers](docs/screenshots/timer-settings.png?v=20261008)
+![Independent timers](docs/screenshots/timer-settings.png?v=20261008-hd)
 
 **Work hours, snooze & idle** — Choose skip and snooze permissions, a snooze duration, an idle threshold and your work hours.
 
-![Work hours, snooze & idle](docs/screenshots/schedule-settings.png?v=20261008)
+![Work hours, snooze & idle](docs/screenshots/schedule-settings.png?v=20261008-hd)
 
 **Appearance & Windows** — Adjust overlay clarity and reduced motion. Choose startup, minimized launch and close-to-tray behavior.
 
-![Appearance & Windows](docs/screenshots/appearance-settings.png?v=20261008)
+![Appearance & Windows](docs/screenshots/appearance-settings.png?v=20261008-hd)
 
 ### Pause, version and support
 
-<table><tr><th>Pause & resume</th><th>About & support</th></tr><tr><td><img src="docs/screenshots/paused.png" alt="Paused dashboard with Resume control" width="360"></td><td><img src="docs/screenshots/about.png" alt="Version, source code, issue reporting and optional support status" width="360"></td></tr></table>
+<table><tr><th>Pause & resume</th><th>About & support</th></tr><tr><td><img src="docs/screenshots/paused.png?v=20261008-hd" alt="Paused dashboard with Resume control" width="360"></td><td><img src="docs/screenshots/about.png?v=20261008-hd" alt="Version, source code, issue reporting and optional support status" width="360"></td></tr></table>
 
 Financial support is optional. The application currently shows that its payment link is not configured.
 

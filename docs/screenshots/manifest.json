@@ -1,0 +1,109 @@
+{
+  "version": "1.3.2",
+  "sourceCommit": "6400a0dfcfed32217073a55090d12864477f855d",
+  "method": "Actual running WPF views rendered directly to lossless PNG at 3x / 288 DPI; no JPEG intermediates or bitmap upscaling",
+  "settings": "Default timers and sound switches; solid overlay for readable documentation; isolated capture data",
+  "images": [
+    {
+      "name": "dashboard",
+      "width": 1339,
+      "height": 2005,
+      "dpi": 288,
+      "logicalWidth": 446.0843098958333,
+      "logicalHeight": 668.2991927083333,
+      "sha256": "c7753055b22f140ea59a61657a3fcb9f6b5240ca48e918553af6fd64b2811cb1",
+      "bytes": 165418
+    },
+    {
+      "name": "paused",
+      "width": 1339,
+      "height": 2005,
+      "dpi": 288,
+      "logicalWidth": 446.0843098958333,
+      "logicalHeight": 668.2991927083333,
+      "sha256": "906b9d541694868ba7d452427c223cf23862be91da1c81f2f1b02ec6fe11d3a7",
+      "bytes": 164154
+    },
+    {
+      "name": "settings",
+      "width": 3076,
+      "height": 2171,
+      "dpi": 288,
+      "logicalWidth": 1025.3333333333333,
+      "logicalHeight": 723.3799479166667,
+      "sha256": "2b00991c2d7809d941310a3e72abdebd95b2285a4a61120d26119f35f105918c",
+      "bytes": 844289
+    },
+    {
+      "name": "sound-settings",
+      "width": 1463,
+      "height": 794,
+      "dpi": 288,
+      "logicalWidth": 487.66666666666663,
+      "logicalHeight": 264.53,
+      "sha256": "04e2a686ae3ce617e89c0c6fb301f2784bc35744ea83c32a7ee3bc4c443a1e5b",
+      "bytes": 119377
+    },
+    {
+      "name": "timer-settings",
+      "width": 1463,
+      "height": 688,
+      "dpi": 288,
+      "logicalWidth": 487.66666666666663,
+      "logicalHeight": 229.10999999999999,
+      "sha256": "570feee749ad683914ca8c48aaf58cc544715cdc87d67f0e7e2a719ac25a378c",
+      "bytes": 68609
+    },
+    {
+      "name": "schedule-settings",
+      "width": 1463,
+      "height": 723,
+      "dpi": 288,
+      "logicalWidth": 487.66666666666663,
+      "logicalHeight": 240.69,
+      "sha256": "e94529ae296243a6a25b2bb827199f1762830ef4f489fc2f39c3668dbffc1c07",
+      "bytes": 88455
+    },
+    {
+      "name": "appearance-settings",
+      "width": 1463,
+      "height": 459,
+      "dpi": 288,
+      "logicalWidth": 487.66666666666663,
+      "logicalHeight": 152.87,
+      "sha256": "cbc26aae6719ac577d9fb955394d56ec514beee4ad9fbefec23f72358597b146",
+      "bytes": 65793
+    },
+    {
+      "name": "eye-reset",
+      "width": 1446,
+      "height": 2033,
+      "dpi": 288,
+      "logicalWidth": 482,
+      "logicalHeight": 677.6633333333333,
+      "sha256": "26d2a26f891707de843788cb2e4755e72a7dd71998450c86bc1507314e9990a9",
+      "bytes": 155180
+    },
+    {
+      "name": "move-break",
+      "width": 1446,
+      "height": 1930,
+      "dpi": 288,
+      "logicalWidth": 482,
+      "logicalHeight": 643.0433333333333,
+      "sha256": "dc994a2292e47a86010c9514bd4a9d7e214586813f75df26f13f899edb361adf",
+      "bytes": 142815
+    },
+    {
+      "name": "about",
+      "width": 1888,
+      "height": 2099,
+      "dpi": 288,
+      "logicalWidth": 629.3333333333334,
+      "logicalHeight": 699.5429166666667,
+      "sha256": "79892d6fe6e51aad56af99b3d583847392c65c260a456bdc834e508ecbd92509",
+      "bytes": 215804
+    }
+  ],
+  "presentation": "Window chrome and desktop excluded; native overlay shadow omitted to avoid an effect bitmap cache reducing text resolution. UI text, controls and content are unchanged."
+}
