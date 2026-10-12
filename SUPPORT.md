@@ -34,4 +34,4 @@ Forks are allowed under the GPL-3.0-only license when the repository is public. 
 
 ## Financial support
 
-No official donation or payment link is configured. Awayra does not process payments and no feature is unlocked through financial support.
+If Awayra is useful to you, you can [support its development on GitHub Sponsors](https://github.com/sponsors/mtalavi). Support is optional; the app stays free and does not process payments or unlock features.
